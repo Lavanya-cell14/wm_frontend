@@ -1,0 +1,52 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+
+export const mockUsers = [
+  { name: 'Warehouse Manager', email: 'manager@warehouseai.com', password: 'Manager@123', role: 'MANAGER' },
+  { name: 'Warehouse Staff', email: 'staff@warehouseai.com', password: 'Staff@123', role: 'STAFF' },
+  { name: 'Inventory Clerk', email: 'inventory@warehouseai.com', password: 'Inventory@123', role: 'INVENTORY_CLERK' },
+  { name: 'System Admin', email: 'admin@warehouseai.com', password: 'Admin@123', role: 'ADMIN' },
+  { name: 'AGV Operator', email: 'operator@warehouseai.com', password: 'Operator@123', role: 'OPERATOR' }
+];
+
+const AuthContext = createContext();
+
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('warehouseUser');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+    setLoading(false);
+  }, []);
+
+  const login = (email, password) => {
+    const foundUser = mockUsers.find(u => u.email === email && u.password === password);
+    if (foundUser) {
+      const { password, ...userWithoutPassword } = foundUser;
+      setUser(userWithoutPassword);
+      localStorage.setItem('warehouseUser', JSON.stringify(userWithoutPassword));
+      return true;
+    }
+    return false;
+  };
+
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('warehouseUser');
+  };
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center bg-gray-50">Loading...</div>;
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export const useAuth = () => useContext(AuthContext);

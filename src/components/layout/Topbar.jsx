@@ -1,7 +1,17 @@
 import React from 'react';
-import { Menu, Search, Bell, User } from 'lucide-react';
+import { Menu, Search, Bell, User, LogOut } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function Topbar({ onMenuClick }) {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   return (
     <header className="h-16 border-b border-gray-200 bg-white shadow-sm flex items-center justify-between px-4 lg:px-8 z-40 sticky top-0">
       <div className="flex items-center">
@@ -30,16 +40,25 @@ export default function Topbar({ onMenuClick }) {
         
         <div className="h-8 w-px bg-gray-200 hidden sm:block"></div>
         
-        <button className="flex items-center gap-2 hover:bg-gray-50 p-1.5 rounded-lg transition-colors border border-transparent hover:border-gray-200">
+        <div className="flex items-center gap-2 p-1.5">
           <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-[#0071C1]">
             <User className="w-4 h-4" />
           </div>
-          <div className="hidden sm:flex flex-col items-start">
-            <span className="text-sm font-semibold text-gray-700 leading-tight">Admin User</span>
-            <span className="text-[11px] text-gray-500">Warehouse Mgr</span>
+          <div className="hidden sm:flex flex-col items-start mr-2">
+            <span className="text-sm font-semibold text-gray-700 leading-tight">{user?.name || 'Admin User'}</span>
+            <span className="text-[11px] text-gray-500 capitalize">{user?.role?.toLowerCase().replace('_', ' ') || 'Manager'}</span>
           </div>
+        </div>
+
+        <button 
+          onClick={handleLogout}
+          className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-lg transition-colors ml-1"
+          title="Logout"
+        >
+          <LogOut className="w-5 h-5" />
         </button>
       </div>
     </header>
   );
 }
+

@@ -1,54 +1,280 @@
 import React, { useState } from 'react';
-import InventoryTable from '../components/inventory/InventoryTable';
+import { useWarehouse } from '../context/WarehouseContext';
+import { useAuth } from '../context/AuthContext';
+import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
+import StatCard from '../components/dashboard/StatCard';
 import Button from '../components/ui/Button';
-import Card, { CardContent } from '../components/ui/Card';
-import Input from '../components/ui/Input';
-import { Search, Filter, Download, Plus } from 'lucide-react';
+import Badge from '../components/ui/Badge';
+import StatusBadge from '../components/ui/StatusBadge';
+import SearchFilterBar from '../components/ui/SearchFilterBar';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
+import { Package, ShieldCheck, ShieldAlert, Settings, Plus, Minus, X, AlertCircle } from 'lucide-react';
 
 export default function Inventory() {
+  const { inventory, adjustStock, markDamaged, warehouses, zones } = useWarehouse();
+  const { user } = useAuth();
+  
+  // States
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedWarehouse, setSelectedWarehouse] = useState('All');
+  const [selectedZone, setSelectedZone] = useState('All');
+  const [selectedStatus, setSelectedStatus] = useState('All');
 
-  const inventoryData = [
-    { sku: 'ITM-001', name: 'Industrial Safety Helmet', category: 'Safety', location: 'Aisle A1', quantity: 150, status: 'In Stock' },
-    { sku: 'ITM-002', name: 'Reflective Vest', category: 'Safety', location: 'Aisle A2', quantity: 12, status: 'Low Stock' },
-    { sku: 'ITM-003', name: 'Heavy Duty Gloves', category: 'Safety', location: 'Aisle A3', quantity: 0, status: 'Out of Stock' },
-    { sku: 'ITM-004', name: 'Steel Toe Boots', category: 'Footwear', location: 'Aisle B1', quantity: 85, status: 'In Stock' },
-    { sku: 'ITM-005', name: 'Warehouse Pallet Jack', category: 'Equipment', location: 'Dock 4', quantity: 4, status: 'In Stock' },
-    { sku: 'ITM-006', name: 'Packing Tape (Box)', category: 'Supplies', location: 'Aisle C4', quantity: 450, status: 'In Stock' },
-    { sku: 'ITM-007', name: 'Stretch Wrap Roll', category: 'Supplies', location: 'Aisle C4', quantity: 5, status: 'Low Stock' },
-  ];
+  // Modal control
+  const [showAdjustModal, setShowAdjustModal] = useState(false);
+  const [showDamageModal, setShowDamageModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [adjustQty, setAdjustQty] = useState('');
+  const [damageQty, setDamageQty] = useState('');
+
+  // Calculations
+  const totalStock = inventory.reduce((sum, i) => sum + i.quantity, 0);
+  const reservedStock = inventory.reduce((sum, i) => sum + (i.reserved || 0), 0);
+  const damagedStock = inventory.reduce((sum, i) => sum + (i.damaged || 0), 0);
+  const availableStock = totalStock - reservedStock;
+  const lowStockCount = inventory.filter(i => i.quantity <= 20).length;
+
+  const handleOpenAdjust = (item) => {
+    setSelectedItem(item);
+    setAdjustQty('');
+    setShowAdjustModal(true);
+  };
+
+  const handleOpenDamage = (item) => {
+    setSelectedItem(item);
+    setDamageQty('');
+    setShowDamageModal(true);
+  };
+
+  const submitAdjustment = (e) => {
+    e.preventDefault();
+    if (!selectedItem || !adjustQty) return;
+    adjustStock(selectedItem.sku, parseInt(adjustQty), user);
+    setShowAdjustModal(false);
+  };
+
+  const submitDamage = (e) => {
+    e.preventDefault();
+    if (!selectedItem || !damageQty) return;
+    markDamaged(selectedItem.sku, parseInt(damageQty), user);
+    setShowDamageModal(false);
+  };
+
+  // Filter logic
+  const filteredInventory = inventory.filter(item => {
+    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          item.sku.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCat = selectedCategory === 'All' || item.category === selectedCategory;
+    const matchesWh = selectedWarehouse === 'All' || item.warehouse === selectedWarehouse;
+    const matchesZone = selectedZone === 'All' || item.zone === selectedZone;
+    
+    let matchesStatus = true;
+    if (selectedStatus === 'Low Stock') matchesStatus = item.quantity <= 20;
+    if (selectedStatus === 'In Stock') matchesStatus = item.quantity > 20;
+    if (selectedStatus === 'Out of Stock') matchesStatus = item.quantity === 0;
+
+    return matchesSearch && matchesCat && matchesWh && matchesZone && matchesStatus;
+  });
+
+  // Unique categories
+  const categories = ['All', ...new Set(inventory.map(i => i.category))];
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Inventory Management</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage and track your warehouse inventory items.</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" icon={Download}>Export</Button>
-          <Button icon={Plus}>Add Item</Button>
-        </div>
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+          <Package className="w-7 h-7 text-[#0071C1]" />
+          Inventory Management
+        </h1>
+        <p className="text-gray-500 text-sm mt-1">Audit warehouse products, adjust items levels, and record damaged goods in real-time.</p>
       </div>
 
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4 justify-between items-center mb-6">
-            <div className="relative w-full sm:max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input 
-                className="pl-9" 
-                placeholder="Search by SKU, name, or category..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+      {/* KPI Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <StatCard title="Total Stock Units" value={totalStock} icon={Package} />
+        <StatCard title="Available Stock" value={availableStock} icon={ShieldCheck} />
+        <StatCard title="Reserved Stock" value={reservedStock} icon={Settings} />
+        <StatCard title="Damaged Stock" value={damagedStock} icon={ShieldAlert} />
+        <StatCard title="Low Stock Items" value={lowStockCount} icon={AlertCircle} trend={lowStockCount > 3 ? 10 : 0} />
+      </div>
+
+      {/* Filter panel */}
+      <Card className="border border-gray-100 shadow-xs">
+        <CardContent className="p-4 space-y-4">
+          <SearchFilterBar 
+            placeholder="Search stock by SKU, product name..." 
+            onSearch={(val) => setSearchQuery(val)} 
+          />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+            <div className="space-y-1">
+              <label className="font-bold text-gray-500 uppercase">Category</label>
+              <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="w-full border border-gray-200 p-2 rounded-lg font-semibold outline-none focus:border-blue-500">
+                {categories.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
-            <Button variant="outline" icon={Filter}>Filter</Button>
+            <div className="space-y-1">
+              <label className="font-bold text-gray-500 uppercase">Warehouse</label>
+              <select value={selectedWarehouse} onChange={(e) => setSelectedWarehouse(e.target.value)} className="w-full border border-gray-200 p-2 rounded-lg font-semibold outline-none focus:border-blue-500">
+                <option value="All">All Warehouses</option>
+                {warehouses.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="font-bold text-gray-500 uppercase">Zone</label>
+              <select value={selectedZone} onChange={(e) => setSelectedZone(e.target.value)} className="w-full border border-gray-200 p-2 rounded-lg font-semibold outline-none focus:border-blue-500">
+                <option value="All">All Zones</option>
+                {zones.map(z => <option key={z.id} value={z.name}>{z.name}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="font-bold text-gray-500 uppercase">Stock Status</label>
+              <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} className="w-full border border-gray-200 p-2 rounded-lg font-semibold outline-none focus:border-blue-500">
+                <option value="All">All Stock Levels</option>
+                <option value="In Stock">In Stock</option>
+                <option value="Low Stock">Low Stock</option>
+                <option value="Out of Stock">Out of Stock</option>
+              </select>
+            </div>
           </div>
-          
-          <InventoryTable data={inventoryData} />
         </CardContent>
       </Card>
+
+      {/* Table */}
+      <Card className="border border-gray-100 shadow-xs">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableRow>Product / SKU</TableRow>
+                <TableRow>Category</TableRow>
+                <TableRow>Bin Code</TableRow>
+                <TableRow>Total Qty</TableRow>
+                <TableRow>Reserved</TableRow>
+                <TableRow>Damaged</TableRow>
+                <TableRow>Status</TableRow>
+                <TableRow>Last Updated</TableRow>
+                <TableRow className="text-right">Actions</TableRow>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredInventory.map((item) => {
+                const isLow = item.quantity <= 20;
+                return (
+                  <TableRow key={item.sku} className="hover:bg-gray-50/50 transition-colors">
+                    <TableCell>
+                      <div className="font-semibold text-gray-900 text-sm">{item.name}</div>
+                      <div className="text-xs text-gray-400 font-mono mt-0.5">{item.sku}</div>
+                    </TableCell>
+                    <TableCell className="text-gray-600 text-xs font-semibold">{item.category}</TableCell>
+                    <TableCell className="font-mono text-xs text-blue-700 font-bold bg-blue-50/50 px-1.5 py-0.5 rounded border border-blue-100 w-fit">
+                      {item.bin}
+                    </TableCell>
+                    <TableCell className="font-bold text-gray-900 text-sm">{item.quantity} units</TableCell>
+                    <TableCell className="text-gray-600 text-xs font-semibold">{item.reserved || 0} units</TableCell>
+                    <TableCell className="text-red-600 text-xs font-semibold">{item.damaged || 0} units</TableCell>
+                    <TableCell>
+                      <StatusBadge status={isLow ? 'warning' : 'success'} />
+                    </TableCell>
+                    <TableCell className="text-gray-400 text-[11px] font-semibold">{item.lastUpdated}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs text-gray-600" onClick={() => handleOpenAdjust(item)}>
+                          Adjust
+                        </Button>
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs text-red-600 border-red-100 hover:bg-red-50" onClick={() => handleOpenDamage(item)}>
+                          Flag Damage
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* ADJUST STOCK MODAL */}
+      {showAdjustModal && selectedItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <form onSubmit={submitAdjustment} className="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-slate-900 text-white p-5 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Package className="w-5 h-5 text-blue-400" />
+                <h3 className="font-bold text-sm">Adjust Product Stock</h3>
+              </div>
+              <button type="button" className="text-slate-400 hover:text-white font-semibold text-lg" onClick={() => setShowAdjustModal(false)}>×</button>
+            </div>
+            
+            <div className="p-6 space-y-4 text-xs">
+              <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <div className="font-bold text-slate-900 text-sm">{selectedItem.name}</div>
+                <div className="text-slate-500 font-mono mt-0.5">{selectedItem.sku}</div>
+                <div className="mt-2 text-slate-700 font-semibold">Current Level: {selectedItem.quantity} units</div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold text-gray-700 uppercase tracking-wider">Adjustment Quantity (+/-)</label>
+                <input 
+                  type="number" 
+                  value={adjustQty}
+                  onChange={(e) => setAdjustQty(e.target.value)}
+                  placeholder="e.g. 20 or -15" 
+                  className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm font-semibold outline-none focus:border-blue-500"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-2 justify-end">
+              <Button type="button" variant="outline" onClick={() => setShowAdjustModal(false)}>Cancel</Button>
+              <Button type="submit">Submit Adjustment</Button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* DAMAGE STOCK MODAL */}
+      {showDamageModal && selectedItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <form onSubmit={submitDamage} className="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-slate-900 text-white p-5 flex justify-between items-center">
+              <div className="flex items-center gap-2 text-red-400">
+                <ShieldAlert className="w-5 h-5" />
+                <h3 className="font-bold text-sm">Flag Damaged Inventory</h3>
+              </div>
+              <button type="button" className="text-slate-400 hover:text-white font-semibold text-lg" onClick={() => setShowDamageModal(false)}>×</button>
+            </div>
+            
+            <div className="p-6 space-y-4 text-xs">
+              <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <div className="font-bold text-slate-900 text-sm">{selectedItem.name}</div>
+                <div className="text-slate-500 font-mono mt-0.5">{selectedItem.sku}</div>
+                <div className="mt-2 text-slate-700 font-semibold">Available Units: {selectedItem.quantity}</div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold text-gray-700 uppercase tracking-wider">Quantity Flagged Damaged</label>
+                <input 
+                  type="number" 
+                  value={damageQty}
+                  onChange={(e) => setDamageQty(e.target.value)}
+                  placeholder="e.g. 5" 
+                  className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm font-semibold outline-none focus:border-blue-500"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-2 justify-end">
+              <Button type="button" variant="outline" onClick={() => setShowDamageModal(false)}>Cancel</Button>
+              <Button type="submit" className="bg-red-600 hover:bg-red-700 text-white">Record Damage</Button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

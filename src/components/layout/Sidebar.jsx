@@ -2,8 +2,11 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import { sidebarItems } from '../../data/sidebarItems';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Sidebar({ onMobileClose }) {
+  const { user } = useAuth();
+  
   return (
     <aside className="w-full h-full flex flex-col justify-between z-[150] transition-all duration-300 relative bg-gradient-to-b from-[#114a87] via-[#1d5fa3] to-[#2672bb] shadow-[20px_0_60px_rgba(17,74,135,0.3)]">
       <div>
@@ -23,7 +26,9 @@ export default function Sidebar({ onMobileClose }) {
         
         <div className="relative mt-4 flex-1 overflow-y-auto px-3">
           <nav className="flex flex-col relative z-10 gap-1">
-            {sidebarItems.map((item) => {
+            {sidebarItems
+              .filter(item => !item.allowedRoles || item.allowedRoles.includes(user?.role))
+              .map((item) => {
               const Icon = item.icon;
               return (
                 <NavLink
