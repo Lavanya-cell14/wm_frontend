@@ -32,6 +32,15 @@ import InboundTasks from './pages/staff/InboundTasks';
 import PutawayTasks from './pages/staff/PutawayTasks';
 import MovementTracking from './pages/staff/MovementTracking';
 
+// Clerk Pages
+import ClerkDashboard from './pages/clerk/ClerkDashboard';
+import InventoryList from './pages/clerk/InventoryList';
+import StockAdjustment from './pages/clerk/StockAdjustment';
+import DamagedStock from './pages/clerk/DamagedStock';
+import ReservedStock from './pages/clerk/ReservedStock';
+import ProductLookup from './pages/clerk/ProductLookup';
+import MovementHistory from './pages/clerk/MovementHistory';
+
 const PlaceholderPage = ({ title }) => (
   <div className="flex items-center justify-center h-[60vh] text-gray-500">
     <h1 className="text-2xl font-semibold">{title} Page Coming Soon</h1>
@@ -88,13 +97,13 @@ function App() {
 
             {/* INVENTORY CLERK ROUTES */}
             <Route element={<ProtectedRoute allowedRoles={['INVENTORY_CLERK']} />}>
-              <Route path="/inventory/dashboard" element={<PlaceholderPage title="Inventory Dashboard" />} />
-              <Route path="/inventory/list" element={<PlaceholderPage title="Inventory List" />} />
-              <Route path="/inventory/adjust" element={<PlaceholderPage title="Stock Adjustment" />} />
-              <Route path="/inventory/damaged" element={<PlaceholderPage title="Damaged Stock" />} />
-              <Route path="/inventory/reserved" element={<PlaceholderPage title="Reserved Stock" />} />
-              <Route path="/inventory/lookup" element={<PlaceholderPage title="Product Lookup" />} />
-              <Route path="/inventory/movements" element={<PlaceholderPage title="Movement History" />} />
+              <Route path="/inventory/dashboard" element={<ClerkDashboard />} />
+              <Route path="/inventory/list" element={<InventoryList />} />
+              <Route path="/inventory/adjust" element={<StockAdjustment />} />
+              <Route path="/inventory/damaged" element={<DamagedStock />} />
+              <Route path="/inventory/reserved" element={<ReservedStock />} />
+              <Route path="/inventory/lookup" element={<ProductLookup />} />
+              <Route path="/inventory/movements" element={<MovementHistory />} />
             </Route>
 
             {/* ADMIN ROUTES */}
