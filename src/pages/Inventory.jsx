@@ -147,15 +147,15 @@ export default function Inventory() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableRow>Product / SKU</TableRow>
-                <TableRow>Category</TableRow>
-                <TableRow>Bin Code</TableRow>
-                <TableRow>Total Qty</TableRow>
-                <TableRow>Reserved</TableRow>
-                <TableRow>Damaged</TableRow>
-                <TableRow>Status</TableRow>
-                <TableRow>Last Updated</TableRow>
-                <TableRow className="text-right">Actions</TableRow>
+                <TableHead>Product / SKU</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Bin Code</TableHead>
+                <TableHead>Total Qty</TableHead>
+                <TableHead>Reserved</TableHead>
+                <TableHead>Damaged</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Last Updated</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

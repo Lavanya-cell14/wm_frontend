@@ -41,6 +41,20 @@ import ReservedStock from './pages/clerk/ReservedStock';
 import ProductLookup from './pages/clerk/ProductLookup';
 import MovementHistory from './pages/clerk/MovementHistory';
 
+// Admin Pages
+import AdminDashboard from './pages/admin/AdminDashboard';
+import UserManagement from './pages/admin/UserManagement';
+import RoleManagement from './pages/admin/RoleManagement';
+import WarehouseSettings from './pages/admin/WarehouseSettings';
+import SystemHealth from './pages/admin/SystemHealth';
+
+// Operator Pages
+import RouteDashboard from './pages/operator/RouteDashboard';
+import AssignedRoutes from './pages/operator/AssignedRoutes';
+import MovementTasks from './pages/operator/MovementTasks';
+import TwinRouteView from './pages/operator/TwinRouteView';
+import AgvTracking from './pages/operator/AgvTracking';
+
 const PlaceholderPage = ({ title }) => (
   <div className="flex items-center justify-center h-[60vh] text-gray-500">
     <h1 className="text-2xl font-semibold">{title} Page Coming Soon</h1>
@@ -108,21 +122,21 @@ function App() {
 
             {/* ADMIN ROUTES */}
             <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
-              <Route path="/admin/dashboard" element={<PlaceholderPage title="Admin Dashboard" />} />
-              <Route path="/admin/users" element={<UsersRoles />} />
-              <Route path="/admin/roles" element={<PlaceholderPage title="Role Management" />} />
-              <Route path="/admin/settings" element={<PlaceholderPage title="Warehouse Settings" />} />
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/users" element={<UserManagement />} />
+              <Route path="/admin/roles" element={<RoleManagement />} />
+              <Route path="/admin/settings" element={<WarehouseSettings />} />
               <Route path="/admin/audit" element={<AuditLogs />} />
-              <Route path="/admin/health" element={<PlaceholderPage title="System Health" />} />
+              <Route path="/admin/health" element={<SystemHealth />} />
             </Route>
 
             {/* OPERATOR ROUTES */}
             <Route element={<ProtectedRoute allowedRoles={['OPERATOR']} />}>
-              <Route path="/operator/dashboard" element={<PlaceholderPage title="Route Dashboard" />} />
-              <Route path="/operator/routes" element={<PlaceholderPage title="Assigned Routes" />} />
-              <Route path="/operator/movements" element={<PlaceholderPage title="Movement Tasks" />} />
-              <Route path="/operator/twin" element={<PlaceholderPage title="Twin Route View" />} />
-              <Route path="/operator/tracking" element={<PlaceholderPage title="AGV Tracking" />} />
+              <Route path="/operator/dashboard" element={<RouteDashboard />} />
+              <Route path="/operator/routes" element={<AssignedRoutes />} />
+              <Route path="/operator/movements" element={<MovementTasks />} />
+              <Route path="/operator/twin" element={<TwinRouteView />} />
+              <Route path="/operator/tracking" element={<AgvTracking />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
