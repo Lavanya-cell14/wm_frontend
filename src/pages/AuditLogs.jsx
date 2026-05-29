@@ -8,11 +8,14 @@ import StatusBadge from '../components/ui/StatusBadge';
 import SearchFilterBar from '../components/ui/SearchFilterBar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { ShieldCheck, Download, Filter, Clock } from 'lucide-react';
+import Pagination from '../components/ui/Pagination';
 
 export default function AuditLogs() {
   const { auditLogs } = useWarehouse();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterModule, setFilterModule] = useState('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 8;
 
   const filteredLogs = auditLogs.filter(log => {
     const matchesSearch = searchQuery === '' || 
@@ -24,6 +27,14 @@ export default function AuditLogs() {
 
     return matchesSearch && matchesModule;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / pageSize));
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterModule]);
+
+  const pagedLogs = filteredLogs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const modules = ['All', ...new Set(auditLogs.map(l => l.module))];
 
@@ -85,7 +96,7 @@ export default function AuditLogs() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredLogs.map((log) => (
+              {pagedLogs.map((log) => (
                 <TableRow key={log.id} className="hover:bg-gray-50/50 transition-colors">
                   <TableCell className="text-gray-500 text-xs font-semibold whitespace-nowrap">
                     <div className="flex items-center gap-1">
@@ -112,6 +123,15 @@ export default function AuditLogs() {
             </TableBody>
           </Table>
         </CardContent>
+        <div className="px-4">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredLogs.length}
+            pageSize={pageSize}
+            onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
+          />
+        </div>
       </Card>
     </div>
   );

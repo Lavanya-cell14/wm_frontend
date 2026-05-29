@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
 import { useAuth } from '../context/AuthContext';
 import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -7,11 +7,15 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import StatusBadge from '../components/ui/StatusBadge';
 import SearchFilterBar from '../components/ui/SearchFilterBar';
+import Pagination from '../components/ui/Pagination';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
-import { Package, ShieldCheck, ShieldAlert, Settings, Plus, Minus, X, AlertCircle } from 'lucide-react';
+import { Package, ShieldCheck, ShieldAlert, Settings, AlertCircle } from 'lucide-react';
+import AlertBanner from '../components/ui/AlertBanner';
+import Modal from '../components/ui/Modal';
+import Input from '../components/ui/Input';
 
 export default function Inventory() {
-  const { inventory, adjustStock, markDamaged, warehouses, zones } = useWarehouse();
+  const { isLoading, error, inventory, adjustStock, markDamaged, warehouses, zones } = useWarehouse();
   const { user } = useAuth();
   
   // States
@@ -20,6 +24,9 @@ export default function Inventory() {
   const [selectedWarehouse, setSelectedWarehouse] = useState('All');
   const [selectedZone, setSelectedZone] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Modal control
   const [showAdjustModal, setShowAdjustModal] = useState(false);
@@ -28,12 +35,22 @@ export default function Inventory() {
   const [adjustQty, setAdjustQty] = useState('');
   const [damageQty, setDamageQty] = useState('');
 
-  // Calculations
-  const totalStock = inventory.reduce((sum, i) => sum + i.quantity, 0);
-  const reservedStock = inventory.reduce((sum, i) => sum + (i.reserved || 0), 0);
-  const damagedStock = inventory.reduce((sum, i) => sum + (i.damaged || 0), 0);
-  const availableStock = totalStock - reservedStock;
-  const lowStockCount = inventory.filter(i => i.quantity <= 20).length;
+  // Memoize expensive calculations to optimize unnecessarily triggered re-renders
+  const stats = useMemo(() => {
+    const totalStock = inventory.reduce((sum, i) => sum + i.quantity, 0);
+    const reservedStock = inventory.reduce((sum, i) => sum + (i.reserved || 0), 0);
+    const damagedStock = inventory.reduce((sum, i) => sum + (i.damaged || 0), 0);
+    const availableStock = totalStock - reservedStock;
+    const lowStockCount = inventory.filter(i => i.quantity <= 20).length;
+
+    return {
+      totalStock,
+      reservedStock,
+      damagedStock,
+      availableStock,
+      lowStockCount
+    };
+  }, [inventory]);
 
   const handleOpenAdjust = (item) => {
     setSelectedItem(item);
@@ -61,6 +78,11 @@ export default function Inventory() {
     setShowDamageModal(false);
   };
 
+  // Reset pagination to page 1 when any search/filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory, selectedWarehouse, selectedZone, selectedStatus]);
+
   // Filter logic
   const filteredInventory = inventory.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -80,8 +102,33 @@ export default function Inventory() {
   // Unique categories
   const categories = ['All', ...new Set(inventory.map(i => i.category))];
 
+  // Pagination parameters
+  const itemsPerPage = 8;
+  const totalPages = Math.max(1, Math.ceil(filteredInventory.length / itemsPerPage));
+  const paginatedInventory = filteredInventory.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0071C1]"></div>
+        <p className="text-sm text-gray-500 font-semibold animate-pulse">Syncing live inventory from WireMock cloud...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 select-none">
+      {error && (
+        <AlertBanner 
+          type="error" 
+          title="API Synchronization Warning" 
+          message={error} 
+        />
+      )}
+      
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
@@ -91,17 +138,27 @@ export default function Inventory() {
         <p className="text-gray-500 text-sm mt-1">Audit warehouse products, adjust items levels, and record damaged goods in real-time.</p>
       </div>
 
-      {/* KPI Stats */}
+      {/* KPI Stats - Hover scale transitions applied */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard title="Total Stock Units" value={totalStock} icon={Package} />
-        <StatCard title="Available Stock" value={availableStock} icon={ShieldCheck} />
-        <StatCard title="Reserved Stock" value={reservedStock} icon={Settings} />
-        <StatCard title="Damaged Stock" value={damagedStock} icon={ShieldAlert} />
-        <StatCard title="Low Stock Items" value={lowStockCount} icon={AlertCircle} trend={lowStockCount > 3 ? 10 : 0} />
+        <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
+          <StatCard title="Total Stock Units" value={stats.totalStock} icon={Package} />
+        </div>
+        <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
+          <StatCard title="Available Stock" value={stats.availableStock} icon={ShieldCheck} />
+        </div>
+        <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
+          <StatCard title="Reserved Stock" value={stats.reservedStock} icon={Settings} />
+        </div>
+        <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
+          <StatCard title="Damaged Stock" value={stats.damagedStock} icon={ShieldAlert} />
+        </div>
+        <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
+          <StatCard title="Low Stock Items" value={stats.lowStockCount} icon={AlertCircle} trend={stats.lowStockCount > 3 ? 10 : 0} />
+        </div>
       </div>
 
       {/* Filter panel */}
-      <Card className="border border-gray-100 shadow-xs">
+      <Card className="border border-gray-150 shadow-xs">
         <CardContent className="p-4 space-y-4">
           <SearchFilterBar 
             placeholder="Search stock by SKU, product name..." 
@@ -109,27 +166,27 @@ export default function Inventory() {
           />
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
             <div className="space-y-1">
-              <label className="font-bold text-gray-500 uppercase">Category</label>
+              <label className="font-bold text-gray-500 uppercase tracking-wide">Category</label>
               <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="w-full border border-gray-200 p-2 rounded-lg font-semibold outline-none focus:border-blue-500">
                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div className="space-y-1">
-              <label className="font-bold text-gray-500 uppercase">Warehouse</label>
+              <label className="font-bold text-gray-500 uppercase tracking-wide">Warehouse</label>
               <select value={selectedWarehouse} onChange={(e) => setSelectedWarehouse(e.target.value)} className="w-full border border-gray-200 p-2 rounded-lg font-semibold outline-none focus:border-blue-500">
                 <option value="All">All Warehouses</option>
                 {warehouses.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}
               </select>
             </div>
             <div className="space-y-1">
-              <label className="font-bold text-gray-500 uppercase">Zone</label>
+              <label className="font-bold text-gray-500 uppercase tracking-wide">Zone</label>
               <select value={selectedZone} onChange={(e) => setSelectedZone(e.target.value)} className="w-full border border-gray-200 p-2 rounded-lg font-semibold outline-none focus:border-blue-500">
                 <option value="All">All Zones</option>
                 {zones.map(z => <option key={z.id} value={z.name}>{z.name}</option>)}
               </select>
             </div>
             <div className="space-y-1">
-              <label className="font-bold text-gray-500 uppercase">Stock Status</label>
+              <label className="font-bold text-gray-500 uppercase tracking-wide">Stock Status</label>
               <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} className="w-full border border-gray-200 p-2 rounded-lg font-semibold outline-none focus:border-blue-500">
                 <option value="All">All Stock Levels</option>
                 <option value="In Stock">In Stock</option>
@@ -141,140 +198,134 @@ export default function Inventory() {
         </CardContent>
       </Card>
 
-      {/* Table */}
-      <Card className="border border-gray-100 shadow-xs">
+      {/* Table grid with sticky headers and responsive scrolling */}
+      <Card className="border border-gray-150 shadow-xs overflow-hidden">
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Product / SKU</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Bin Code</TableHead>
-                <TableHead>Total Qty</TableHead>
-                <TableHead>Reserved</TableHead>
-                <TableHead>Damaged</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last Updated</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredInventory.map((item) => {
-                const isLow = item.quantity <= 20;
-                return (
-                  <TableRow key={item.sku} className="hover:bg-gray-50/50 transition-colors">
-                    <TableCell>
-                      <div className="font-semibold text-gray-900 text-sm">{item.name}</div>
-                      <div className="text-xs text-gray-400 font-mono mt-0.5">{item.sku}</div>
-                    </TableCell>
-                    <TableCell className="text-gray-600 text-xs font-semibold">{item.category}</TableCell>
-                    <TableCell className="font-mono text-xs text-blue-700 font-bold bg-blue-50/50 px-1.5 py-0.5 rounded border border-blue-100 w-fit">
-                      {item.bin}
-                    </TableCell>
-                    <TableCell className="font-bold text-gray-900 text-sm">{item.quantity} units</TableCell>
-                    <TableCell className="text-gray-600 text-xs font-semibold">{item.reserved || 0} units</TableCell>
-                    <TableCell className="text-red-600 text-xs font-semibold">{item.damaged || 0} units</TableCell>
-                    <TableCell>
-                      <StatusBadge status={isLow ? 'warning' : 'success'} />
-                    </TableCell>
-                    <TableCell className="text-gray-400 text-[11px] font-semibold">{item.lastUpdated}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex gap-2 justify-end">
-                        <Button variant="outline" size="sm" className="gap-1.5 text-xs text-gray-600" onClick={() => handleOpenAdjust(item)}>
-                          Adjust
-                        </Button>
-                        <Button variant="outline" size="sm" className="gap-1.5 text-xs text-red-600 border-red-100 hover:bg-red-50" onClick={() => handleOpenDamage(item)}>
-                          Flag Damage
-                        </Button>
-                      </div>
+          <div className="w-full overflow-x-auto">
+            <Table className="min-w-full text-xs">
+              <TableHeader className="sticky top-0 z-10 bg-[#F4FCFF]">
+                <TableRow>
+                  <TableHead className="font-bold">Product / SKU</TableHead>
+                  <TableHead className="font-bold">Category</TableHead>
+                  <TableHead className="font-bold">Bin Code</TableHead>
+                  <TableHead className="font-bold">Total Qty</TableHead>
+                  <TableHead className="font-bold">Reserved</TableHead>
+                  <TableHead className="font-bold">Damaged</TableHead>
+                  <TableHead className="font-bold">Status</TableHead>
+                  <TableHead className="font-bold">Last Updated</TableHead>
+                  <TableHead className="text-right font-bold">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredInventory.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-10 font-bold text-gray-400">
+                      No inventory matched filter requirements.
                     </TableCell>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                ) : (
+                  paginatedInventory.map((item) => {
+                    const isLow = item.quantity <= 20;
+                    return (
+                      <TableRow key={item.sku} className="hover:bg-gray-50/50 transition-colors">
+                        <TableCell>
+                          <div className="font-bold text-gray-900 text-sm">{item.name}</div>
+                          <div className="text-xs text-gray-400 font-mono mt-0.5">{item.sku}</div>
+                        </TableCell>
+                        <TableCell className="text-gray-600 font-semibold">{item.category}</TableCell>
+                        <TableCell className="font-mono text-xs text-blue-700 font-bold bg-blue-50/50 px-1.5 py-0.5 rounded border border-blue-100 w-fit">
+                          {item.bin}
+                        </TableCell>
+                        <TableCell className="font-bold text-gray-900">{item.quantity} units</TableCell>
+                        <TableCell className="text-gray-600 font-semibold">{item.reserved || 0} units</TableCell>
+                        <TableCell className="text-red-600 font-semibold">{item.damaged || 0} units</TableCell>
+                        <TableCell>
+                          <StatusBadge status={isLow ? 'warning' : 'success'} />
+                        </TableCell>
+                        <TableCell className="text-gray-400 text-[11px] font-semibold">{item.lastUpdated}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex gap-2 justify-end">
+                            <Button variant="outline" size="sm" className="text-xs text-gray-600" onClick={() => handleOpenAdjust(item)}>
+                              Adjust
+                            </Button>
+                            <Button variant="outline" size="sm" className="text-xs text-red-600 border-red-100 hover:bg-red-50" onClick={() => handleOpenDamage(item)}>
+                              Flag Damage
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredInventory.length}
+            pageSize={itemsPerPage}
+          />
         </CardContent>
       </Card>
 
-      {/* ADJUST STOCK MODAL */}
-      {showAdjustModal && selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <form onSubmit={submitAdjustment} className="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="bg-slate-900 text-white p-5 flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <Package className="w-5 h-5 text-blue-400" />
-                <h3 className="font-bold text-sm">Adjust Product Stock</h3>
-              </div>
-              <button type="button" className="text-slate-400 hover:text-white font-semibold text-lg" onClick={() => setShowAdjustModal(false)}>×</button>
-            </div>
-            
-            <div className="p-6 space-y-4 text-xs">
-              <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                <div className="font-bold text-slate-900 text-sm">{selectedItem.name}</div>
-                <div className="text-slate-500 font-mono mt-0.5">{selectedItem.sku}</div>
-                <div className="mt-2 text-slate-700 font-semibold">Current Level: {selectedItem.quantity} units</div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="block font-bold text-gray-700 uppercase tracking-wider">Adjustment Quantity (+/-)</label>
-                <input 
-                  type="number" 
-                  value={adjustQty}
-                  onChange={(e) => setAdjustQty(e.target.value)}
-                  placeholder="e.g. 20 or -15" 
-                  className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm font-semibold outline-none focus:border-blue-500"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-2 justify-end">
-              <Button type="button" variant="outline" onClick={() => setShowAdjustModal(false)}>Cancel</Button>
-              <Button type="submit">Submit Adjustment</Button>
-            </div>
-          </form>
+      {/* ADJUST STOCK MODAL - MIGRATE TO REUSABLE MODAL & NIFO INPUT */}
+      <Modal
+        isOpen={showAdjustModal}
+        onClose={() => setShowAdjustModal(false)}
+        title="Adjust Product Stock"
+        footer={
+          <>
+            <Button type="button" variant="outline" onClick={() => setShowAdjustModal(false)}>Cancel</Button>
+            <Button type="button" onClick={submitAdjustment}>Submit Adjustment</Button>
+          </>
+        }
+      >
+        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+          <div className="font-bold text-slate-900 text-sm">{selectedItem?.name}</div>
+          <div className="text-slate-500 font-mono mt-0.5">{selectedItem?.sku}</div>
+          <div className="mt-2 text-slate-700 font-semibold">Current Level: {selectedItem?.quantity} units</div>
         </div>
-      )}
 
-      {/* DAMAGE STOCK MODAL */}
-      {showDamageModal && selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <form onSubmit={submitDamage} className="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="bg-slate-900 text-white p-5 flex justify-between items-center">
-              <div className="flex items-center gap-2 text-red-400">
-                <ShieldAlert className="w-5 h-5" />
-                <h3 className="font-bold text-sm">Flag Damaged Inventory</h3>
-              </div>
-              <button type="button" className="text-slate-400 hover:text-white font-semibold text-lg" onClick={() => setShowDamageModal(false)}>×</button>
-            </div>
-            
-            <div className="p-6 space-y-4 text-xs">
-              <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                <div className="font-bold text-slate-900 text-sm">{selectedItem.name}</div>
-                <div className="text-slate-500 font-mono mt-0.5">{selectedItem.sku}</div>
-                <div className="mt-2 text-slate-700 font-semibold">Available Units: {selectedItem.quantity}</div>
-              </div>
+        <Input 
+          label="Adjustment Quantity (+/-)"
+          type="number"
+          value={adjustQty}
+          onChange={(e) => setAdjustQty(e.target.value)}
+          placeholder="e.g. 20 or -15" 
+          required
+        />
+      </Modal>
 
-              <div className="space-y-1">
-                <label className="block font-bold text-gray-700 uppercase tracking-wider">Quantity Flagged Damaged</label>
-                <input 
-                  type="number" 
-                  value={damageQty}
-                  onChange={(e) => setDamageQty(e.target.value)}
-                  placeholder="e.g. 5" 
-                  className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm font-semibold outline-none focus:border-blue-500"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-2 justify-end">
-              <Button type="button" variant="outline" onClick={() => setShowDamageModal(false)}>Cancel</Button>
-              <Button type="submit" className="bg-red-600 hover:bg-red-700 text-white">Record Damage</Button>
-            </div>
-          </form>
+      {/* DAMAGE STOCK MODAL - MIGRATE TO REUSABLE MODAL & NIFO INPUT */}
+      <Modal
+        isOpen={showDamageModal}
+        onClose={() => setShowDamageModal(false)}
+        title="Flag Damaged Inventory"
+        footer={
+          <>
+            <Button type="button" variant="outline" onClick={() => setShowDamageModal(false)}>Cancel</Button>
+            <Button type="button" variant="danger" onClick={submitDamage}>Record Damage</Button>
+          </>
+        }
+      >
+        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+          <div className="font-bold text-slate-900 text-sm">{selectedItem?.name}</div>
+          <div className="text-slate-500 font-mono mt-0.5">{selectedItem?.sku}</div>
+          <div className="mt-2 text-slate-700 font-semibold">Available Units: {selectedItem?.quantity}</div>
         </div>
-      )}
+
+        <Input 
+          label="Quantity Flagged Damaged"
+          type="number"
+          value={damageQty}
+          onChange={(e) => setDamageQty(e.target.value)}
+          placeholder="e.g. 5" 
+          required
+        />
+      </Modal>
     </div>
   );
 }

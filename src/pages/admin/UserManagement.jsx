@@ -22,16 +22,7 @@ import { Users, Plus, Mail, CheckCircle2, XCircle, Lock, Edit2, ShieldAlert, Key
 
 export default function UserManagement() {
   const { user: currentAdmin } = useAuth();
-  const { logAudit } = useWarehouse();
-
-  // Initial Mock Users State
-  const [usersList, setUsersList] = useState([
-    { id: 'USR-001', name: 'System Admin', email: 'admin@warehouseai.com', role: 'ADMIN', warehouse: 'All Facilities', status: 'Active', lastLogin: '5 mins ago', createdAt: '2026-01-10' },
-    { id: 'USR-002', name: 'Warehouse Manager', email: 'manager@warehouseai.com', role: 'MANAGER', warehouse: 'Central Fulfillment A', status: 'Active', lastLogin: '1 hr ago', createdAt: '2026-01-12' },
-    { id: 'USR-003', name: 'Warehouse Staff', email: 'staff@warehouseai.com', role: 'STAFF', warehouse: 'East Coast Distribution', status: 'Active', lastLogin: '3 hrs ago', createdAt: '2026-01-15' },
-    { id: 'USR-004', name: 'Inventory Clerk', email: 'inventory@warehouseai.com', role: 'INVENTORY_CLERK', warehouse: 'Central Fulfillment A', status: 'Active', lastLogin: '2 hrs ago', createdAt: '2026-02-01' },
-    { id: 'USR-005', name: 'AGV Operator', email: 'operator@warehouseai.com', role: 'OPERATOR', warehouse: 'West Coast Hub', status: 'Inactive', lastLogin: '3 days ago', createdAt: '2026-02-10' }
-  ]);
+  const { logAudit, workers: usersList, setWorkers: setUsersList, generateNextId } = useWarehouse();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState('');
@@ -117,8 +108,9 @@ export default function UserManagement() {
     }
 
     if (modalMode === 'add') {
+      const nextId = generateNextId('WRK-', usersList.map(u => u.id));
       const newUser = {
-        id: `USR-0${usersList.length + 1}`,
+        id: nextId,
         name: formName,
         email: formEmail,
         role: formRole,

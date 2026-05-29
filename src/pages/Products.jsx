@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
 import { 
   Card, 
@@ -10,21 +10,55 @@ import {
   Button, 
   AlertBanner 
 } from 'shared-ui';
-import { Box, Search, Filter, Layers, ShieldCheck, AlertCircle, Sparkles } from 'lucide-react';
+import Pagination from '../components/ui/Pagination';
+import { Box, Search, Filter, Layers, ShieldCheck, AlertCircle, Sparkles, Loader2 } from 'lucide-react';
 
 export default function Products() {
-  const { inventory } = useWarehouse();
+  const { products, isLoading, error } = useWarehouse();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const categories = ['All', ...new Set(inventory.map(item => item.category))];
+  const categories = ['All', ...new Set(products.map(item => item.category))];
 
-  const filteredProducts = inventory.filter(item => {
+  // Reset pagination to page 1 when any search/filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory]);
+
+  const filteredProducts = products.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           item.sku.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCat = selectedCategory === 'All' || item.category === selectedCategory;
     return matchesSearch && matchesCat;
   });
+
+  // Pagination parameters
+  const itemsPerPage = 8;
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
+        <Loader2 className="w-10 h-10 text-[#0071C1] animate-spin" />
+        <span className="text-sm font-semibold text-slate-500">Querying central master product catalog...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <AlertBanner type="error" message={error} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -67,7 +101,7 @@ export default function Products() {
 
       {/* Grid of Product Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredProducts.map((prod) => {
+        {paginatedProducts.map((prod) => {
           const isLow = prod.quantity <= prod.reorderLevel;
           return (
             <Card key={prod.sku} className="border border-gray-100 hover:border-blue-200 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col justify-between h-80 bg-white group">
@@ -122,6 +156,14 @@ export default function Products() {
           );
         })}
       </div>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+        totalItems={filteredProducts.length}
+        pageSize={itemsPerPage}
+      />
     </div>
   );
 }

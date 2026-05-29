@@ -5,6 +5,7 @@ import Topbar from './Topbar';
 
 export default function MainLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -13,14 +14,14 @@ export default function MainLayout() {
   return (
     <div className="flex h-screen overflow-hidden bg-[#F4FCFF]">
       {/* Desktop Sidebar */}
-      <div className="hidden lg:block lg:w-[260px] flex-shrink-0">
-        <Sidebar />
+      <div className={`hidden lg:block ${isCollapsed ? 'lg:w-[76px]' : 'lg:w-[260px]'} flex-shrink-0 transition-all duration-300 ease-in-out`}>
+        <Sidebar isCollapsed={isCollapsed} onToggleCollapse={() => setIsCollapsed(!isCollapsed)} />
       </div>
 
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-[140] lg:hidden"
+          className="fixed inset-0 bg-black/50 z-[140] lg:hidden animate-in fade-in duration-200"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}

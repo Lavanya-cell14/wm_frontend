@@ -19,6 +19,7 @@ import {
   IntelligenceTable,
   ProductTimeline
 } from 'shared-ui';
+import Pagination from '../../components/ui/Pagination';
 import { Search, MapPin, Scale, Layers, Calendar, RefreshCw, Barcode, HelpCircle } from 'lucide-react';
 
 export default function ProductLookup() {
@@ -27,6 +28,9 @@ export default function ProductLookup() {
 
   // Search SKU selection
   const [searchSku, setSearchSku] = useState('');
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     if (location.state?.sku) {
@@ -36,10 +40,23 @@ export default function ProductLookup() {
     }
   }, [location.state, inventory]);
 
+  // Reset pagination when selection changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchSku]);
+
   const selectedProduct = inventory.find(item => item.sku === searchSku);
 
   // Filter movements for this SKU
   const productMovements = movements.filter(m => m.sku === searchSku);
+
+  // Pagination parameters
+  const itemsPerPage = 8;
+  const totalPages = Math.ceil(productMovements.length / itemsPerPage);
+  const paginatedProductMovements = productMovements.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <div className="space-y-6">
@@ -234,33 +251,42 @@ export default function ProductLookup() {
                 <CardDescription>Historical tracking log specific to SKU {selectedProduct.sku}.</CardDescription>
               </CardHeader>
               <CardContent className="p-4 flex-1 overflow-y-auto">
-                {productMovements.length === 0 ? (
+                {paginatedProductMovements.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-gray-400 p-6 text-center text-xs">
                     <RefreshCw className="w-8 h-8 text-gray-300 animate-spin mb-2" />
                     <span>No telemetry movements recorded for this item in this session.</span>
                   </div>
                 ) : (
-                  <div className="relative border-l-2 border-slate-100 pl-4 space-y-6">
-                    {productMovements.map((mov, i) => (
-                      <div key={i} className="relative">
-                        <span className="absolute -left-[23px] top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white bg-blue-600 shadow-xs"></span>
-                        <div className="text-xs">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="font-bold text-gray-900">{mov.user}</span>
-                            <span className="text-gray-400 text-[9px] font-medium">{mov.time}</span>
-                          </div>
-                          <p className="text-gray-600 text-[10px]">
-                            Dispatched from <span className="font-mono text-gray-800 font-semibold">{mov.from}</span> to <span className="font-mono text-blue-700 bg-blue-50 px-1 rounded font-semibold">{mov.to}</span>
-                          </p>
-                          <div className="flex justify-between items-center mt-2">
-                            <span className="text-[9px] font-bold text-slate-400 tracking-wider uppercase">{mov.type?.replace('_', ' ')}</span>
-                            <span className={`font-semibold px-1.5 py-0.5 rounded text-[10px] ${mov.qty > 0 ? 'text-emerald-700 bg-emerald-50' : 'text-red-700 bg-red-50'}`}>
-                              Qty: {mov.qty > 0 ? `+${mov.qty}` : mov.qty}
-                            </span>
+                  <div className="space-y-4">
+                    <div className="relative border-l-2 border-slate-100 pl-4 space-y-6">
+                      {paginatedProductMovements.map((mov, i) => (
+                        <div key={i} className="relative">
+                          <span className="absolute -left-[23px] top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white bg-blue-600 shadow-xs"></span>
+                          <div className="text-xs">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="font-bold text-gray-900">{mov.user}</span>
+                              <span className="text-gray-400 text-[9px] font-medium">{mov.time}</span>
+                            </div>
+                            <p className="text-gray-600 text-[10px]">
+                              Dispatched from <span className="font-mono text-gray-800 font-semibold">{mov.from}</span> to <span className="font-mono text-blue-700 bg-blue-50 px-1 rounded font-semibold">{mov.to}</span>
+                            </p>
+                            <div className="flex justify-between items-center mt-2">
+                              <span className="text-[9px] font-bold text-slate-400 tracking-wider uppercase">{mov.type?.replace('_', ' ')}</span>
+                              <span className={`font-semibold px-1.5 py-0.5 rounded text-[10px] ${mov.qty > 0 ? 'text-emerald-700 bg-emerald-50' : 'text-red-700 bg-red-50'}`}>
+                                Qty: {mov.qty > 0 ? `+${mov.qty}` : mov.qty}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={setCurrentPage}
+                      totalItems={productMovements.length}
+                      pageSize={itemsPerPage}
+                    />
                   </div>
                 )}
               </CardContent>

@@ -25,9 +25,30 @@ export default function Button({
     icon: "h-10 w-10 p-2 justify-center",
   };
 
+  // Prevent conflicts between variant default styles and custom classes
+  let variantStyle = variants[variant];
+  if (className.includes('bg-')) {
+    variantStyle = variantStyle
+      .split(' ')
+      .filter(cls => !cls.startsWith('bg-') && !cls.startsWith('hover:bg-'))
+      .join(' ');
+  }
+  if (className.includes('text-')) {
+    variantStyle = variantStyle
+      .split(' ')
+      .filter(cls => !cls.startsWith('text-') && !cls.startsWith('hover:text-'))
+      .join(' ');
+  }
+  if (className.includes('border-') || className.includes('border-none')) {
+    variantStyle = variantStyle
+      .split(' ')
+      .filter(cls => !cls.startsWith('border'))
+      .join(' ');
+  }
+
   return (
     <button 
-      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`${baseStyles} ${variantStyle} ${sizes[size]} ${className}`}
       {...props}
     >
       {Icon && <Icon className={size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4'} />}

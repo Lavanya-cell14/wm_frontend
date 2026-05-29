@@ -15,7 +15,7 @@ import { useWarehouse } from '../context/WarehouseContext';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { inventory, warehouses, zones, bins, inboundTasks, orders, movements, aiRecommendations, auditLogs } = useWarehouse();
+  const { isLoading, error, inventory, warehouses, zones, bins, inboundTasks, orders, movements, aiRecommendations, auditLogs } = useWarehouse();
   
   // Quick Actions Navigation
   const handleQuickAction = (path) => {
@@ -41,13 +41,90 @@ export default function Dashboard() {
     status: item.quantity > 20 ? 'In Stock' : item.quantity > 0 ? 'Low Stock' : 'Out of Stock'
   }));
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-pulse select-none">
+        {/* Welcome Header Skeleton */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="space-y-2">
+            <div className="h-6 bg-slate-200 rounded-md w-48"></div>
+            <div className="h-4 bg-slate-100 rounded-md w-96 max-w-full"></div>
+          </div>
+          <div className="h-10 bg-slate-200 rounded-xl w-36"></div>
+        </div>
+
+        {/* 12 Stat Cards Skeletons */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 12 }).map((_, idx) => (
+            <div key={`skel-card-${idx}`} className="bg-white border border-gray-100 p-6 rounded-2xl space-y-3 h-32 shadow-xs">
+              <div className="flex justify-between items-center">
+                <div className="h-4 bg-slate-200 rounded-md w-24"></div>
+                <div className="w-8 h-8 rounded-full bg-slate-100"></div>
+              </div>
+              <div className="h-8 bg-slate-200 rounded-md w-16"></div>
+              <div className="h-3 bg-slate-100 rounded-md w-20"></div>
+            </div>
+          ))}
+        </div>
+
+        {/* Main Grid Skeletons */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white border border-gray-100 p-6 rounded-2xl h-[450px] shadow-xs space-y-4">
+              <div className="flex justify-between items-center pb-4 border-b border-gray-50">
+                <div className="h-5 bg-slate-200 rounded-md w-36"></div>
+                <div className="h-8 bg-slate-100 rounded-xl w-28"></div>
+              </div>
+              <div className="space-y-4 pt-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
+                    <div className="space-y-1.5 flex-1">
+                      <div className="h-4 bg-slate-200 rounded-md w-1/3"></div>
+                      <div className="h-3 bg-slate-100 rounded-md w-1/4"></div>
+                    </div>
+                    <div className="h-4 bg-slate-200 rounded-md w-12"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          <div className="lg:col-span-1 space-y-6">
+            <div className="bg-white border border-gray-100 p-6 rounded-2xl h-[450px] shadow-xs space-y-4">
+              <div className="h-5 bg-slate-200 rounded-md w-36 pb-4 border-b border-gray-50"></div>
+              <div className="space-y-4 pt-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="p-4 bg-slate-50/50 rounded-xl space-y-3 border border-slate-100">
+                    <div className="flex justify-between items-center">
+                      <div className="h-4 bg-slate-200 rounded-md w-1/2"></div>
+                      <div className="h-3 bg-slate-150 rounded-md w-12"></div>
+                    </div>
+                    <div className="h-3 bg-slate-100 rounded-md w-5/6"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {error && (
+        <AlertBanner 
+          type="error" 
+          title="API Synchronization Warning" 
+          message={error} 
+        />
+      )}
       {/* Welcome Banner */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Manager Dashboard</h1>
           <p className="text-sm text-gray-500 mt-1">Operational Control Center. Monitor live activity, track personnel, and review AI placement recommendations.</p>
+
         </div>
         <div className="flex items-center gap-2">
           <Button icon={Plus} onClick={() => navigate('/zones-bins')}>New Layout Entity</Button>

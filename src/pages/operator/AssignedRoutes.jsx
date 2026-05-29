@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
 import { 
@@ -17,6 +17,7 @@ import {
   TableCell,
   AlertBanner 
 } from 'shared-ui';
+import Pagination from '../../components/ui/Pagination';
 import { Map, Plus, RefreshCw, Compass, Play, CheckCircle2, RotateCw } from 'lucide-react';
 
 export default function AssignedRoutes() {
@@ -31,6 +32,17 @@ export default function AssignedRoutes() {
     { id: 'RTE-103', from: 'Zone A (BIN-A-01-05)', to: 'Shipping Bay C', distance: '45m', time: '3 mins', operator: 'AGV Operator', status: 'Completed' },
     { id: 'RTE-104', from: 'Zone B (BIN-B-10-01)', to: 'Quarantine Area', distance: '85m', time: '5 mins', operator: 'System Auto', status: 'Completed' }
   ]);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Pagination parameters
+  const itemsPerPage = 8;
+  const totalPages = Math.ceil(routesList.length / itemsPerPage);
+  const paginatedRoutesList = routesList.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -136,7 +148,7 @@ export default function AssignedRoutes() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {routesList.map((route) => {
+              {paginatedRoutesList.map((route) => {
                 let badgeVariant = 'default';
                 if (route.status === 'Active') badgeVariant = 'primary';
                 else if (route.status === 'Completed') badgeVariant = 'success';
@@ -217,6 +229,14 @@ export default function AssignedRoutes() {
               })}
             </TableBody>
           </Table>
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={routesList.length}
+            pageSize={itemsPerPage}
+          />
         </CardContent>
       </Card>
     </div>

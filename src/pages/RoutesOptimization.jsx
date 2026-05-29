@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
 import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import StatCard from '../components/dashboard/StatCard';
@@ -6,6 +6,7 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import StatusBadge from '../components/ui/StatusBadge';
 import SearchFilterBar from '../components/ui/SearchFilterBar';
+import Pagination from '../components/ui/Pagination';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { Navigation, Clock, Activity, ShieldAlert, ArrowRight, UserCheck, AlertTriangle } from 'lucide-react';
 
@@ -13,17 +14,33 @@ export default function RoutesOptimization() {
   const { routes } = useWarehouse();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRoute, setSelectedRoute] = useState(null);
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Congestion metrics
   const congestions = [
     { aisle: 'Aisle A2', level: 'High', load: '85%', color: 'red' },
-    { aisle: 'Aisle B1', level: 'Medium', load: '55%', color: 'amber' },
-    { aisle: 'Aisle C4', level: 'Low', load: '20%', color: 'green' }
+    { aisle: 'Bisle B1', level: 'Medium', load: '55%', color: 'amber' },
+    { aisle: 'Cisle C4', level: 'Low', load: '20%', color: 'green' }
   ];
+
+  // Reset pagination to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   const filteredRoutes = routes.filter(r => 
     r.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
     r.operator.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Pagination parameters
+  const itemsPerPage = 8;
+  const totalPages = Math.ceil(filteredRoutes.length / itemsPerPage);
+  const paginatedRoutes = filteredRoutes.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
   return (
@@ -74,7 +91,7 @@ export default function RoutesOptimization() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredRoutes.map((r) => (
+                  {paginatedRoutes.map((r) => (
                     <TableRow key={r.id}>
                       <TableCell className="font-bold text-gray-900 font-mono text-sm">{r.id}</TableCell>
                       <TableCell className="text-gray-600 text-xs font-semibold">
@@ -99,6 +116,14 @@ export default function RoutesOptimization() {
                   ))}
                 </TableBody>
               </Table>
+
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                totalItems={filteredRoutes.length}
+                pageSize={itemsPerPage}
+              />
             </CardContent>
           </Card>
         </div>

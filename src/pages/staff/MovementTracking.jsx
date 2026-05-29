@@ -7,12 +7,15 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/Table';
 import SearchFilterBar from '../../components/ui/SearchFilterBar';
 import { Activity, Clock, MapPin, ArrowRightLeft, Eye, Navigation, Filter } from 'lucide-react';
+import Pagination from '../../components/ui/Pagination';
 
 export default function MovementTracking() {
   const { movements } = useWarehouse();
   const [filterType, setFilterType] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeRouteModal, setActiveRouteModal] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 8;
 
   // Filters
   const filteredMovements = movements.filter(mov => {
@@ -23,6 +26,15 @@ export default function MovementTracking() {
       mov.id.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesType && matchesSearch;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredMovements.length / pageSize));
+
+  // Reset page when filters/search change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [filterType, searchQuery]);
+
+  const pagedMovements = filteredMovements.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="space-y-6">
@@ -83,7 +95,7 @@ export default function MovementTracking() {
                   No movements match the active filter criteria.
                 </div>
               ) : (
-                <Table>
+                <><Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Movement ID</TableHead>
@@ -97,7 +109,7 @@ export default function MovementTracking() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredMovements.map((mov) => (
+                    {pagedMovements.map((mov) => (
                       <TableRow key={mov.id}>
                         <TableCell className="font-bold text-gray-900 font-mono text-xs">{mov.id}</TableCell>
                         <TableCell>
@@ -133,6 +145,15 @@ export default function MovementTracking() {
                     ))}
                   </TableBody>
                 </Table>
+                <div className="px-4">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={filteredMovements.length}
+                    pageSize={pageSize}
+                    onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
+                  />
+                </div></>
               )}
             </CardContent>
           </Card>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { 
@@ -19,6 +19,7 @@ import {
   SearchFilterBar, 
   AlertBanner 
 } from 'shared-ui';
+import Pagination from '../../components/ui/Pagination';
 import { Box, Wrench, AlertTriangle, Package, ShieldCheck, Eye, Search } from 'lucide-react';
 
 export default function InventoryList() {
@@ -30,9 +31,17 @@ export default function InventoryList() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedZone, setSelectedZone] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
 
   const categories = ['All', ...new Set(inventory.map(item => item.category))];
   const activeZones = ['All', ...new Set(zones.map(z => z.name))];
+
+  // Reset pagination to page 1 when search/filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory, selectedZone, selectedStatus]);
 
   // Filtering Logic
   const filteredInventory = inventory.filter(item => {
@@ -56,6 +65,14 @@ export default function InventoryList() {
 
     return matchesSearch && matchesCategory && matchesZone && matchesStatus;
   });
+
+  // Pagination parameters
+  const itemsPerPage = 8;
+  const totalPages = Math.ceil(filteredInventory.length / itemsPerPage);
+  const paginatedInventory = filteredInventory.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <div className="space-y-6">
@@ -147,14 +164,14 @@ export default function InventoryList() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredInventory.length === 0 ? (
+              {paginatedInventory.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center py-10 text-gray-500 text-sm font-medium">
                     No items match the current search or filter criteria.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredInventory.map((item) => {
+                paginatedInventory.map((item) => {
                   const available = Math.max(0, item.quantity - (item.reserved || 0) - (item.damaged || 0));
                   const isLow = item.quantity <= item.reorderLevel;
                   
@@ -245,6 +262,14 @@ export default function InventoryList() {
               )}
             </TableBody>
           </Table>
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredInventory.length}
+            pageSize={itemsPerPage}
+          />
         </CardContent>
       </Card>
     </div>

@@ -8,12 +8,13 @@ import StatusBadge from '../components/ui/StatusBadge';
 import SearchFilterBar from '../components/ui/SearchFilterBar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { LayoutGrid, Layers, Plus, Map, Trash2, Edit2, ShieldAlert, BarChart3, AlertTriangle, Lightbulb } from 'lucide-react';
+import { getZoneLabel } from '../utils/zoneMapping';
 
 export default function ZonesBins() {
   const { 
     zones, addZone, editZone, deleteZone, 
     bins, addBin, editBin, deleteBin,
-    warehouses
+    warehouses, generateNextId
   } = useWarehouse();
 
   const [activeTab, setActiveTab] = useState('Zones');
@@ -49,7 +50,8 @@ export default function ZonesBins() {
 
   const handleOpenAddZone = () => {
     setEditingZone(null);
-    setZoneName('');
+    const nextName = generateNextId('Zone ', zones.map(z => z.name));
+    setZoneName(nextName);
     setZoneType('General');
     setZoneStatus('Active');
     setZoneX(''); setZoneY(''); setZoneZ('');
@@ -90,7 +92,8 @@ export default function ZonesBins() {
 
   const handleOpenAddBin = () => {
     setEditingBin(null);
-    setBinCode('');
+    const nextCode = generateNextId('BIN-', bins.map(b => b.code));
+    setBinCode(nextCode);
     setBinShelf('S-01');
     setBinStatus('Active');
     setBinCap('');
@@ -402,9 +405,12 @@ export default function ZonesBins() {
                 <div className="space-y-1 col-span-2">
                   <label className="block font-bold text-gray-700 uppercase tracking-wider">Zone Name</label>
                   <input 
-                    type="text" value={zoneName} onChange={(e) => setZoneName(e.target.value)} 
-                    placeholder="e.g. Zone E" className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm font-semibold outline-none focus:border-blue-500" required
+                    type="text" value={zoneName} readOnly 
+                    className="w-full bg-slate-50 border border-gray-300 px-3 py-2 rounded-lg text-sm font-semibold outline-none text-slate-500 cursor-not-allowed" required
                   />
+                  <p className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2.5 py-1 rounded border border-emerald-100 flex items-center gap-1.5 w-fit mt-1">
+                    ✓ Next sequential Zone name automatically allocated
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <label className="block font-bold text-gray-700 uppercase tracking-wider">Zone Type</label>
@@ -487,9 +493,12 @@ export default function ZonesBins() {
                 <div className="space-y-1 col-span-2">
                   <label className="block font-bold text-gray-700 uppercase tracking-wider">Bin Code</label>
                   <input 
-                    type="text" value={binCode} onChange={(e) => setBinCode(e.target.value)} 
-                    placeholder="e.g. BIN-E-01-01" className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm font-semibold outline-none focus:border-blue-500" required disabled={!!editingBin}
+                    type="text" value={binCode} readOnly 
+                    className="w-full bg-slate-50 border border-gray-300 px-3 py-2 rounded-lg text-sm font-semibold outline-none text-slate-500 cursor-not-allowed" required
                   />
+                  <p className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2.5 py-1 rounded border border-emerald-100 flex items-center gap-1.5 w-fit mt-1">
+                    ✓ Next sequential Bin code automatically allocated
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <label className="block font-bold text-gray-700 uppercase tracking-wider">Zone Location</label>

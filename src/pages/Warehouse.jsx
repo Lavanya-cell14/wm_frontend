@@ -104,7 +104,7 @@ export default function Warehouse() {
                   </TableCell>
                   <TableCell className="text-gray-600 text-xs font-semibold">{wh.area}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{wh.totalZones || zones.filter(z => z.warehouse === wh.name).length} Zones</Badge>
+                    <Badge variant="outline">{zones.filter(z => z.warehouse === wh.name).length || wh.totalZones} Zones</Badge>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
 import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import StatusBadge from '../components/ui/StatusBadge';
 import SearchFilterBar from '../components/ui/SearchFilterBar';
+import Pagination from '../components/ui/Pagination';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { Activity, Clock, MapPin, ArrowRightLeft } from 'lucide-react';
 
@@ -12,6 +13,14 @@ export default function Movements() {
   const { movements } = useWarehouse();
   const [filterType, setFilterType] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset pagination to page 1 when filter/search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterType]);
 
   const filteredMovements = movements.filter(mov => {
     const matchesType = filterType === 'All' || mov.type.toLowerCase() === filterType.toLowerCase();
@@ -21,6 +30,14 @@ export default function Movements() {
       mov.id.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesType && matchesSearch;
   });
+
+  // Pagination parameters
+  const itemsPerPage = 8;
+  const totalPages = Math.ceil(filteredMovements.length / itemsPerPage);
+  const paginatedMovements = filteredMovements.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <div className="space-y-6">
@@ -80,8 +97,8 @@ export default function Movements() {
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
-                  {filteredMovements.map((mov) => (
+                 <TableBody>
+                  {paginatedMovements.map((mov) => (
                     <TableRow key={mov.id}>
                       <TableCell className="font-bold text-gray-900 font-mono text-xs">{mov.id}</TableCell>
                       <TableCell>
@@ -111,6 +128,14 @@ export default function Movements() {
                   ))}
                 </TableBody>
               </Table>
+
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                totalItems={filteredMovements.length}
+                pageSize={itemsPerPage}
+              />
             </CardContent>
           </Card>
         </div>

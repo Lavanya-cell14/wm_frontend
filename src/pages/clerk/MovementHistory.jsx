@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { 
   Card, 
@@ -16,15 +16,24 @@ import {
   TableCell,
   SearchFilterBar 
 } from 'shared-ui';
+import Pagination from '../../components/ui/Pagination';
 import { Activity, ArrowRightLeft, FileDown, Eye, Filter } from 'lucide-react';
 
 export default function MovementHistory() {
   const { movements } = useWarehouse();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState('All');
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Types list
   const movementTypes = ['All', ...new Set(movements.map(m => m.type))];
+
+  // Reset pagination to page 1 when search/filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedType]);
 
   // Filtering Logic
   const filteredMovements = movements.filter(mov => {
@@ -36,6 +45,14 @@ export default function MovementHistory() {
     
     return matchesSearch && matchesType;
   });
+
+  // Pagination parameters
+  const itemsPerPage = 8;
+  const totalPages = Math.ceil(filteredMovements.length / itemsPerPage);
+  const paginatedMovements = filteredMovements.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <div className="space-y-6">
@@ -115,14 +132,14 @@ export default function MovementHistory() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredMovements.length === 0 ? (
+              {paginatedMovements.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center py-12 text-gray-500 text-sm font-medium">
                     No movements logged matching the filter specifications.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredMovements.map((mov) => {
+                paginatedMovements.map((mov) => {
                   const isPositive = mov.qty > 0;
                   let badgeVariant = 'success';
                   if (mov.status === 'Assigned' || mov.status === 'In Progress') badgeVariant = 'warning';
@@ -188,6 +205,14 @@ export default function MovementHistory() {
               )}
             </TableBody>
           </Table>
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredMovements.length}
+            pageSize={itemsPerPage}
+          />
         </CardContent>
       </Card>
     </div>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useWarehouse } from '../context/WarehouseContext';
 import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import StatCard from '../components/dashboard/StatCard';
 import Button from '../components/ui/Button';
@@ -7,10 +8,23 @@ import SearchFilterBar from '../components/ui/SearchFilterBar';
 import { BarChart3, TrendingUp, Cpu, Sparkles, Download, Layers } from 'lucide-react';
 
 export default function Analytics() {
-  const [dateRange, setDateRange] = useState('Last 7 Days');
+  const { movements } = useWarehouse();
+  const [timeframe, setTimeframe] = useState('6months');
 
-  // Hardcode static representations of data distributions
-  const trends = [
+  // Dynamically aggregate real-time movements across the 6-month historical period
+  const monthlyCounts = { Jan: 0, Feb: 0, Mar: 0, Apr: 0, May: 0, Jun: 0 };
+  movements.forEach(m => {
+    if (m.movementDate) {
+      if (m.movementDate.startsWith('2026-01')) monthlyCounts.Jan += Number(m.qty || 1);
+      else if (m.movementDate.startsWith('2026-02')) monthlyCounts.Feb += Number(m.qty || 1);
+      else if (m.movementDate.startsWith('2026-03')) monthlyCounts.Mar += Number(m.qty || 1);
+      else if (m.movementDate.startsWith('2026-04')) monthlyCounts.Apr += Number(m.qty || 1);
+      else if (m.movementDate.startsWith('2026-05')) monthlyCounts.May += Number(m.qty || 1);
+      else if (m.movementDate.startsWith('2026-06')) monthlyCounts.Jun += Number(m.qty || 1);
+    }
+  });
+
+  const dailyTrends = [
     { label: 'Mon', value: 40 },
     { label: 'Tue', value: 55 },
     { label: 'Wed', value: 85 },
@@ -19,6 +33,18 @@ export default function Analytics() {
     { label: 'Sat', value: 30 },
     { label: 'Sun', value: 45 }
   ];
+
+  const maxVal = Math.max(...Object.values(monthlyCounts), 1);
+  const monthlyTrends = [
+    { label: 'Jan', value: Math.round((monthlyCounts.Jan / maxVal) * 75) + 20 },
+    { label: 'Feb', value: Math.round((monthlyCounts.Feb / maxVal) * 75) + 20 },
+    { label: 'Mar', value: Math.round((monthlyCounts.Mar / maxVal) * 75) + 20 },
+    { label: 'Apr', value: Math.round((monthlyCounts.Apr / maxVal) * 75) + 20 },
+    { label: 'May', value: Math.round((monthlyCounts.May / maxVal) * 75) + 20 },
+    { label: 'Jun', value: Math.round((monthlyCounts.Jun / maxVal) * 75) + 20 }
+  ];
+
+  const trends = timeframe === '6months' ? monthlyTrends : dailyTrends;
 
   const zoneUtil = [
     { name: 'Zone A (Fast Moving)', cap: 65, color: 'bg-blue-600' },
@@ -56,8 +82,16 @@ export default function Analytics() {
         
         {/* Transit Speed bar chart */}
         <Card className="border border-gray-100 shadow-xs">
-          <CardHeader className="border-b border-gray-100 pb-4">
+          <CardHeader className="border-b border-gray-100 pb-4 flex flex-row items-center justify-between gap-4">
             <CardTitle className="text-sm font-bold uppercase">Transit Activity Index</CardTitle>
+            <select
+              value={timeframe}
+              onChange={(e) => setTimeframe(e.target.value)}
+              className="text-xs bg-gray-50 border border-gray-200 rounded px-2.5 py-1 font-semibold text-gray-700 outline-none cursor-pointer focus:border-[#0071C1]"
+            >
+              <option value="6months">Last 6 Months (Jan - Jun)</option>
+              <option value="7days">Last 7 Days (Mon - Sun)</option>
+            </select>
           </CardHeader>
           <CardContent className="p-6">
             <div className="h-64 flex items-end justify-between gap-4 pt-6">

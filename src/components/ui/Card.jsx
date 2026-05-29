@@ -1,9 +1,12 @@
 import React from 'react';
 
 export default function Card({ children, className = '', ...props }) {
+  const hasBg = className.includes('bg-');
+  const hasBorder = className.includes('border-');
+  
   return (
     <div 
-      className={`bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-gray-100 ${className}`}
+      className={`${hasBg ? '' : 'bg-white'} rounded-2xl sm:rounded-3xl shadow-sm ${hasBorder ? '' : 'border border-gray-100'} ${className}`}
       {...props}
     >
       {children}

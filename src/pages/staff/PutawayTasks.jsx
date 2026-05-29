@@ -7,18 +7,30 @@ import Badge from '../../components/ui/Badge';
 import AlertBanner from '../../components/ui/AlertBanner';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/Table';
-import { ClipboardList, Play, CheckCircle2, Navigation, MapPin, Box, ArrowRight, Hourglass } from 'lucide-react';
+import { ClipboardList, Play, CheckCircle2, Navigation, MapPin, Box, ArrowRight, Hourglass, Sparkles, Clock, X } from 'lucide-react';
+import { getZoneLabel } from '../../utils/zoneMapping';
+import Pagination from '../../components/ui/Pagination';
 
 export default function PutawayTasks() {
   const { user } = useAuth();
   const { putawayTasks, startPutawayTask, completePutawayTask } = useWarehouse();
   const [toastMessage, setToastMessage] = useState('');
   const [activeRouteModal, setActiveRouteModal] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 8;
 
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3000);
   };
+
+  const totalPages = Math.max(1, Math.ceil(putawayTasks.length / pageSize));
+  const pagedTasks = putawayTasks.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  // Reset page when tasks list changes (e.g., new task created or filtered elsewhere)
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [putawayTasks.length]);
 
   return (
     <div className="space-y-6">
@@ -66,7 +78,7 @@ export default function PutawayTasks() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {putawayTasks.map((task) => (
+                {pagedTasks.map((task) => (
                   <TableRow key={task.id} className={task.status === 'In Progress' ? 'bg-blue-50/10' : ''}>
                     <TableCell className="font-bold text-gray-900 font-mono text-sm">{task.id}</TableCell>
                     <TableCell>
@@ -127,61 +139,141 @@ export default function PutawayTasks() {
           )}
         </CardContent>
       </Card>
+        <div className="px-4">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={putawayTasks.length}
+            pageSize={pageSize}
+            onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
+          />
+        </div>
 
       {/* Pathfinding routing modal */}
       {activeRouteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="bg-slate-900 text-white p-5 flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <Navigation className="w-5 h-5 text-blue-400" />
+          <Card className="max-w-2xl w-full overflow-hidden shadow-2xl">
+            <CardHeader className="bg-gradient-to-r from-[#0071C1] to-blue-700 text-white pb-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-lg">
+                  <Navigation className="w-6 h-6" />
+                </div>
                 <div>
-                  <h3 className="font-bold text-sm">Pathfinding route preview</h3>
-                  <p className="text-xs text-slate-300">Task: {activeRouteModal.id}</p>
+                  <h3 className="font-bold text-lg">Guided Navigation</h3>
+                  <p className="text-blue-100 text-xs mt-0.5">Task {activeRouteModal.id} • {activeRouteModal.product}</p>
                 </div>
               </div>
-              <button className="text-slate-400 hover:text-white font-semibold text-lg" onClick={() => setActiveRouteModal(null)}>×</button>
-            </div>
+              <button 
+                className="p-1 hover:bg-white/20 rounded-lg transition-colors" 
+                onClick={() => setActiveRouteModal(null)}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </CardHeader>
             
-            <div className="p-6 space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">1</div>
-                  <div>
-                    <h4 className="font-semibold text-xs text-gray-900">Receiving Dock A</h4>
-                    <p className="text-[10px] text-gray-500">Unloading zone gate</p>
+            <CardContent className="p-6 space-y-6">
+              {/* Step-by-step guidance */}
+              <div className="space-y-3">
+                <h4 className="font-bold text-gray-900 flex items-center gap-2 mb-4">
+                  <MapPin className="w-5 h-5 text-[#0071C1]" />
+                  Step-by-Step Route
+                </h4>
+                
+                {/* Step 1 */}
+                <div className="flex gap-4">
+                  <div className="flex flex-col items-center">
+                    <div className="w-10 h-10 rounded-full bg-[#0071C1] text-white flex items-center justify-center font-bold">1</div>
+                    <div className="w-0.5 h-12 bg-gray-200 my-2"></div>
+                  </div>
+                  <div className="pb-4">
+                    <h5 className="font-bold text-gray-900">Start at Receiving Dock</h5>
+                    <p className="text-sm text-gray-600 mt-1">Collect your shipment from the inbound staging area.</p>
                   </div>
                 </div>
-                <div className="border-l-2 border-dashed border-blue-400 h-6 ml-3"></div>
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">2</div>
-                  <div>
-                    <h4 className="font-semibold text-xs text-gray-900">Aisle {activeRouteModal.aisle}</h4>
-                    <p className="text-[10px] text-gray-500">Optimized route navigation path</p>
+
+                {/* Step 2 */}
+                <div className="flex gap-4">
+                  <div className="flex flex-col items-center">
+                    <div className="w-10 h-10 rounded-full bg-[#0071C1] text-white flex items-center justify-center font-bold">2</div>
+                    <div className="w-0.5 h-12 bg-gray-200 my-2"></div>
+                  </div>
+                  <div className="pb-4">
+                    <h5 className="font-bold text-gray-900">{getZoneLabel(activeRouteModal.zone)} ({activeRouteModal.zone})</h5>
+                    <p className="text-sm text-gray-600 mt-1">Navigate to the designated zone area.</p>
                   </div>
                 </div>
-                <div className="border-l-2 border-dashed border-blue-400 h-6 ml-3"></div>
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs">3</div>
-                  <div>
-                    <h4 className="font-semibold text-xs text-gray-900">Rack {activeRouteModal.rack} - Bin {activeRouteModal.bin}</h4>
-                    <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Final target bin location</p>
+
+                {/* Step 3 */}
+                <div className="flex gap-4">
+                  <div className="flex flex-col items-center">
+                    <div className="w-10 h-10 rounded-full bg-[#0071C1] text-white flex items-center justify-center font-bold">3</div>
+                    <div className="w-0.5 h-12 bg-gray-200 my-2"></div>
+                  </div>
+                  <div className="pb-4">
+                    <h5 className="font-bold text-gray-900">Aisle {activeRouteModal.aisle}</h5>
+                    <p className="text-sm text-gray-600 mt-1">Locate and enter the correct aisle.</p>
+                  </div>
+                </div>
+
+                {/* Step 4 */}
+                <div className="flex gap-4">
+                  <div className="flex flex-col items-center">
+                    <div className="w-10 h-10 rounded-full bg-[#0071C1] text-white flex items-center justify-center font-bold">4</div>
+                    <div className="w-0.5 h-12 bg-gray-200 my-2"></div>
+                  </div>
+                  <div className="pb-4">
+                    <h5 className="font-bold text-gray-900">{activeRouteModal.rack} - {activeRouteModal.shelf}</h5>
+                    <p className="text-sm text-gray-600 mt-1">Navigate to the specific rack and shelf location.</p>
+                  </div>
+                </div>
+
+                {/* Step 5 - Final */}
+                <div className="flex gap-4">
+                  <div className="flex flex-col items-center">
+                    <div className="w-10 h-10 rounded-full bg-green-600 text-white flex items-center justify-center font-bold">📍</div>
+                  </div>
+                  <div className="pb-4">
+                    <h5 className="font-bold text-green-900 text-lg">{activeRouteModal.bin}</h5>
+                    <p className="text-sm text-green-700 mt-1 font-semibold">Place all items into this bin location.</p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-blue-50/50 p-4 border border-blue-100 rounded-xl space-y-1 text-xs text-blue-900">
-                <div className="flex justify-between font-semibold"><span>Total Distance:</span> <span>{activeRouteModal.distance}</span></div>
-                <div className="flex justify-between font-semibold"><span>Est. Transit Time:</span> <span>{activeRouteModal.estTime}</span></div>
+              {/* Product and Metrics Info */}
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <div className="text-xs text-blue-700 font-bold uppercase tracking-wider mb-1">Product</div>
+                  <div className="font-bold text-gray-900">{activeRouteModal.product}</div>
+                  <div className="text-xs text-gray-500 font-mono mt-1">{activeRouteModal.sku}</div>
+                </div>
+                <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+                  <div className="text-xs text-amber-700 font-bold uppercase tracking-wider mb-1">Quantity</div>
+                  <div className="font-bold text-gray-900 text-lg">{activeRouteModal.quantity} units</div>
+                </div>
+                <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                  <div className="text-xs text-orange-700 font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    Est. Time
+                  </div>
+                  <div className="font-bold text-gray-900">{activeRouteModal.estTime}</div>
+                </div>
+                <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                  <div className="text-xs text-purple-700 font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    AI Confidence
+                  </div>
+                  <div className="font-bold text-gray-900">{activeRouteModal.confidence || 96}%</div>
+                </div>
               </div>
 
               <div className="flex gap-2">
-                <Button className="flex-1 justify-center" onClick={() => setActiveRouteModal(null)}>
-                  Close Route Map
+                <Button className="flex-1 justify-center bg-gradient-to-r from-[#0071C1] to-blue-700 text-white font-bold py-3" onClick={() => setActiveRouteModal(null)}>
+                  <Navigation className="w-4 h-4 mr-2" />
+                  Start Navigation
                 </Button>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

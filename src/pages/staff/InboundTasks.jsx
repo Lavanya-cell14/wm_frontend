@@ -9,12 +9,15 @@ import AlertBanner from '../../components/ui/AlertBanner';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/Table';
 import { ArrowDownToLine, ScanBarcode, Play, CheckSquare, Eye, Clock, Box } from 'lucide-react';
+import Pagination from '../../components/ui/Pagination';
 
 export default function InboundTasks() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { inboundTasks, startInboundTask, completeInboundTask } = useWarehouse();
   const [activeTab, setActiveTab] = useState('Pending');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 8;
   const [toastMessage, setToastMessage] = useState('');
 
   const showToast = (msg) => {
@@ -28,6 +31,15 @@ export default function InboundTasks() {
     if (activeTab === 'Completed') return task.status === 'Completed';
     return true;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredTasks.length / pageSize));
+
+  // Reset to first page when tab changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
+
+  const pagedTasks = filteredTasks.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="space-y-6">
@@ -82,6 +94,7 @@ export default function InboundTasks() {
               <p className="text-gray-500 text-sm">There are no receiving tasks in this status category.</p>
             </div>
           ) : (
+            <>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -96,7 +109,7 @@ export default function InboundTasks() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTasks.map((task) => (
+                {pagedTasks.map((task) => (
                   <TableRow key={task.id}>
                     <TableCell className="font-bold text-gray-900 font-mono text-sm">{task.id}</TableCell>
                     <TableCell className="text-gray-600 text-sm font-semibold">{task.supplier}</TableCell>
@@ -148,6 +161,16 @@ export default function InboundTasks() {
                 ))}
               </TableBody>
             </Table>
+              <div className="px-4">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={filteredTasks.length}
+                  pageSize={pageSize}
+                  onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
+                />
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

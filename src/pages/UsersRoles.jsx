@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, Shield, Plus, Building, Mail, CheckCircle, XCircle } from 'lucide-react';
 import StatCard from '../components/dashboard/StatCard';
 import Button from '../components/ui/Button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import Badge from '../components/ui/Badge';
 import SearchFilterBar from '../components/ui/SearchFilterBar';
+import Pagination from '../components/ui/Pagination';
 
 const mockUsers = [
   { id: 'USR-01', name: 'Sarah Jenkins', email: 's.jenkins@warehouse.ai', role: 'admin', warehouse: 'All Facilities', status: 'active' },
@@ -12,9 +13,39 @@ const mockUsers = [
   { id: 'USR-03', name: 'David Rodriguez', email: 'd.rodriguez@warehouse.ai', role: 'operator', warehouse: 'East Coast Distribution', status: 'active' },
   { id: 'USR-04', name: 'Emma Wilson', email: 'e.wilson@warehouse.ai', role: 'operator', warehouse: 'West Coast Hub', status: 'inactive' },
   { id: 'USR-05', name: 'James Taylor', email: 'j.taylor@warehouse.ai', role: 'viewer', warehouse: 'All Facilities', status: 'active' },
+  { id: 'USR-06', name: 'Alex Johnson', email: 'a.johnson@warehouse.ai', role: 'operator', warehouse: 'Central Fulfillment A', status: 'active' },
+  { id: 'USR-07', name: 'Sophia Martinez', email: 's.martinez@warehouse.ai', role: 'operator', warehouse: 'Central Fulfillment A', status: 'active' },
+  { id: 'USR-08', name: 'Liam Davies', email: 'l.davies@warehouse.ai', role: 'operator', warehouse: 'East Coast Distribution', status: 'active' },
+  { id: 'USR-09', name: 'Olivia Brown', email: 'o.brown@warehouse.ai', role: 'manager', warehouse: 'West Coast Hub', status: 'active' },
+  { id: 'USR-10', name: 'Noah Wilson', email: 'n.wilson@warehouse.ai', role: 'operator', warehouse: 'Central Fulfillment A', status: 'inactive' },
+  { id: 'USR-11', name: 'Isabella Taylor', email: 'i.taylor@warehouse.ai', role: 'viewer', warehouse: 'East Coast Distribution', status: 'active' },
+  { id: 'USR-12', name: 'Lucas Thomas', email: 'l.thomas@warehouse.ai', role: 'operator', warehouse: 'West Coast Hub', status: 'active' },
+  { id: 'USR-13', name: 'Mia White', email: 'm.white@warehouse.ai', role: 'operator', warehouse: 'Central Fulfillment A', status: 'active' },
 ];
 
 export default function UsersRoles() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset pagination to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const filteredUsers = mockUsers.filter(user => 
+    user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.role.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Pagination parameters
+  const itemsPerPage = 8;
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -29,15 +60,18 @@ export default function UsersRoles() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard title="Total Users" value="124" icon={Users} trend={2} trendLabel="new this month" />
-        <StatCard title="Active Operators" value="86" icon={CheckCircle} />
+        <StatCard title="Total Users" value={String(mockUsers.length)} icon={Users} trend={2} trendLabel="new this month" />
+        <StatCard title="Active Operators" value={String(mockUsers.filter(u => u.role === 'operator' && u.status === 'active').length)} icon={CheckCircle} />
         <StatCard title="Pending Invites" value="5" icon={Mail} />
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100">
         <div className="p-4 border-b border-gray-100 flex gap-4">
           <div className="flex-1">
-            <SearchFilterBar placeholder="Search users by name, email, or role..." onSearch={() => {}} />
+            <SearchFilterBar 
+              placeholder="Search users by name, email, or role..." 
+              onSearch={(val) => setSearchQuery(val)} 
+            />
           </div>
           <Button variant="outline" className="gap-2">
             <Shield className="w-4 h-4" />
@@ -56,7 +90,7 @@ export default function UsersRoles() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockUsers.map((user) => (
+            {paginatedUsers.map((user) => (
               <TableRow key={user.id}>
                 <TableCell>
                   <div className="font-medium text-gray-900">{user.name}</div>
@@ -98,6 +132,14 @@ export default function UsersRoles() {
             ))}
           </TableBody>
         </Table>
+
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filteredUsers.length}
+          pageSize={itemsPerPage}
+        />
       </div>
     </div>
   );
