@@ -92,7 +92,7 @@ export default function Movements() {
                     <TableHead>Transit Path</TableHead>
                     <TableHead>Qty</TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead>Operator</TableHead>
+                    <TableHead>Assigned Staff</TableHead>
                     <TableHead>Time</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>

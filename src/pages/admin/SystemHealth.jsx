@@ -47,9 +47,9 @@ export default function SystemHealth() {
   const [services, setServices] = useState([
     { name: 'Gateway API Server', type: 'NodeJS V18', latency: '14ms', status: 'Healthy', version: 'v2.4.1', memory: '184 MB' },
     { name: 'Operational Postgres DB', type: 'CockroachDB Cluster', latency: '3ms', status: 'Healthy', version: 'v23.2.0', memory: '1.2 GB' },
-    { name: 'AI Recommendation Inference', type: 'Python FastAPI', latency: '182ms', status: 'Healthy', version: 'v1.8.9', memory: '4.8 GB' },
-    { name: 'AGV Fleet Communications Hub', type: 'Erlang WebSockets', latency: '8ms', status: 'Healthy', version: 'v3.2.0', memory: '95 MB' },
-    { name: 'ThreeJS Digital Twin Cache', type: 'Redis Node', latency: '1ms', status: 'Healthy', version: 'v7.2.4', memory: '12 MB' },
+    { name: 'OCR Document Parser Service', type: 'Python PaddleOCR', latency: '240ms', status: 'Healthy', version: 'v1.2.0', memory: '850 MB' },
+    { name: 'AI Recommendation Inference', type: 'FastAPI / ONNX Runtime', latency: '182ms', status: 'Healthy', version: 'v1.8.9', memory: '4.8 GB' },
+    { name: 'Frontend React Client', type: 'React 18 / Vite Build', latency: '1.2ms', status: 'Healthy', version: 'v5.4.2 (Production)', memory: '45 MB' },
   ]);
 
   const handleTriggerAction = (actionKey, desc) => {

@@ -18,7 +18,6 @@ export default function ProtectedRoute({ allowedRoles }) {
         case 'STAFF': return '/staff/dashboard';
         case 'INVENTORY_CLERK': return '/inventory/dashboard';
         case 'ADMIN': return '/admin/dashboard';
-        case 'OPERATOR': return '/operator/dashboard';
         default: return '/login';
       }
     };

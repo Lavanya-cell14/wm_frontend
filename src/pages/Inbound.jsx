@@ -335,12 +335,10 @@ export default function Inbound() {
         </div>
 
         <div className="flex flex-col gap-1.5 w-full">
-          <label className="text-[13px] font-medium text-[#4A4D4E]">Select Operator / Staff</label>
+          <label className="text-[13px] font-medium text-[#4A4D4E]">Select Staff Member</label>
           <select value={staffName} onChange={(e) => setStaffName(e.target.value)} className="rounded-md border-[#56A8F0] border-[1px] h-[36px] px-3 w-full text-sm text-[#4A4D4E] focus:ring-1 focus:ring-[#56A8F0] focus:border-[#56A8F0] outline-none">
             <option>Warehouse Staff</option>
-            <option>Route Operator</option>
             <option>Inventory Clerk</option>
-            <option>Dave Operator</option>
           </select>
         </div>
       </Modal>

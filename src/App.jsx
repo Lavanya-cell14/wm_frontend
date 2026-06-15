@@ -8,22 +8,18 @@ import ProtectedRoute from './components/ProtectedRoute';
 // Login Page
 import Login from './pages/Login';
 
-// Manager Pages
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
-import ProductIntelligence from './pages/ProductIntelligence';
 import Warehouse from './pages/Warehouse';
 import ZonesBins from './pages/ZonesBins';
 import Inbound from './pages/Inbound';
-import Orders from './pages/Orders';
 import Movements from './pages/Movements';
 import Analytics from './pages/Analytics';
 import AuditLogs from './pages/AuditLogs';
-import UsersRoles from './pages/UsersRoles';
 import DigitalTwin from './pages/DigitalTwin';
 import RoutesOptimization from './pages/RoutesOptimization';
 import AiRecommendations from './pages/AiRecommendations';
-import AiCopilot from './pages/AiCopilot';
+import OcrUpload from './pages/OcrUpload';
 
 // Staff Pages
 import StaffDashboard from './pages/staff/StaffDashboard';
@@ -31,6 +27,9 @@ import ProductScanner from './pages/staff/ProductScanner';
 import InboundTasks from './pages/staff/InboundTasks';
 import PutawayTasks from './pages/staff/PutawayTasks';
 import MovementTracking from './pages/staff/MovementTracking';
+import ActiveTask from './pages/staff/ActiveTask';
+import RouteGuidance from './pages/staff/RouteGuidance';
+import CompletedTasks from './pages/staff/CompletedTasks';
 
 // Clerk Pages
 import ClerkDashboard from './pages/clerk/ClerkDashboard';
@@ -40,6 +39,8 @@ import DamagedStock from './pages/clerk/DamagedStock';
 import ReservedStock from './pages/clerk/ReservedStock';
 import ProductLookup from './pages/clerk/ProductLookup';
 import MovementHistory from './pages/clerk/MovementHistory';
+import OcrVerification from './pages/OcrVerification';
+import InboundProducts from './pages/clerk/InboundProducts';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -48,12 +49,6 @@ import RoleManagement from './pages/admin/RoleManagement';
 import WarehouseSettings from './pages/admin/WarehouseSettings';
 import SystemHealth from './pages/admin/SystemHealth';
 
-// Operator Pages
-import RouteDashboard from './pages/operator/RouteDashboard';
-import AssignedRoutes from './pages/operator/AssignedRoutes';
-import MovementTasks from './pages/operator/MovementTasks';
-import TwinRouteView from './pages/operator/TwinRouteView';
-import AgvTracking from './pages/operator/AgvTracking';
 
 const PlaceholderPage = ({ title }) => (
   <div className="flex items-center justify-center h-[60vh] text-gray-500">
@@ -69,7 +64,6 @@ const RootRedirect = () => {
     case 'STAFF': return <Navigate to="/staff/dashboard" replace />;
     case 'INVENTORY_CLERK': return <Navigate to="/inventory/dashboard" replace />;
     case 'ADMIN': return <Navigate to="/admin/dashboard" replace />;
-    case 'OPERATOR': return <Navigate to="/operator/dashboard" replace />;
     default: return <Navigate to="/login" replace />;
   }
 };
@@ -89,16 +83,15 @@ function App() {
               <Route path="/warehouse" element={<Warehouse />} />
               <Route path="/zones-bins" element={<ZonesBins />} />
               <Route path="/inventory" element={<Inventory />} />
-              <Route path="/product-intelligence" element={<ProductIntelligence />} />
               <Route path="/inbound" element={<Inbound />} />
-              <Route path="/orders" element={<Orders />} />
               <Route path="/movements" element={<Movements />} />
               <Route path="/digital-twin" element={<DigitalTwin />} />
               <Route path="/routes" element={<RoutesOptimization />} />
               <Route path="/ai-recommendations" element={<AiRecommendations />} />
               <Route path="/analytics" element={<Analytics />} />
-              <Route path="/audit-logs" element={<AuditLogs />} />
             </Route>
+
+
 
             {/* STAFF ROUTES */}
             <Route element={<ProtectedRoute allowedRoles={['STAFF']} />}>
@@ -107,11 +100,17 @@ function App() {
               <Route path="/staff/inbound" element={<InboundTasks />} />
               <Route path="/staff/putaway" element={<PutawayTasks />} />
               <Route path="/staff/movements" element={<MovementTracking />} />
+              <Route path="/staff/active" element={<ActiveTask />} />
+              <Route path="/staff/route-guidance" element={<RouteGuidance />} />
+              <Route path="/staff/completed" element={<CompletedTasks />} />
             </Route>
 
             {/* INVENTORY CLERK ROUTES */}
             <Route element={<ProtectedRoute allowedRoles={['INVENTORY_CLERK']} />}>
               <Route path="/inventory/dashboard" element={<ClerkDashboard />} />
+              <Route path="/ocr-upload" element={<OcrUpload />} />
+              <Route path="/ocr-verification" element={<OcrVerification />} />
+              <Route path="/inventory/inbound" element={<InboundProducts />} />
               <Route path="/inventory/list" element={<InventoryList />} />
               <Route path="/inventory/adjust" element={<StockAdjustment />} />
               <Route path="/inventory/damaged" element={<DamagedStock />} />
@@ -128,15 +127,6 @@ function App() {
               <Route path="/admin/settings" element={<WarehouseSettings />} />
               <Route path="/admin/audit" element={<AuditLogs />} />
               <Route path="/admin/health" element={<SystemHealth />} />
-            </Route>
-
-            {/* OPERATOR ROUTES */}
-            <Route element={<ProtectedRoute allowedRoles={['OPERATOR']} />}>
-              <Route path="/operator/dashboard" element={<RouteDashboard />} />
-              <Route path="/operator/routes" element={<AssignedRoutes />} />
-              <Route path="/operator/movements" element={<MovementTasks />} />
-              <Route path="/operator/twin" element={<TwinRouteView />} />
-              <Route path="/operator/tracking" element={<AgvTracking />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

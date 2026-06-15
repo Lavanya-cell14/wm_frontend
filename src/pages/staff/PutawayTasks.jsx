@@ -1,22 +1,33 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
-import Card, { CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
-import Badge from '../../components/ui/Badge';
-import AlertBanner from '../../components/ui/AlertBanner';
-import StatusBadge from '../../components/ui/StatusBadge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/Table';
-import { ClipboardList, Play, CheckCircle2, Navigation, MapPin, Box, ArrowRight, Hourglass, Sparkles, Clock, X } from 'lucide-react';
-import { getZoneLabel } from '../../utils/zoneMapping';
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle, 
+  Button, 
+  Badge, 
+  AlertBanner, 
+  Table, 
+  TableHeader, 
+  TableBody, 
+  TableRow, 
+  TableHead, 
+  TableCell 
+} from 'shared-ui';
+import Modal from '../../components/ui/Modal';
 import Pagination from '../../components/ui/Pagination';
+import { ClipboardList, Play, CheckCircle2, Navigation, MapPin, Box, ArrowRight, Hourglass, Sparkles, Clock, X, Eye } from 'lucide-react';
 
 export default function PutawayTasks() {
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const { putawayTasks, startPutawayTask, completePutawayTask } = useWarehouse();
+  const { putawayTasks, startPutawayTask } = useWarehouse();
   const [toastMessage, setToastMessage] = useState('');
-  const [activeRouteModal, setActiveRouteModal] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedTaskForModal, setSelectedTaskForModal] = useState(null);
   const pageSize = 8;
 
   const showToast = (msg) => {
@@ -24,16 +35,21 @@ export default function PutawayTasks() {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  const totalPages = Math.max(1, Math.ceil(putawayTasks.length / pageSize));
-  const pagedTasks = putawayTasks.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  // Filter tasks to show those that are NOT completed yet (or show all with sorting)
+  const activeTasks = putawayTasks.filter(t => t.status !== 'COMPLETED');
 
-  // Reset page when tasks list changes (e.g., new task created or filtered elsewhere)
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [putawayTasks.length]);
+  const totalPages = Math.max(1, Math.ceil(activeTasks.length / pageSize));
+  const pagedTasks = activeTasks.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const handleStart = (taskId) => {
+    startPutawayTask(taskId);
+    showToast(`Putaway task ${taskId} initiated! Status changed to IN_PROGRESS.`);
+    // Navigate to active task page to perform steps
+    setTimeout(() => navigate('/staff/active'), 800);
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 select-none">
       {toastMessage && (
         <div className="fixed top-4 right-4 z-50 animate-bounce">
           <AlertBanner type="success" message={toastMessage} />
@@ -44,20 +60,20 @@ export default function PutawayTasks() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
             <ClipboardList className="w-7 h-7 text-[#0071C1]" />
-            AI Putaway Tasks
+            Putaway Queue
           </h1>
           <p className="text-gray-500 text-sm mt-1">
-            Storage operations queue. Follow optimized paths to place verified stock into bins.
+            Storage operations queue. Follow path coordinates to store verified inbounds.
           </p>
         </div>
         <Badge variant="warning" className="text-sm px-3 py-1 font-bold">
-          {putawayTasks.length} Active Tasks
+          {activeTasks.length} Active Tasks
         </Badge>
       </div>
 
-      <Card className="border border-gray-100 shadow-xs">
+      <Card className="border border-gray-150 shadow-xs">
         <CardContent className="p-0">
-          {putawayTasks.length === 0 ? (
+          {activeTasks.length === 0 ? (
             <div className="p-12 text-center space-y-3">
               <Box className="w-12 h-12 text-gray-300 mx-auto" />
               <h3 className="font-bold text-gray-900 text-base">No active putaways</h3>
@@ -68,68 +84,61 @@ export default function PutawayTasks() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Task ID</TableHead>
-                  <TableHead>Product / SKU</TableHead>
-                  <TableHead>Qty</TableHead>
-                  <TableHead>Target Bin Details</TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Destination Bin</TableHead>
                   <TableHead>Priority</TableHead>
-                  <TableHead>Est. Time</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {pagedTasks.map((task) => (
-                  <TableRow key={task.id} className={task.status === 'In Progress' ? 'bg-blue-50/10' : ''}>
-                    <TableCell className="font-bold text-gray-900 font-mono text-sm">{task.id}</TableCell>
+                  <TableRow key={task.id} className={task.status === 'IN_PROGRESS' || task.status === 'PICKED_FROM_RECEIVING' || task.status === 'REACHED_BIN' ? 'bg-blue-50/10' : ''}>
+                    <TableCell className="font-bold text-gray-900 font-mono text-xs">{task.id}</TableCell>
                     <TableCell>
-                      <div className="font-semibold text-gray-900 text-sm">{task.product}</div>
-                      <div className="text-xs text-gray-500 font-mono mt-0.5">{task.sku}</div>
+                      <div className="font-bold text-gray-900">{task.product}</div>
+                      <div className="text-[10px] text-gray-400 font-mono mt-0.5">{task.sku}</div>
                     </TableCell>
-                    <TableCell className="font-bold text-gray-900 text-sm">{task.quantity} Units</TableCell>
+                    <TableCell className="font-bold text-gray-950">{task.quantity} Units</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs text-blue-700 bg-blue-50/50 px-1.5 py-0.5 rounded border border-blue-100 font-bold">
-                          {task.bin}
-                        </span>
-                        <span className="text-xs text-gray-400 font-medium">
-                          ({task.zone} • Aisle {task.aisle} • Rack {task.rack})
-                        </span>
-                      </div>
+                      <span className="font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 font-bold">
+                        {task.destinationBin || task.bin || 'BIN-002'}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <Badge variant={task.priority === 'High' ? 'error' : 'warning'}>
-                        {task.priority}
+                        {task.priority || 'Medium'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-gray-600 text-xs font-semibold">
-                      <div className="flex items-center gap-1">
-                        <Hourglass className="w-3.5 h-3.5 text-gray-400" />
-                        {task.estTime}
-                      </div>
-                    </TableCell>
                     <TableCell>
-                      <StatusBadge status={task.status === 'In Progress' ? 'warning' : 'info'} />
+                      <Badge 
+                        variant={task.status === 'COMPLETED' ? 'success' : (task.status === 'IN_PROGRESS' || task.status === 'PICKED_FROM_RECEIVING' || task.status === 'REACHED_BIN' ? 'primary' : 'warning')}
+                        className="text-[10px] uppercase font-bold"
+                      >
+                        {task.status.replace(/_/g, ' ')}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex gap-2 justify-end">
-                        {task.status === 'Pending' ? (
-                          <Button size="sm" className="gap-1" onClick={() => {
-                            startPutawayTask(task.id);
-                            showToast(`Putaway task ${task.id} started.`);
-                          }}>
+                      <div className="flex gap-1.5 justify-end items-center">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-[11px] h-7 px-2 font-medium bg-[#F4FCFF] border-blue-100 text-blue-700 hover:bg-blue-50"
+                          onClick={() => setSelectedTaskForModal(task)}
+                        >
+                          <Eye className="w-3.5 h-3.5 mr-1 text-blue-500" />
+                          View Details
+                        </Button>
+                        {(task.status === 'ASSIGNED' || task.status === 'Pending') ? (
+                          <Button size="sm" className="gap-1.5 py-1 text-xs font-bold" onClick={() => handleStart(task.id)}>
                             <Play className="w-3.5 h-3.5" /> Start
                           </Button>
                         ) : (
-                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white gap-1 font-bold" onClick={() => {
-                            completePutawayTask(task.id, user);
-                            showToast(`Stock verified and stored in ${task.bin}!`);
-                          }}>
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Complete
+                          <Button size="sm" className="bg-[#0071C1] hover:bg-[#005c9e] text-white gap-1.5 py-1 text-xs font-bold" onClick={() => navigate('/staff/active')}>
+                            <Eye className="w-3.5 h-3.5" /> View Active
                           </Button>
                         )}
-                        <Button variant="outline" size="sm" className="gap-1 text-gray-600" onClick={() => setActiveRouteModal(task)}>
-                          <Navigation className="w-3.5 h-3.5 text-gray-500" /> Navigate
-                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -139,142 +148,79 @@ export default function PutawayTasks() {
           )}
         </CardContent>
       </Card>
+      
+      {totalPages > 1 && (
         <div className="px-4">
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
-            totalItems={putawayTasks.length}
+            totalItems={activeTasks.length}
             pageSize={pageSize}
             onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
           />
         </div>
+      )}
 
-      {/* Pathfinding routing modal */}
-      {activeRouteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in">
-          <Card className="max-w-2xl w-full overflow-hidden shadow-2xl">
-            <CardHeader className="bg-gradient-to-r from-[#0071C1] to-blue-700 text-white pb-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/20 rounded-lg">
-                  <Navigation className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg">Guided Navigation</h3>
-                  <p className="text-blue-100 text-xs mt-0.5">Task {activeRouteModal.id} • {activeRouteModal.product}</p>
-                </div>
+      {/* VIEW DETAILS MODAL */}
+      {selectedTaskForModal && (
+        <Modal
+          isOpen={!!selectedTaskForModal}
+          onClose={() => setSelectedTaskForModal(null)}
+          title={`Putaway Task Details: ${selectedTaskForModal.id}`}
+          maxWidth="max-w-xl"
+          footer={
+            <Button onClick={() => setSelectedTaskForModal(null)}>Close Task</Button>
+          }
+        >
+          <div className="space-y-4 text-xs font-semibold text-gray-700">
+            <div className="p-4 bg-slate-900 text-white rounded-2xl flex justify-between items-center">
+              <div>
+                <span className="text-[10px] text-blue-300 font-bold uppercase tracking-wider block">Product Details</span>
+                <span className="text-sm font-bold block mt-0.5">{selectedTaskForModal.product}</span>
+                <span className="text-[10px] font-mono text-slate-300 mt-0.5 block">SKU: {selectedTaskForModal.sku}</span>
               </div>
-              <button 
-                className="p-1 hover:bg-white/20 rounded-lg transition-colors" 
-                onClick={() => setActiveRouteModal(null)}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </CardHeader>
-            
-            <CardContent className="p-6 space-y-6">
-              {/* Step-by-step guidance */}
-              <div className="space-y-3">
-                <h4 className="font-bold text-gray-900 flex items-center gap-2 mb-4">
-                  <MapPin className="w-5 h-5 text-[#0071C1]" />
-                  Step-by-Step Route
-                </h4>
-                
-                {/* Step 1 */}
-                <div className="flex gap-4">
-                  <div className="flex flex-col items-center">
-                    <div className="w-10 h-10 rounded-full bg-[#0071C1] text-white flex items-center justify-center font-bold">1</div>
-                    <div className="w-0.5 h-12 bg-gray-200 my-2"></div>
-                  </div>
-                  <div className="pb-4">
-                    <h5 className="font-bold text-gray-900">Start at Receiving Dock</h5>
-                    <p className="text-sm text-gray-600 mt-1">Collect your shipment from the inbound staging area.</p>
-                  </div>
-                </div>
+              <Badge variant="primary" className="text-[10px] uppercase font-bold text-white bg-blue-600">
+                {selectedTaskForModal.status.replace(/_/g, ' ')}
+              </Badge>
+            </div>
 
-                {/* Step 2 */}
-                <div className="flex gap-4">
-                  <div className="flex flex-col items-center">
-                    <div className="w-10 h-10 rounded-full bg-[#0071C1] text-white flex items-center justify-center font-bold">2</div>
-                    <div className="w-0.5 h-12 bg-gray-200 my-2"></div>
-                  </div>
-                  <div className="pb-4">
-                    <h5 className="font-bold text-gray-900">{getZoneLabel(activeRouteModal.zone)} ({activeRouteModal.zone})</h5>
-                    <p className="text-sm text-gray-600 mt-1">Navigate to the designated zone area.</p>
-                  </div>
-                </div>
-
-                {/* Step 3 */}
-                <div className="flex gap-4">
-                  <div className="flex flex-col items-center">
-                    <div className="w-10 h-10 rounded-full bg-[#0071C1] text-white flex items-center justify-center font-bold">3</div>
-                    <div className="w-0.5 h-12 bg-gray-200 my-2"></div>
-                  </div>
-                  <div className="pb-4">
-                    <h5 className="font-bold text-gray-900">Aisle {activeRouteModal.aisle}</h5>
-                    <p className="text-sm text-gray-600 mt-1">Locate and enter the correct aisle.</p>
-                  </div>
-                </div>
-
-                {/* Step 4 */}
-                <div className="flex gap-4">
-                  <div className="flex flex-col items-center">
-                    <div className="w-10 h-10 rounded-full bg-[#0071C1] text-white flex items-center justify-center font-bold">4</div>
-                    <div className="w-0.5 h-12 bg-gray-200 my-2"></div>
-                  </div>
-                  <div className="pb-4">
-                    <h5 className="font-bold text-gray-900">{activeRouteModal.rack} - {activeRouteModal.shelf}</h5>
-                    <p className="text-sm text-gray-600 mt-1">Navigate to the specific rack and shelf location.</p>
-                  </div>
-                </div>
-
-                {/* Step 5 - Final */}
-                <div className="flex gap-4">
-                  <div className="flex flex-col items-center">
-                    <div className="w-10 h-10 rounded-full bg-green-600 text-white flex items-center justify-center font-bold">📍</div>
-                  </div>
-                  <div className="pb-4">
-                    <h5 className="font-bold text-green-900 text-lg">{activeRouteModal.bin}</h5>
-                    <p className="text-sm text-green-700 mt-1 font-semibold">Place all items into this bin location.</p>
-                  </div>
-                </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-3 bg-slate-50 border border-gray-100 rounded-xl">
+                <span className="text-gray-400 font-bold text-[9px] uppercase tracking-wider block">Inbound Receipt ID</span>
+                <span className="text-slate-800 font-semibold text-xs mt-1 block font-mono">{selectedTaskForModal.inboundId || 'N/A'}</span>
               </div>
-
-              {/* Product and Metrics Info */}
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  <div className="text-xs text-blue-700 font-bold uppercase tracking-wider mb-1">Product</div>
-                  <div className="font-bold text-gray-900">{activeRouteModal.product}</div>
-                  <div className="text-xs text-gray-500 font-mono mt-1">{activeRouteModal.sku}</div>
-                </div>
-                <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
-                  <div className="text-xs text-amber-700 font-bold uppercase tracking-wider mb-1">Quantity</div>
-                  <div className="font-bold text-gray-900 text-lg">{activeRouteModal.quantity} units</div>
-                </div>
-                <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                  <div className="text-xs text-orange-700 font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    Est. Time
-                  </div>
-                  <div className="font-bold text-gray-900">{activeRouteModal.estTime}</div>
-                </div>
-                <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                  <div className="text-xs text-purple-700 font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" />
-                    AI Confidence
-                  </div>
-                  <div className="font-bold text-gray-900">{activeRouteModal.confidence || 96}%</div>
-                </div>
+              <div className="p-3 bg-slate-50 border border-gray-100 rounded-xl">
+                <span className="text-gray-400 font-bold text-[9px] uppercase tracking-wider block">Assigned By</span>
+                <span className="text-slate-800 font-semibold text-xs mt-1 block">{selectedTaskForModal.assignedBy || 'Warehouse Manager'}</span>
               </div>
+            </div>
 
-              <div className="flex gap-2">
-                <Button className="flex-1 justify-center bg-gradient-to-r from-[#0071C1] to-blue-700 text-white font-bold py-3" onClick={() => setActiveRouteModal(null)}>
-                  <Navigation className="w-4 h-4 mr-2" />
-                  Start Navigation
-                </Button>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-3 bg-slate-50 border border-gray-100 rounded-xl">
+                <span className="text-gray-400 font-bold text-[9px] uppercase tracking-wider block">Product Dimensions</span>
+                <span className="text-slate-800 font-semibold text-xs mt-1 block font-mono">{selectedTaskForModal.dimensions || '30x30x30 cm'}</span>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <div className="p-3 bg-slate-50 border border-gray-100 rounded-xl">
+                <span className="text-gray-400 font-bold text-[9px] uppercase tracking-wider block">Product Weight</span>
+                <span className="text-slate-800 font-semibold text-xs mt-1 block font-mono">{selectedTaskForModal.weight || '4.5 kg'}</span>
+              </div>
+            </div>
+
+            <div className="p-4 border border-gray-100 rounded-2xl bg-white space-y-2">
+              <h4 className="font-bold text-gray-900 border-b border-gray-100 pb-1.5 uppercase text-[10px] tracking-wider text-indigo-600">AI Routing Instructions</h4>
+              <div className="bg-indigo-50/50 p-3 rounded-lg border border-indigo-100 space-y-1.5">
+                <span className="font-bold text-indigo-950 block">AI Neural Placement Reason:</span>
+                <p className="text-slate-700 font-semibold leading-relaxed">{selectedTaskForModal.aiReason || 'Optimal slotting calculated based on frequency of access and product dimensions matching bin capacity.'}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-xs mt-3">
+                <div>Source Pickup: <span className="font-bold text-slate-800">{selectedTaskForModal.pickupLocation || 'Receiving Dock'}</span></div>
+                <div>Destination Bin: <span className="font-bold font-mono text-blue-700">{selectedTaskForModal.destinationBin || selectedTaskForModal.bin || 'BIN-002'}</span></div>
+                <div>Transit Route: <span className="font-bold text-slate-800">{selectedTaskForModal.routeSteps ? selectedTaskForModal.routeSteps.join(' → ') : 'Dock → Aisle 2 → Zone A → Target Bin'}</span></div>
+                <div>Estimated Duration: <span className="font-bold text-slate-800">{selectedTaskForModal.estimatedTime || '3.5 min'}</span></div>
+              </div>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

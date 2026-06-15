@@ -51,7 +51,7 @@ export default function RoutesOptimization() {
           <Navigation className="w-7 h-7 text-[#0071C1]" />
           Route Pathfinding Optimization
         </h1>
-        <p className="text-gray-500 text-sm mt-1">Review active operator transit lanes, optimize dispatch paths, and monitor aisle congestion levels.</p>
+        <p className="text-gray-500 text-sm mt-1">Review active staff transit lanes, optimize dispatch paths, and monitor aisle congestion levels.</p>
       </div>
 
       {/* KPI Cards */}
@@ -85,7 +85,7 @@ export default function RoutesOptimization() {
                     <TableHead>Origin / Destination</TableHead>
                     <TableHead>Distance</TableHead>
                     <TableHead>Est. Duration</TableHead>
-                    <TableHead>Operator</TableHead>
+                    <TableHead>Assigned Staff</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -186,6 +186,24 @@ export default function RoutesOptimization() {
                     <h4 className="font-semibold text-gray-900">{selectedRoute.to}</h4>
                     <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Final target bin destination</p>
                   </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100 pt-4 space-y-2.5">
+                <h4 className="font-bold text-gray-800 uppercase tracking-wider text-[10px]">Step-by-Step Route Instructions</h4>
+                <div className="space-y-2 pl-1">
+                  {[
+                    `Initialize transit pathing from origin ${selectedRoute.from}. Check AGV status.`,
+                    `Proceed straight along Main Transit Lane Alpha for 15 meters. Watch collision margins.`,
+                    `Turn right toward Zone ${selectedRoute.to.includes('A') ? 'A' : selectedRoute.to.includes('B') ? 'B' : 'C'}.`,
+                    `Enter target aisle coordinates and approach shelf rack level.`,
+                    `Halt at destination and execute task at target bin location ${selectedRoute.to}.`
+                  ].map((step, idx) => (
+                    <div key={idx} className="flex gap-2 items-start text-gray-600">
+                      <span className="font-bold text-gray-800 text-[10px] mt-0.5">{idx + 1}.</span>
+                      <span className="leading-relaxed">{step}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
 

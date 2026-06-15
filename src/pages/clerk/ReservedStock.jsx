@@ -3,10 +3,10 @@ import { useLocation } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
 import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
   CardDescription,
   Badge, 
   Button, 
@@ -16,9 +16,11 @@ import {
   TableRow, 
   TableHead, 
   TableCell, 
-  AlertBanner 
+  AlertBanner,
+  SearchFilterBar
 } from 'shared-ui';
-import { Package, Lock, Unlock, ShieldAlert, CheckCircle } from 'lucide-react';
+import { Package, Lock, Unlock, Clock, FileText } from 'lucide-react';
+import Pagination from '../../components/ui/Pagination';
 
 export default function ReservedStock() {
   const location = useLocation();
@@ -33,6 +35,12 @@ export default function ReservedStock() {
   // Form states
   const [selectedSku, setSelectedSku] = useState('');
   const [quantity, setQuantity] = useState('');
+  const [orderRef, setOrderRef] = useState('');
+
+  // Search and Pagination states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   
   // Notification states
   const [toastMessage, setToastMessage] = useState('');
@@ -45,6 +53,10 @@ export default function ReservedStock() {
       setSelectedSku(inventory[0].sku);
     }
   }, [location.state, inventory]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   const selectedItem = inventory.find(i => i.sku === selectedSku);
 
@@ -73,11 +85,12 @@ export default function ReservedStock() {
       return;
     }
 
-    const success = reserveStock(selectedSku, qty, user);
+    const success = reserveStock(selectedSku, qty, { ...user, orderRef: orderRef || 'N/A' });
 
     if (success) {
       showToast(`Successfully created hold of ${qty} units for SKU ${selectedSku}.`, 'success');
       setQuantity('');
+      setOrderRef('');
     } else {
       showToast('Failed to create reservation. Review available stock numbers.', 'error');
     }
@@ -91,6 +104,24 @@ export default function ReservedStock() {
       showToast('Failed to release reservation.', 'error');
     }
   };
+
+  // Filtered reservations
+  const filteredReservations = reservations.filter(res => {
+    const query = searchQuery.toLowerCase();
+    const ref = res.orderRef || res.orderReference || 'N/A';
+    return (
+      res.id.toLowerCase().includes(query) ||
+      res.sku.toLowerCase().includes(query) ||
+      res.product.toLowerCase().includes(query) ||
+      ref.toLowerCase().includes(query)
+    );
+  });
+
+  const totalPages = Math.ceil(filteredReservations.length / itemsPerPage);
+  const paginatedReservations = filteredReservations.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <div className="space-y-6">
@@ -114,7 +145,7 @@ export default function ReservedStock() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Left Side: Create Hold Form */}
+        {/* Left Side: Place Hold Form */}
         <div className="lg:col-span-1 space-y-6">
           <Card className="border border-gray-100 shadow-sm">
             <CardHeader className="bg-slate-50 border-b border-gray-100 pb-4">
@@ -182,6 +213,18 @@ export default function ReservedStock() {
                     required
                     min="1"
                   />
+                </div>
+
+                {/* Order Reference */}
+                <div className="space-y-1">
+                  <label className="text-gray-500 uppercase block text-[10px]">Order Reference / Client</label>
+                  <input 
+                    type="text"
+                    placeholder="e.g. ORD-98102 or Client A"
+                    value={orderRef}
+                    onChange={(e) => setOrderRef(e.target.value)}
+                    className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
+                  />
                   <p className="text-[10px] text-gray-400 font-normal italic mt-1">
                     Hold will lock this stock immediately, decrementing allocatable pools.
                   </p>
@@ -198,80 +241,121 @@ export default function ReservedStock() {
 
         {/* Right Side: Active Reservations List */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border border-gray-100 shadow-sm overflow-hidden h-full">
-            <CardHeader className="border-b border-gray-100 bg-slate-50/50 flex flex-row justify-between items-center pb-4">
-              <div>
-                <CardTitle className="text-base font-bold text-gray-900">Active Reservation Registry</CardTitle>
-                <CardDescription>Release allocations once outbound picking orders are finalized or shipped.</CardDescription>
+          <Card className="border border-gray-100 shadow-sm overflow-hidden h-full flex flex-col justify-between">
+            <div>
+              <CardHeader className="border-b border-gray-100 bg-slate-50/50 flex flex-row justify-between items-center pb-4">
+                <div>
+                  <CardTitle className="text-base font-bold text-gray-900">Active Reservation Registry</CardTitle>
+                  <CardDescription>Release allocations once outbound picking orders are finalized or shipped.</CardDescription>
+                </div>
+                <Badge variant="primary">{filteredReservations.length} Active holds</Badge>
+              </CardHeader>
+              <div className="p-4 border-b border-gray-100 bg-slate-50/10">
+                <SearchFilterBar 
+                  searchPlaceholder="Search active holds by ID, SKU, product, order reference..."
+                  searchValue={searchQuery}
+                  onSearchChange={setSearchQuery}
+                />
               </div>
-              <Badge variant="primary">{reservations.length} Active holds</Badge>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Hold ID</TableHead>
-                    <TableHead>Product / SKU</TableHead>
-                    <TableHead>Qty Reserved</TableHead>
-                    <TableHead>Reserved By</TableHead>
-                    <TableHead>Hold Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {reservations.length === 0 ? (
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-10 text-gray-500 text-sm font-medium">
-                        No active inventory holds are recorded at this time.
-                      </TableCell>
+                      <TableHead>Reservation ID</TableHead>
+                      <TableHead>SKU</TableHead>
+                      <TableHead>Product Title</TableHead>
+                      <TableHead>Reserved Quantity</TableHead>
+                      <TableHead>Order Reference</TableHead>
+                      <TableHead>Reserved Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
                     </TableRow>
-                  ) : (
-                    reservations.map((res) => (
-                      <TableRow key={res.id}>
-                        {/* Hold ID */}
-                        <TableCell className="font-bold text-gray-900 text-xs font-mono">
-                          {res.id}
-                        </TableCell>
-                        
-                        {/* Product SKU */}
-                        <TableCell>
-                          <div className="font-semibold text-gray-900 text-xs">{res.product}</div>
-                          <div className="text-[10px] text-gray-400 font-mono mt-0.5">{res.sku}</div>
-                        </TableCell>
-                        
-                        {/* Qty */}
-                        <TableCell className="font-bold text-purple-600 text-xs font-mono">
-                          {res.qty} units
-                        </TableCell>
-                        
-                        {/* Reserved By */}
-                        <TableCell className="text-xs text-gray-700 font-medium">
-                          {res.user}
-                        </TableCell>
-                        
-                        {/* Timestamp */}
-                        <TableCell className="text-xs text-gray-400">
-                          {new Date(res.timestamp).toLocaleDateString()} {new Date(res.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </TableCell>
-
-                        {/* Actions */}
-                        <TableCell className="text-right">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="text-[11px] h-7 px-2 font-medium border-purple-200 hover:bg-purple-50 text-purple-700"
-                            onClick={() => handleRelease(res.id)}
-                          >
-                            <Unlock className="w-3 h-3 mr-1" />
-                            Release Stock
-                          </Button>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedReservations.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-10 text-gray-500 text-sm font-medium">
+                          No active inventory holds are recorded at this time.
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
+                    ) : (
+                      paginatedReservations.map((res) => (
+                        <TableRow key={res.id} className="hover:bg-slate-50/20">
+                          {/* Reservation ID */}
+                          <TableCell className="font-bold text-gray-900 text-xs font-mono">
+                            {res.id}
+                          </TableCell>
+                          
+                          {/* SKU */}
+                          <TableCell className="font-mono text-[11px] text-gray-500">
+                            {res.sku}
+                          </TableCell>
+
+                          {/* Product Title */}
+                          <TableCell className="font-semibold text-gray-900 text-xs">
+                            {res.product}
+                          </TableCell>
+                          
+                          {/* Reserved Quantity */}
+                          <TableCell className="font-bold text-purple-600 text-xs font-mono text-center">
+                            {res.qty}
+                          </TableCell>
+                          
+                          {/* Order Reference */}
+                          <TableCell className="text-xs text-gray-700 font-medium">
+                            <span className="flex items-center gap-1">
+                              <FileText className="w-3.5 h-3.5 text-gray-400" />
+                              {res.orderRef || res.orderReference || 'N/A'}
+                            </span>
+                          </TableCell>
+                          
+                          {/* Reserved Date */}
+                          <TableCell className="text-xs text-gray-400 font-mono whitespace-nowrap">
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3.5 h-3.5 text-gray-400" />
+                              {new Date(res.timestamp).toISOString().split('T')[0]}
+                            </span>
+                          </TableCell>
+
+                          {/* Status */}
+                          <TableCell>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border border-purple-200 bg-purple-50 text-purple-700 uppercase">
+                              {res.status || 'Active'}
+                            </span>
+                          </TableCell>
+
+                          {/* Action */}
+                          <TableCell className="text-right">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-[11px] h-7 px-2 font-medium border-purple-200 hover:bg-purple-50 text-purple-700"
+                              onClick={() => handleRelease(res.id)}
+                            >
+                              <Unlock className="w-3.5 h-3.5 mr-1" />
+                              Release
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </div>
+            
+            {/* Pagination Placement */}
+            {totalPages > 1 && (
+              <div className="p-4 border-t border-gray-100">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={filteredReservations.length}
+                  pageSize={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
           </Card>
         </div>
 

@@ -1,13 +1,22 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
-import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import StatCard from '../components/dashboard/StatCard';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
-import StatusBadge from '../components/ui/StatusBadge';
-import SearchFilterBar from '../components/ui/SearchFilterBar';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
-import { ShieldCheck, Download, Filter, Clock } from 'lucide-react';
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle, 
+  Button, 
+  Badge, 
+  StatusBadge, 
+  SearchFilterBar, 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from 'shared-ui';
+import { ShieldCheck, Download, Clock } from 'lucide-react';
 import Pagination from '../components/ui/Pagination';
 
 export default function AuditLogs() {
@@ -59,8 +68,9 @@ export default function AuditLogs() {
         <CardContent className="p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
           <div className="flex-1 w-full">
             <SearchFilterBar 
-              placeholder="Search logs by action, email, description..." 
-              onSearch={(val) => setSearchQuery(val)} 
+              searchPlaceholder="Search logs by action, email, description..." 
+              searchValue={searchQuery}
+              onSearchChange={setSearchQuery} 
             />
           </div>
           <div className="flex gap-2 w-full md:w-auto shrink-0 justify-end text-xs">
@@ -106,7 +116,7 @@ export default function AuditLogs() {
                   </TableCell>
                   <TableCell>
                     <div className="font-semibold text-gray-900 text-xs">{log.user}</div>
-                    <div className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">{log.role || 'Operator'}</div>
+                    <div className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">{log.role || 'Staff'}</div>
                   </TableCell>
                   <TableCell className="text-gray-600 text-xs font-bold">{log.module}</TableCell>
                   <TableCell>

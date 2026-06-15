@@ -28,8 +28,8 @@ export default function StockAdjustment() {
   // Selected item states
   const [selectedSku, setSelectedSku] = useState('');
   const [qtyDelta, setQtyDelta] = useState('');
-  const [reason, setReason] = useState('Cycle Count');
-  const [customReason, setCustomReason] = useState('');
+  const [reason, setReason] = useState('Manual correction');
+  const [notes, setNotes] = useState('');
   
   // Toast notifications
   const [toastMessage, setToastMessage] = useState('');
@@ -71,13 +71,13 @@ export default function StockAdjustment() {
       return;
     }
 
-    const submitReason = reason === 'Other' ? customReason : reason;
-    const success = adjustStock(selectedSku, delta, user, submitReason || 'Manual adjustment');
+    const submitReason = `${reason}${notes.trim() ? ` - ${notes.trim()}` : ''}`;
+    const success = adjustStock(selectedSku, delta, user, submitReason);
 
     if (success) {
       showToast(`Stock for ${selectedSku} adjusted by ${delta > 0 ? '+' : ''}${delta} successfully!`, 'success');
       setQtyDelta('');
-      setCustomReason('');
+      setNotes('');
     } else {
       showToast('Failed to perform stock adjustment. Check inventory logs.', 'error');
     }
@@ -175,28 +175,26 @@ export default function StockAdjustment() {
                     onChange={(e) => setReason(e.target.value)}
                     className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
                   >
-                    <option value="Cycle Count">Cycle Count Audit</option>
-                    <option value="Receiving Discrepancy">Receiving Verification Error</option>
-                    <option value="Quarantine Adjustment">Damaged write-off discrepancy</option>
-                    <option value="Relocation Loss">Relocation shrinkage</option>
-                    <option value="Other">Other (Specify below)</option>
+                    <option value="OCR correction">OCR correction</option>
+                    <option value="Physical count mismatch">Physical count mismatch</option>
+                    <option value="Damaged item">Damaged item</option>
+                    <option value="Returned item">Returned item</option>
+                    <option value="Manual correction">Manual correction</option>
+                    <option value="Reserved stock correction">Reserved stock correction</option>
                   </select>
                 </div>
 
-                {/* Custom Reason Field */}
-                {reason === 'Other' && (
-                  <div className="space-y-1 animate-fadeIn">
-                    <label className="text-gray-500 uppercase block text-[10px]">Specify Reason</label>
-                    <input 
-                      type="text"
-                      placeholder="Specify the reason..."
-                      value={customReason}
-                      onChange={(e) => setCustomReason(e.target.value)}
-                      className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
-                      required
-                    />
-                  </div>
-                )}
+                {/* Notes log field */}
+                <div className="space-y-1">
+                  <label className="text-gray-500 uppercase block text-[10px]">Audit Notes / Explanation</label>
+                  <input 
+                    type="text"
+                    placeholder="Specify detailed reason or notes..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
+                  />
+                </div>
 
                 <Button type="submit" className="w-full justify-center mt-2">
                   Apply Adjustment

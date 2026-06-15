@@ -14,7 +14,7 @@ import { Settings, Save, RefreshCw, Sliders, Bell, Cpu, ShieldCheck } from 'luci
 
 export default function WarehouseSettings() {
   const { user } = useAuth();
-  const { logAudit } = useWarehouse();
+  const { logAudit, warehouses, zones, racks, shelves, bins } = useWarehouse();
   const [toastMessage, setToastMessage] = useState('');
 
   const showToast = (msg) => {
@@ -23,6 +23,9 @@ export default function WarehouseSettings() {
   };
 
   // State values for system parameters
+  const [systemName, setSystemName] = useState('WarehouseAI Platform');
+  const [sessionTimeout, setSessionTimeout] = useState(30);
+  const [themeMode, setThemeMode] = useState('System Default');
   const [capacityThreshold, setCapacityThreshold] = useState(85);
   const [reorderLevelDefault, setReorderLevelDefault] = useState(10);
   const [agvSpeedLimit, setAgvSpeedLimit] = useState(1.8);
@@ -39,12 +42,15 @@ export default function WarehouseSettings() {
       'ADMIN',
       'SYSTEM_SETTINGS_UPDATE',
       'Settings',
-      `Updated platform global settings parameters (Threshold: ${capacityThreshold}%, AGV Speed: ${agvSpeedLimit} m/s, Algorithm: ${roboticAlgorithm})`
+      `Updated platform global settings parameters (System: ${systemName}, Threshold: ${capacityThreshold}%, AGV Speed: ${agvSpeedLimit} m/s, Theme: ${themeMode})`
     );
     showToast('Platform global configurations saved successfully!');
   };
 
   const handleResetSettings = () => {
+    setSystemName('WarehouseAI Platform');
+    setSessionTimeout(30);
+    setThemeMode('System Default');
     setCapacityThreshold(85);
     setReorderLevelDefault(10);
     setAgvSpeedLimit(1.8);
@@ -89,6 +95,94 @@ export default function WarehouseSettings() {
         {/* Left Columns - Inputs Fields */}
         <div className="lg:col-span-2 space-y-6 text-xs font-semibold text-gray-700">
           
+          {/* Platform branding, session & theme */}
+          <Card className="border border-gray-100 shadow-sm">
+            <CardHeader className="border-b border-gray-100 bg-slate-50/50 pb-4">
+              <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-[#0071C1]" />
+                Platform Configurations
+              </CardTitle>
+              <CardDescription>Adjust system branding, authentication session variables, and theme mode.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* System Name */}
+                <div className="space-y-1">
+                  <label className="text-gray-500 uppercase tracking-wide block text-[10px]">System Platform Name</label>
+                  <input 
+                    type="text"
+                    value={systemName}
+                    onChange={(e) => setSystemName(e.target.value)}
+                    className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50 text-xs"
+                    required
+                  />
+                </div>
+                {/* Session Timeout */}
+                <div className="space-y-1">
+                  <label className="text-gray-500 uppercase tracking-wide block text-[10px]">Session Timeout</label>
+                  <select 
+                    value={sessionTimeout} 
+                    onChange={(e) => setSessionTimeout(Number(e.target.value))}
+                    className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50 text-xs"
+                  >
+                    <option value={15}>15 Minutes</option>
+                    <option value={30}>30 Minutes</option>
+                    <option value={60}>60 Minutes</option>
+                    <option value={120}>120 Minutes</option>
+                  </select>
+                </div>
+                {/* Theme Mode */}
+                <div className="space-y-1">
+                  <label className="text-gray-500 uppercase tracking-wide block text-[10px]">Theme Mode</label>
+                  <select 
+                    value={themeMode} 
+                    onChange={(e) => setThemeMode(e.target.value)}
+                    className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50 text-xs animate-none"
+                  >
+                    <option value="Light Mode">Light Mode</option>
+                    <option value="Dark Mode">Dark Mode (Premium)</option>
+                    <option value="System Default">System Default</option>
+                  </select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Warehouse Configuration Overview */}
+          <Card className="border border-gray-100 shadow-sm">
+            <CardHeader className="border-b border-gray-100 bg-slate-50/50 pb-4">
+              <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-indigo-600" />
+                Warehouse Layout Configuration Overview
+              </CardTitle>
+              <CardDescription>Read-only summary of the current active physical facilities layout configuration.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-center">
+                <div className="p-3 bg-slate-50 border border-gray-100 rounded-xl">
+                  <div className="text-lg font-extrabold text-slate-800">{warehouses.length}</div>
+                  <div className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Warehouses</div>
+                </div>
+                <div className="p-3 bg-slate-50 border border-gray-100 rounded-xl">
+                  <div className="text-lg font-extrabold text-[#0071C1]">{zones.length}</div>
+                  <div className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Zones</div>
+                </div>
+                <div className="p-3 bg-slate-50 border border-gray-100 rounded-xl">
+                  <div className="text-lg font-extrabold text-teal-600">{racks.length}</div>
+                  <div className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Racks</div>
+                </div>
+                <div className="p-3 bg-slate-50 border border-gray-100 rounded-xl">
+                  <div className="text-lg font-extrabold text-purple-600">{shelves.length}</div>
+                  <div className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Shelves</div>
+                </div>
+                <div className="p-3 bg-slate-50 border border-gray-100 rounded-xl">
+                  <div className="text-lg font-extrabold text-amber-600">{bins.length}</div>
+                  <div className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Bins</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Storage capacity parameters */}
           <Card className="border border-gray-100 shadow-sm">
             <CardHeader className="border-b border-gray-100 bg-slate-50/50 pb-4">
@@ -111,7 +205,7 @@ export default function WarehouseSettings() {
                       max="98"
                       value={capacityThreshold}
                       onChange={(e) => setCapacityThreshold(e.target.value)}
-                      className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
+                      className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50 text-xs"
                       required
                     />
                     <span className="text-slate-400">%</span>
@@ -127,7 +221,7 @@ export default function WarehouseSettings() {
                     min="1"
                     value={reorderLevelDefault}
                     onChange={(e) => setReorderLevelDefault(e.target.value)}
-                    className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
+                    className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50 text-xs"
                     required
                   />
                   <span className="text-[10px] text-gray-400 block mt-0.5">Fallback inventory limit that triggers restocking procurement flows.</span>
@@ -160,7 +254,7 @@ export default function WarehouseSettings() {
                       max="3.0"
                       value={agvSpeedLimit}
                       onChange={(e) => setAgvSpeedLimit(e.target.value)}
-                      className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
+                      className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50 text-xs"
                       required
                     />
                     <span className="text-slate-400">m/s</span>
@@ -179,7 +273,7 @@ export default function WarehouseSettings() {
                       max="1.5"
                       value={agvCollisionBuffer}
                       onChange={(e) => setAgvCollisionBuffer(e.target.value)}
-                      className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
+                      className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50 text-xs"
                       required
                     />
                     <span className="text-slate-400">m</span>
@@ -193,7 +287,7 @@ export default function WarehouseSettings() {
                   <select 
                     value={roboticAlgorithm} 
                     onChange={(e) => setRoboticAlgorithm(e.target.value)}
-                    className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
+                    className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50 text-xs"
                   >
                     <option value="Dynamic-AStar">Dynamic A* (Optimal Shortest Path + Recalculate)</option>
                     <option value="Static-Dijkstra">Static Dijkstra (Consistent Paths, Static Obstacles)</option>
@@ -212,7 +306,7 @@ export default function WarehouseSettings() {
         <div className="space-y-6">
           
           {/* Notifications config */}
-          <Card className="border border-gray-100 shadow-sm">
+          <Card className="border border-gray-150 shadow-sm">
             <CardHeader className="border-b border-gray-100 pb-4">
               <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
                 <Bell className="w-5 h-5 text-amber-500" />
@@ -270,7 +364,7 @@ export default function WarehouseSettings() {
                 <select 
                   value={auditRetentionDays} 
                   onChange={(e) => setAuditRetentionDays(Number(e.target.value))}
-                  className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
+                  className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50 text-xs"
                 >
                   <option value={30}>30 Days (Compact Storage)</option>
                   <option value={90}>90 Days (Recommended)</option>
@@ -284,7 +378,7 @@ export default function WarehouseSettings() {
           {/* Submit Actions */}
           <Card className="border border-gray-100 shadow-sm bg-gradient-to-b from-white to-slate-50">
             <CardContent className="p-4 space-y-3">
-              <Button type="submit" className="w-full py-3 justify-center font-bold text-xs gap-2">
+              <Button type="submit" className="w-full py-3 justify-center font-bold text-xs gap-2 bg-[#0071C1] hover:bg-[#005c9e] text-white">
                 <Save className="w-4 h-4" />
                 Commit Settings Configuration
               </Button>

@@ -10,17 +10,17 @@ import Pagination from '../components/ui/Pagination';
 const mockUsers = [
   { id: 'USR-01', name: 'Sarah Jenkins', email: 's.jenkins@warehouse.ai', role: 'admin', warehouse: 'All Facilities', status: 'active' },
   { id: 'USR-02', name: 'Michael Chen', email: 'm.chen@warehouse.ai', role: 'manager', warehouse: 'Central Fulfillment A', status: 'active' },
-  { id: 'USR-03', name: 'David Rodriguez', email: 'd.rodriguez@warehouse.ai', role: 'operator', warehouse: 'East Coast Distribution', status: 'active' },
-  { id: 'USR-04', name: 'Emma Wilson', email: 'e.wilson@warehouse.ai', role: 'operator', warehouse: 'West Coast Hub', status: 'inactive' },
-  { id: 'USR-05', name: 'James Taylor', email: 'j.taylor@warehouse.ai', role: 'viewer', warehouse: 'All Facilities', status: 'active' },
-  { id: 'USR-06', name: 'Alex Johnson', email: 'a.johnson@warehouse.ai', role: 'operator', warehouse: 'Central Fulfillment A', status: 'active' },
-  { id: 'USR-07', name: 'Sophia Martinez', email: 's.martinez@warehouse.ai', role: 'operator', warehouse: 'Central Fulfillment A', status: 'active' },
-  { id: 'USR-08', name: 'Liam Davies', email: 'l.davies@warehouse.ai', role: 'operator', warehouse: 'East Coast Distribution', status: 'active' },
+  { id: 'USR-03', name: 'David Rodriguez', email: 'd.rodriguez@warehouse.ai', role: 'staff', warehouse: 'East Coast Distribution', status: 'active' },
+  { id: 'USR-04', name: 'Emma Wilson', email: 'e.wilson@warehouse.ai', role: 'staff', warehouse: 'West Coast Hub', status: 'inactive' },
+  { id: 'USR-05', name: 'James Taylor', email: 'j.taylor@warehouse.ai', role: 'clerk', warehouse: 'All Facilities', status: 'active' },
+  { id: 'USR-06', name: 'Alex Johnson', email: 'a.johnson@warehouse.ai', role: 'staff', warehouse: 'Central Fulfillment A', status: 'active' },
+  { id: 'USR-07', name: 'Sophia Martinez', email: 's.martinez@warehouse.ai', role: 'staff', warehouse: 'Central Fulfillment A', status: 'active' },
+  { id: 'USR-08', name: 'Liam Davies', email: 'l.davies@warehouse.ai', role: 'staff', warehouse: 'East Coast Distribution', status: 'active' },
   { id: 'USR-09', name: 'Olivia Brown', email: 'o.brown@warehouse.ai', role: 'manager', warehouse: 'West Coast Hub', status: 'active' },
-  { id: 'USR-10', name: 'Noah Wilson', email: 'n.wilson@warehouse.ai', role: 'operator', warehouse: 'Central Fulfillment A', status: 'inactive' },
-  { id: 'USR-11', name: 'Isabella Taylor', email: 'i.taylor@warehouse.ai', role: 'viewer', warehouse: 'East Coast Distribution', status: 'active' },
-  { id: 'USR-12', name: 'Lucas Thomas', email: 'l.thomas@warehouse.ai', role: 'operator', warehouse: 'West Coast Hub', status: 'active' },
-  { id: 'USR-13', name: 'Mia White', email: 'm.white@warehouse.ai', role: 'operator', warehouse: 'Central Fulfillment A', status: 'active' },
+  { id: 'USR-10', name: 'Noah Wilson', email: 'n.wilson@warehouse.ai', role: 'staff', warehouse: 'Central Fulfillment A', status: 'inactive' },
+  { id: 'USR-11', name: 'Isabella Taylor', email: 'i.taylor@warehouse.ai', role: 'clerk', warehouse: 'East Coast Distribution', status: 'active' },
+  { id: 'USR-12', name: 'Lucas Thomas', email: 'l.thomas@warehouse.ai', role: 'staff', warehouse: 'West Coast Hub', status: 'active' },
+  { id: 'USR-13', name: 'Mia White', email: 'm.white@warehouse.ai', role: 'staff', warehouse: 'Central Fulfillment A', status: 'active' },
 ];
 
 export default function UsersRoles() {
@@ -61,7 +61,7 @@ export default function UsersRoles() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard title="Total Users" value={String(mockUsers.length)} icon={Users} trend={2} trendLabel="new this month" />
-        <StatCard title="Active Operators" value={String(mockUsers.filter(u => u.role === 'operator' && u.status === 'active').length)} icon={CheckCircle} />
+        <StatCard title="Active Staff" value={String(mockUsers.filter(u => u.role === 'staff' && u.status === 'active').length)} icon={CheckCircle} />
         <StatCard title="Pending Invites" value="5" icon={Mail} />
       </div>
 
@@ -101,7 +101,7 @@ export default function UsersRoles() {
                 </TableCell>
                 <TableCell>
                   <Badge 
-                    variant={user.role === 'admin' ? 'primary' : user.role === 'manager' ? 'secondary' : 'default'}
+                    variant={user.role === 'admin' ? 'primary' : user.role === 'manager' ? 'secondary' : user.role === 'clerk' ? 'warning' : 'default'}
                     className="capitalize"
                   >
                     {user.role}

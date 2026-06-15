@@ -48,9 +48,9 @@ export default function AdminDashboard() {
 
   // Mock Admin Dashboard Data
   const adminKpis = [
-    { title: 'Total Registered Users', value: '5', icon: Users, subtitle: 'Across 5 access roles' },
-    { title: 'Active System Users', value: '4', icon: UserCheck, subtitle: '92% activity index', trend: 'up', trendValue: '+10%' },
-    { title: 'Security Roles Active', value: '5', icon: Shield, subtitle: 'Role-based access active' },
+    { title: 'Total Registered Users', value: '4', icon: Users, subtitle: 'Across 4 access roles' },
+    { title: 'Active System Users', value: '4', icon: UserCheck, subtitle: '100% activity index', trend: 'up', trendValue: '+10%' },
+    { title: 'Security Roles Active', value: '4', icon: Shield, subtitle: 'Role-based access active' },
     { title: 'Total Sessions Today', value: '24', icon: Fingerprint, subtitle: 'Avg 4.2 hrs per session' },
     { title: 'Failed Login Retries', value: '0', icon: Lock, subtitle: 'Secure perimeter active' },
     { title: 'System Service Status', value: '99.9%', icon: Activity, subtitle: 'ALL SYSTEMS OPERATIONAL', trend: 'neutral', trendValue: 'Healthy' },
@@ -210,10 +210,10 @@ export default function AdminDashboard() {
                 <div className="space-y-1 text-xs">
                   <div className="flex justify-between font-bold text-gray-700">
                     <span>ADMINISTRATORS (ADMIN)</span>
-                    <span>20% (1 User)</span>
+                    <span>25% (1 User)</span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div className="h-2 rounded-full bg-slate-900" style={{ width: '20%' }}></div>
+                    <div className="h-2 rounded-full bg-slate-900" style={{ width: '25%' }}></div>
                   </div>
                 </div>
 
@@ -221,21 +221,21 @@ export default function AdminDashboard() {
                 <div className="space-y-1 text-xs">
                   <div className="flex justify-between font-bold text-gray-700">
                     <span>WAREHOUSE MANAGERS (MANAGER)</span>
-                    <span>20% (1 User)</span>
+                    <span>25% (1 User)</span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div className="h-2 rounded-full bg-[#0071C1]" style={{ width: '20%' }}></div>
+                    <div className="h-2 rounded-full bg-[#0071C1]" style={{ width: '25%' }}></div>
                   </div>
                 </div>
 
                 {/* Staff Distribution */}
                 <div className="space-y-1 text-xs">
                   <div className="flex justify-between font-bold text-gray-700">
-                    <span>WAREHOUSE OPERATORS (STAFF)</span>
-                    <span>20% (1 User)</span>
+                    <span>WAREHOUSE STAFF (STAFF)</span>
+                    <span>25% (1 User)</span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div className="h-2 rounded-full bg-blue-500" style={{ width: '20%' }}></div>
+                    <div className="h-2 rounded-full bg-blue-500" style={{ width: '25%' }}></div>
                   </div>
                 </div>
 
@@ -243,21 +243,10 @@ export default function AdminDashboard() {
                 <div className="space-y-1 text-xs">
                   <div className="flex justify-between font-bold text-gray-700">
                     <span>INVENTORY CLERKS (INVENTORY_CLERK)</span>
-                    <span>20% (1 User)</span>
+                    <span>25% (1 User)</span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div className="h-2 rounded-full bg-purple-500" style={{ width: '20%' }}></div>
-                  </div>
-                </div>
-
-                {/* Route Operator Distribution */}
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between font-bold text-gray-700">
-                    <span>AGV ROUTE OPERATORS (OPERATOR)</span>
-                    <span>20% (1 User)</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div className="h-2 rounded-full bg-teal-500" style={{ width: '20%' }}></div>
+                    <div className="h-2 rounded-full bg-purple-500" style={{ width: '25%' }}></div>
                   </div>
                 </div>
 

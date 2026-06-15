@@ -4,8 +4,7 @@ export const mockUsers = [
   { name: 'Warehouse Manager', email: 'manager@warehouseai.com', password: 'Manager@123', role: 'MANAGER' },
   { name: 'Warehouse Staff', email: 'staff@warehouseai.com', password: 'Staff@123', role: 'STAFF' },
   { name: 'Inventory Clerk', email: 'inventory@warehouseai.com', password: 'Inventory@123', role: 'INVENTORY_CLERK' },
-  { name: 'System Admin', email: 'admin@warehouseai.com', password: 'Admin@123', role: 'ADMIN' },
-  { name: 'AGV Operator', email: 'operator@warehouseai.com', password: 'Operator@123', role: 'OPERATOR' }
+  { name: 'System Admin', email: 'admin@warehouseai.com', password: 'Admin@123', role: 'ADMIN' }
 ];
 
 const AuthContext = createContext();
@@ -17,7 +16,13 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const storedUser = localStorage.getItem('warehouseUser');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      const parsedUser = JSON.parse(storedUser);
+      if (parsedUser && parsedUser.role === 'OPERATOR') {
+        localStorage.removeItem('warehouseUser');
+        setUser(null);
+      } else {
+        setUser(parsedUser);
+      }
     }
     setLoading(false);
   }, []);

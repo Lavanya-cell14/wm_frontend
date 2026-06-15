@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
 import { 
@@ -18,6 +18,8 @@ import {
   AlertBanner,
   SearchFilterBar
 } from 'shared-ui';
+import Modal from '../../components/ui/Modal';
+import Pagination from '../../components/ui/Pagination';
 import { Users, Plus, Mail, CheckCircle2, XCircle, Lock, Edit2, ShieldAlert, KeyRound } from 'lucide-react';
 
 export default function UserManagement() {
@@ -27,6 +29,12 @@ export default function UserManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('success');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -169,6 +177,9 @@ export default function UserManagement() {
     u.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const paginatedUsers = filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   return (
     <div className="space-y-6">
       {/* Toast Notification */}
@@ -227,14 +238,14 @@ export default function UserManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.length === 0 ? (
+              {paginatedUsers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-12 text-gray-500 text-sm font-medium">
                     No active user accounts found matching query.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredUsers.map((user) => {
+                paginatedUsers.map((user) => {
                   let roleBadge = 'default';
                   if (user.role === 'ADMIN') roleBadge = 'error';
                   else if (user.role === 'MANAGER') roleBadge = 'primary';
@@ -325,113 +336,114 @@ export default function UserManagement() {
               )}
             </TableBody>
           </Table>
+          <div className="p-4">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredUsers.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+            />
+          </div>
         </CardContent>
       </Card>
 
       {/* Edit/Add Modal Drawer */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-gray-100 overflow-hidden transform scale-100 transition-all duration-300">
-            <div className="p-6 bg-slate-50 border-b border-gray-100">
-              <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                <Users className="w-5 h-5 text-[#0071C1]" />
-                {modalMode === 'add' ? 'Provision New User' : 'Edit User Settings'}
-              </h3>
-              <p className="text-[11px] text-gray-500 mt-1">
-                Establish or modify account metadata access constraints.
-              </p>
+        <Modal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          title={modalMode === 'add' ? 'Provision New User' : 'Edit User Settings'}
+          maxWidth="max-w-md"
+        >
+          <form onSubmit={handleFormSubmit} className="space-y-4 text-xs font-semibold text-gray-700">
+            {/* Full Name */}
+            <div className="space-y-1">
+              <label className="text-gray-500 uppercase tracking-wide block text-[10px]">Full Name</label>
+              <input 
+                type="text"
+                placeholder="e.g. Liam Sterling"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
+                required
+              />
             </div>
 
-            <form onSubmit={handleFormSubmit} className="p-6 space-y-4 text-xs font-semibold text-gray-700">
-              {/* Full Name */}
-              <div className="space-y-1">
-                <label className="text-gray-500 uppercase tracking-wide block text-[10px]">Full Name</label>
-                <input 
-                  type="text"
-                  placeholder="e.g. Liam Sterling"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
-                  required
-                />
-              </div>
+            {/* Email Address */}
+            <div className="space-y-1">
+              <label className="text-gray-500 uppercase tracking-wide block text-[10px]">Email Address</label>
+              <input 
+                type="email"
+                placeholder="e.g. l.sterling@warehouseai.com"
+                value={formEmail}
+                onChange={(e) => setFormEmail(e.target.value)}
+                className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
+                required
+              />
+            </div>
 
-              {/* Email Address */}
-              <div className="space-y-1">
-                <label className="text-gray-500 uppercase tracking-wide block text-[10px]">Email Address</label>
-                <input 
-                  type="email"
-                  placeholder="e.g. l.sterling@warehouseai.com"
-                  value={formEmail}
-                  onChange={(e) => setFormEmail(e.target.value)}
-                  className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
-                  required
-                />
-              </div>
+            {/* Role */}
+            <div className="space-y-1">
+              <label className="text-gray-500 uppercase tracking-wide block text-[10px]">Security Role Profile</label>
+              <select 
+                value={formRole} 
+                onChange={(e) => setFormRole(e.target.value)}
+                className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
+              >
+                <option value="ADMIN">ADMIN (System Control)</option>
+                <option value="MANAGER">MANAGER (Fulfillment Control)</option>
+                <option value="STAFF">STAFF (Floor Operations)</option>
+                <option value="INVENTORY_CLERK">INVENTORY_CLERK (Quarantines & Audits)</option>
+              </select>
+            </div>
 
-              {/* Role */}
-              <div className="space-y-1">
-                <label className="text-gray-500 uppercase tracking-wide block text-[10px]">Security Role Profile</label>
-                <select 
-                  value={formRole} 
-                  onChange={(e) => setFormRole(e.target.value)}
-                  className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
-                >
-                  <option value="ADMIN">ADMIN (System Control)</option>
-                  <option value="MANAGER">MANAGER (Fulfillment Control)</option>
-                  <option value="STAFF">STAFF (Floor Operations)</option>
-                  <option value="INVENTORY_CLERK">INVENTORY_CLERK (Quarantines & Audits)</option>
-                  <option value="OPERATOR">OPERATOR (AGV Paths & Heavy Load)</option>
-                </select>
-              </div>
+            {/* Warehouse Assignment */}
+            <div className="space-y-1">
+              <label className="text-gray-500 uppercase tracking-wide block text-[10px]">Assigned Warehouse</label>
+              <select 
+                value={formWarehouse} 
+                onChange={(e) => setFormWarehouse(e.target.value)}
+                className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
+              >
+                <option value="All Facilities">All Facilities (Global Admin)</option>
+                <option value="Central Fulfillment A">Central Fulfillment A</option>
+                <option value="East Coast Distribution">East Coast Distribution</option>
+                <option value="West Coast Hub">West Coast Hub</option>
+              </select>
+            </div>
 
-              {/* Warehouse Assignment */}
-              <div className="space-y-1">
-                <label className="text-gray-500 uppercase tracking-wide block text-[10px]">Assigned Warehouse</label>
-                <select 
-                  value={formWarehouse} 
-                  onChange={(e) => setFormWarehouse(e.target.value)}
-                  className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
-                >
-                  <option value="All Facilities">All Facilities (Global Admin)</option>
-                  <option value="Central Fulfillment A">Central Fulfillment A</option>
-                  <option value="East Coast Distribution">East Coast Distribution</option>
-                  <option value="West Coast Hub">West Coast Hub</option>
-                </select>
-              </div>
+            {/* Status */}
+            <div className="space-y-1">
+              <label className="text-gray-500 uppercase tracking-wide block text-[10px]">Activation Status</label>
+              <select 
+                value={formStatus} 
+                onChange={(e) => setFormStatus(e.target.value)}
+                className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
+              >
+                <option value="Active">Active Account (Full Sync)</option>
+                <option value="Inactive">Inactive Account (Locked Access)</option>
+              </select>
+            </div>
 
-              {/* Status */}
-              <div className="space-y-1">
-                <label className="text-gray-500 uppercase tracking-wide block text-[10px]">Activation Status</label>
-                <select 
-                  value={formStatus} 
-                  onChange={(e) => setFormStatus(e.target.value)}
-                  className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
-                >
-                  <option value="Active">Active Account (Full Sync)</option>
-                  <option value="Inactive">Inactive Account (Locked Access)</option>
-                </select>
-              </div>
+            {/* Footer */}
+            <div className="flex gap-2.5 justify-end pt-4 border-t border-gray-100">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit"
+              >
+                {modalMode === 'add' ? 'Provision User' : 'Save Profiles'}
+              </Button>
+            </div>
 
-              {/* Footer */}
-              <div className="flex gap-2.5 justify-end pt-4 border-t border-gray-100">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit"
-                >
-                  {modalMode === 'add' ? 'Provision User' : 'Save Profiles'}
-                </Button>
-              </div>
-
-            </form>
-          </div>
-        </div>
+          </form>
+        </Modal>
       )}
     </div>
   );

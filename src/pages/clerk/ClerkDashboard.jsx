@@ -32,7 +32,11 @@ import {
   ArrowRight, 
   ShieldAlert, 
   TrendingUp, 
-  RefreshCw 
+  RefreshCw,
+  UploadCloud,
+  CheckSquare,
+  ArrowDownToLine,
+  FileText
 } from 'lucide-react';
 
 export default function ClerkDashboard() {
@@ -43,6 +47,8 @@ export default function ClerkDashboard() {
     movements, 
     reservations, 
     damagedRecords,
+    ocrDocuments = [],
+    inboundReceipts = [],
     kpis 
   } = useWarehouse();
 
@@ -54,6 +60,11 @@ export default function ClerkDashboard() {
   };
 
   // Calculations
+  const pendingOcr = ocrDocuments.filter(d => ['OCR_UPLOADED', 'OCR_PROCESSING', 'VERIFICATION_PENDING'].includes(d.status)).length;
+  const verificationPending = ocrDocuments.filter(d => d.status === 'VERIFICATION_PENDING').length;
+  const verifiedToday = ocrDocuments.filter(d => d.status === 'VERIFIED').length;
+  const inboundWaitingBin = inboundReceipts.filter(r => r.status === 'WAITING_FOR_BIN_ASSIGNMENT').length;
+
   const totalStock = inventory.reduce((sum, i) => sum + i.quantity, 0);
   const reservedStock = inventory.reduce((sum, i) => sum + (i.reserved || 0), 0);
   const damagedStock = inventory.reduce((sum, i) => sum + (i.damaged || 0), 0);
@@ -61,12 +72,15 @@ export default function ClerkDashboard() {
   const lowStockItems = inventory.filter(i => i.quantity <= i.reorderLevel);
 
   const quickActions = [
-    { name: 'Inventory List', path: '/inventory/list', icon: Box, desc: 'View and filter all stock', color: 'from-blue-500 to-indigo-500' },
-    { name: 'Stock Adjustment', path: '/inventory/adjust', icon: Wrench, desc: 'Manually adjust stock counts', color: 'from-amber-500 to-orange-500' },
-    { name: 'Damaged Stock', path: '/inventory/damaged', icon: AlertTriangle, desc: 'Report and write-off damage', color: 'from-rose-500 to-red-500' },
+    { name: 'Inbound OCR Upload', path: '/ocr-upload', icon: UploadCloud, desc: 'Upload warehouse documents', color: 'from-blue-500 to-indigo-500' },
+    { name: 'OCR Verification', path: '/ocr-verification', icon: CheckSquare, desc: 'Verify extracted document details', color: 'from-indigo-500 to-purple-500' },
+    { name: 'Inbound Products', path: '/inventory/inbound', icon: ArrowDownToLine, desc: 'View received inbound receipts', color: 'from-pink-500 to-rose-500' },
+    { name: 'Inventory List', path: '/inventory/list', icon: Box, desc: 'View and filter all stock', color: 'from-emerald-500 to-teal-500' },
+    { name: 'Stock Adjustment', path: '/inventory/adjust', icon: Wrench, desc: 'Adjust stock quantities & logs', color: 'from-amber-500 to-orange-500' },
+    { name: 'Damaged Stock', path: '/inventory/damaged', icon: AlertTriangle, desc: 'Track and quarantine damaged stock', color: 'from-rose-500 to-red-500' },
     { name: 'Reserved Stock', path: '/inventory/reserved', icon: Package, desc: 'Hold inventory for orders', color: 'from-purple-500 to-pink-500' },
-    { name: 'Product Lookup', path: '/inventory/lookup', icon: Search, desc: 'Lookup item details & map', color: 'from-teal-500 to-emerald-500' },
-    { name: 'Movement History', path: '/inventory/movements', icon: Activity, desc: 'Audit log of all stock moves', color: 'from-slate-700 to-slate-800' },
+    { name: 'Product Lookup', path: '/inventory/lookup', icon: Search, desc: 'Lookup item details & coordinates', color: 'from-teal-500 to-emerald-500' },
+    { name: 'Inventory Movements', path: '/inventory/movements', icon: Activity, desc: 'Audit log of all stock moves', color: 'from-slate-700 to-slate-800' },
   ];
 
   return (
@@ -97,35 +111,68 @@ export default function ClerkDashboard() {
         </div>
       </div>
 
-      {/* KPI Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard 
-          title="Total Stock Units" 
-          value={totalStock} 
-          icon={Box} 
-          subtitle="Across all active zones"
-        />
-        <StatCard 
-          title="Available Units" 
-          value={availableStock} 
-          icon={ShieldCheck} 
-          trend="up"
-          trendValue="Ready to Pick"
-        />
-        <StatCard 
-          title="Reserved Units" 
-          value={reservedStock} 
-          icon={Package} 
-          trend="neutral"
-          trendValue={`${reservations.length} Active holds`}
-        />
-        <StatCard 
-          title="Damaged / Quarantine" 
-          value={damagedStock} 
-          icon={AlertTriangle} 
-          trend={damagedStock > 0 ? 'down' : 'neutral'}
-          trendValue={damagedStock > 0 ? `${damagedRecords.length} Items Flagged` : '0 quarantined'}
-        />
+      {/* Receiving KPI Stats Grid */}
+      <div>
+        <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Receiving & OCR Processing</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <StatCard 
+            title="Pending OCR Documents" 
+            value={pendingOcr} 
+            icon={UploadCloud} 
+            subtitle="Uploaded or processing"
+          />
+          <StatCard 
+            title="Verification Pending" 
+            value={verificationPending} 
+            icon={CheckSquare} 
+            trend={verificationPending > 0 ? "down" : "neutral"}
+            trendValue={verificationPending > 0 ? "Requires Review" : "All Verified"}
+          />
+          <StatCard 
+            title="Documents Verified" 
+            value={verifiedToday} 
+            icon={FileText} 
+            subtitle="Processed to Inbound Receipts"
+          />
+          <StatCard 
+            title="Waiting Bin Assignment" 
+            value={inboundWaitingBin} 
+            icon={ArrowDownToLine} 
+            trend="neutral"
+            trendValue="Inbound queue"
+          />
+        </div>
+
+        <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Inventory & Audit Status</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <StatCard 
+            title="Total Stock Units" 
+            value={totalStock} 
+            icon={Box} 
+            subtitle="All active warehouse stock"
+          />
+          <StatCard 
+            title="Low Stock Items" 
+            value={lowStockItems.length} 
+            icon={ShieldAlert} 
+            trend={lowStockItems.length > 0 ? "down" : "neutral"}
+            trendValue={lowStockItems.length > 0 ? "Action required" : "Healthy levels"}
+          />
+          <StatCard 
+            title="Damaged / Quarantine" 
+            value={damagedStock} 
+            icon={AlertTriangle} 
+            trend={damagedStock > 0 ? 'down' : 'neutral'}
+            trendValue={damagedStock > 0 ? `${damagedRecords.length} Items Flagged` : '0 quarantined'}
+          />
+          <StatCard 
+            title="Reserved Units" 
+            value={reservedStock} 
+            icon={Package} 
+            trend="neutral"
+            trendValue={`${reservations.length} Active holds`}
+          />
+        </div>
       </div>
 
       {/* Quick Access Actions */}

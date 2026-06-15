@@ -19,11 +19,19 @@ export default function MovementTracking() {
 
   // Filters
   const filteredMovements = movements.filter(mov => {
-    const matchesType = filterType === 'All' || mov.type.toLowerCase() === filterType.toLowerCase();
+    const typeLower = mov.type ? mov.type.toLowerCase() : '';
+    const matchesType = filterType === 'All' || 
+      typeLower === filterType.toLowerCase() ||
+      (filterType === 'Putaway' && (typeLower.startsWith('putaway_') || typeLower === 'putaway' || typeLower === 'inbound_received')) ||
+      (filterType === 'Picking' && (typeLower.startsWith('picking_') || typeLower === 'picking')) ||
+      (filterType === 'Issue' && typeLower === 'issue_reported');
+      
     const matchesSearch = searchQuery === '' || 
       mov.item.toLowerCase().includes(searchQuery.toLowerCase()) || 
       mov.sku.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      mov.id.toLowerCase().includes(searchQuery.toLowerCase());
+      mov.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (mov.taskId && mov.taskId.toLowerCase().includes(searchQuery.toLowerCase()));
+      
     return matchesType && matchesSearch;
   });
 
@@ -55,12 +63,12 @@ export default function MovementTracking() {
         <CardContent className="p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
           <div className="flex-1 w-full">
             <SearchFilterBar 
-              placeholder="Search movements by ID, product, SKU..." 
+              placeholder="Search movements by ID, task ID, product, SKU..." 
               onSearch={(val) => setSearchQuery(val)} 
             />
           </div>
           <div className="flex gap-2 w-full md:w-auto shrink-0 justify-end">
-            {['All', 'Putaway', 'Picking', 'Reallocation', 'Restock'].map((type) => (
+            {['All', 'Putaway', 'Picking', 'Reallocation', 'Issue'].map((type) => (
               <button
                 key={type}
                 onClick={() => setFilterType(type)}
@@ -99,50 +107,84 @@ export default function MovementTracking() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Movement ID</TableHead>
-                      <TableHead>Product / SKU</TableHead>
-                      <TableHead>Route Path</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Operator</TableHead>
-                      <TableHead>Time</TableHead>
+                      <TableHead>Task ID</TableHead>
+                      <TableHead>SKU</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Movement Type</TableHead>
+                      <TableHead>Qty</TableHead>
+                      <TableHead>From / To</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Timestamp</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pagedMovements.map((mov) => (
-                      <TableRow key={mov.id}>
-                        <TableCell className="font-bold text-gray-900 font-mono text-xs">{mov.id}</TableCell>
-                        <TableCell>
-                          <div className="font-semibold text-gray-900 text-xs">{mov.item}</div>
-                          <div className="text-[10px] text-gray-400 font-mono mt-0.5">{mov.sku}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                            <MapPin className="w-3.5 h-3.5 text-gray-400" />
-                            <span className="font-semibold font-mono text-[10px]">{mov.from}</span>
-                            <ArrowRightLeft className="w-3 h-3 text-gray-400" />
-                            <span className="font-semibold font-mono text-blue-700 bg-blue-50 px-1 rounded">{mov.to}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={mov.type === 'Picking' ? 'warning' : mov.type === 'Putaway' ? 'success' : 'outline'}>
-                            {mov.type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-gray-600 text-xs font-semibold">{mov.user}</TableCell>
-                        <TableCell className="text-gray-500 text-xs font-semibold">{mov.time}</TableCell>
-                        <TableCell>
-                          <StatusBadge status={mov.status === 'Completed' ? 'success' : 'warning'} />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex gap-1.5 justify-end">
-                            <Button variant="outline" size="sm" className="p-1 px-2 text-[10px] font-bold" onClick={() => setActiveRouteModal(mov)}>
-                              <Navigation className="w-3 h-3" /> Route
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {pagedMovements.map((mov) => {
+                      let typeLabel = mov.type ? mov.type.replace(/_/g, ' ') : 'Movement';
+                      let statusLabel = mov.status || 'Completed';
+                      let statusVariant = 'default';
+
+                      const tUpper = mov.type ? mov.type.toUpperCase() : '';
+                      if (tUpper === 'PUTAWAY_ASSIGNED') {
+                        statusLabel = 'Assigned';
+                        statusVariant = 'warning';
+                      } else if (tUpper === 'PUTAWAY_STARTED') {
+                        statusLabel = 'In Progress';
+                        statusVariant = 'primary';
+                      } else if (tUpper === 'PICKED_FROM_RECEIVING') {
+                        statusLabel = 'Picked';
+                        statusVariant = 'secondary';
+                      } else if (tUpper === 'REACHED_BIN') {
+                        statusLabel = 'Reached Bin';
+                        statusVariant = 'secondary';
+                      } else if (tUpper === 'PUTAWAY_COMPLETED') {
+                        statusLabel = 'Completed';
+                        statusVariant = 'success';
+                      } else if (tUpper === 'ISSUE_REPORTED') {
+                        statusLabel = 'Delayed';
+                        statusVariant = 'error';
+                      } else if (mov.status === 'Completed' || mov.status === 'success') {
+                        statusVariant = 'success';
+                      }
+
+                      return (
+                        <TableRow key={mov.id}>
+                          <TableCell className="font-bold text-gray-950 font-mono text-xs">{mov.id}</TableCell>
+                          <TableCell className="font-bold text-gray-400 font-mono text-xs">{mov.taskId || 'N/A'}</TableCell>
+                          <TableCell className="font-semibold text-gray-700 font-mono text-xs">{mov.sku}</TableCell>
+                          <TableCell className="font-bold text-gray-950 text-xs">{mov.item}</TableCell>
+                          <TableCell>
+                            <Badge variant={tUpper.includes('PUTAWAY') ? 'primary' : tUpper.includes('ISSUE') ? 'error' : 'secondary'} className="text-[10px] uppercase font-bold">
+                              {typeLabel}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-bold text-gray-950 text-xs">{mov.qty || 1} Units</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                              <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                              <span className="font-semibold font-mono text-[10px]">{mov.from}</span>
+                              <ArrowRightLeft className="w-3 h-3 text-gray-400" />
+                              <span className="font-semibold font-mono text-blue-700 bg-blue-50 px-1 rounded border border-blue-100">{mov.to}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={statusVariant} className="text-[10px] font-bold">
+                              {statusLabel}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-gray-500 text-[10px] font-semibold font-mono">
+                            {mov.timestamp ? new Date(mov.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : mov.time || 'N/A'}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex gap-1.5 justify-end">
+                              <Button variant="outline" size="sm" className="p-1 px-2 text-[10px] font-bold" onClick={() => setActiveRouteModal(mov)}>
+                                <Navigation className="w-3 h-3" /> Route
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
                 <div className="px-4">

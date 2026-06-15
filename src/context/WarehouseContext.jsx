@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { useAuth } from "./AuthContext";
 
 const WarehouseContext = createContext();
 
@@ -122,6 +123,7 @@ export const validateId = (id, prefix, existingIds) => {
 };
 
 export function WarehouseProvider({ children }) {
+  const { user } = useAuth();
   const [warehouses, setWarehouses] = useState([
     {
       id: "WH-001",
@@ -192,6 +194,20 @@ export function WarehouseProvider({ children }) {
       capacityPercent: 40,
       status: "Active",
     },
+  ]);
+
+  const [racks, setRacks] = useState([
+    { id: "RACK-001", zoneId: "ZONE-Z1", name: "Rack 1", maxWeight: 1000, currentWeight: 350, status: "Active" },
+    { id: "RACK-002", zoneId: "ZONE-Z2", name: "Rack 2", maxWeight: 1500, currentWeight: 450, status: "Active" },
+    { id: "RACK-003", zoneId: "ZONE-Z3", name: "Rack 3", maxWeight: 2000, currentWeight: 800, status: "Active" },
+    { id: "RACK-004", zoneId: "ZONE-Z4", name: "Rack 4", maxWeight: 1200, currentWeight: 120, status: "Active" },
+  ]);
+
+  const [shelves, setShelves] = useState([
+    { id: "SHELF-001", rackId: "RACK-001", shelfLevel: "Level 1", maxWeight: 300, currentWeight: 100, status: "Active" },
+    { id: "SHELF-002", rackId: "RACK-001", shelfLevel: "Level 2", maxWeight: 300, currentWeight: 150, status: "Active" },
+    { id: "SHELF-003", rackId: "RACK-002", shelfLevel: "Level 1", maxWeight: 500, currentWeight: 200, status: "Active" },
+    { id: "SHELF-004", rackId: "RACK-003", shelfLevel: "Level 1", maxWeight: 600, currentWeight: 400, status: "Active" },
   ]);
 
   const [bins, setBins] = useState([
@@ -337,14 +353,298 @@ export function WarehouseProvider({ children }) {
     { id: 'WRK-001', name: 'System Admin', email: 'admin@warehouseai.com', role: 'ADMIN', warehouse: 'All Facilities', status: 'Active', lastLogin: '5 mins ago', createdAt: '2026-01-10' },
     { id: 'WRK-002', name: 'Warehouse Manager', email: 'manager@warehouseai.com', role: 'MANAGER', warehouse: 'Central Fulfillment A', status: 'Active', lastLogin: '1 hr ago', createdAt: '2026-01-12' },
     { id: 'WRK-003', name: 'Warehouse Staff', email: 'staff@warehouseai.com', role: 'STAFF', warehouse: 'East Coast Distribution', status: 'Active', lastLogin: '3 hrs ago', createdAt: '2026-01-15' },
-    { id: 'WRK-004', name: 'Inventory Clerk', email: 'inventory@warehouseai.com', role: 'INVENTORY_CLERK', warehouse: 'Central Fulfillment A', status: 'Active', lastLogin: '2 hrs ago', createdAt: '2026-02-01' },
-    { id: 'WRK-005', name: 'AGV Operator', email: 'operator@warehouseai.com', role: 'OPERATOR', warehouse: 'West Coast Hub', status: 'Inactive', lastLogin: '3 days ago', createdAt: '2026-02-10' }
+    { id: 'WRK-004', name: 'Inventory Clerk', email: 'inventory@warehouseai.com', role: 'INVENTORY_CLERK', warehouse: 'Central Fulfillment A', status: 'Active', lastLogin: '2 hrs ago', createdAt: '2026-02-01' }
   ]);
 
-  const [putawayTasks, setPutawayTasks] = useState([]);
+  const [putawayTasks, setPutawayTasks] = useState([
+    {
+      id: "PTW-001",
+      inboundId: "IR-001",
+      product: "Heavy Duty Drilling Rig 500W",
+      sku: "SKU-3092",
+      quantity: 8,
+      pickupLocation: "Receiving Dock",
+      destinationZone: "Zone C",
+      destinationRack: "RACK-004",
+      destinationShelf: "S-04",
+      destinationBin: "BIN-004",
+      assignedStaffId: "WRK-003",
+      assignedStaffName: "Warehouse Staff",
+      priority: "High",
+      dueTime: "Today, 18:00",
+      routePath: "Receiving Dock -> Aisle 1 -> Zone C -> RACK-004 -> S-04 -> BIN-004",
+      status: "ASSIGNED",
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: "PTW-002",
+      inboundId: "IR-002",
+      product: "Dell Laptop",
+      sku: "PRD-001",
+      quantity: 15,
+      pickupLocation: "Receiving Dock",
+      destinationZone: "Zone B",
+      destinationRack: "RACK-003",
+      destinationShelf: "S-03",
+      destinationBin: "BIN-003",
+      assignedStaffId: "WRK-003",
+      assignedStaffName: "Warehouse Staff",
+      priority: "Medium",
+      dueTime: "Today, 16:30",
+      routePath: "Receiving Dock -> Aisle 2 -> Zone B -> RACK-003 -> S-03 -> BIN-003",
+      status: "COMPLETED",
+      createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+      completedAt: new Date(Date.now() - 3600000).toISOString(),
+      estTime: "12 mins",
+      duration: "9 mins"
+    },
+    {
+      id: "PTW-003",
+      inboundId: "IR-003",
+      product: "MacBook Pro",
+      sku: "PRD-002",
+      quantity: 5,
+      pickupLocation: "Receiving Dock",
+      destinationZone: "Zone B",
+      destinationRack: "RACK-002",
+      destinationShelf: "S-01",
+      destinationBin: "BIN-002",
+      assignedStaffId: "WRK-003",
+      assignedStaffName: "Warehouse Staff",
+      priority: "Low",
+      dueTime: "Today, 17:00",
+      routePath: "Receiving Dock -> Aisle 2 -> Zone B -> RACK-002 -> S-01 -> BIN-002",
+      status: "COMPLETED",
+      createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
+      completedAt: new Date(Date.now() - 3600000 * 3.5).toISOString(),
+      estTime: "10 mins",
+      duration: "11 mins"
+    }
+  ]);
   const [stockAdjustments, setStockAdjustments] = useState([]);
   const [reservations, setReservations] = useState([]);
   const [damagedRecords, setDamagedRecords] = useState([]);
+
+  const [ocrDocuments, setOcrDocuments] = useState([
+    {
+      id: "OCR-001",
+      fileName: "dell_monitor_invoice.pdf",
+      documentType: "Invoice",
+      supplierName: "Dell Sourcing Ltd",
+      uploadedAt: "2026-06-15T09:00:00Z",
+      uploadedBy: "inventory@warehouseai.com",
+      status: "VERIFICATION_PENDING",
+      confidenceScore: 94,
+      extractedItems: [
+        {
+          id: "EXT-001",
+          sku: "", // Missing SKU
+          productName: 'Dell Monitor 27" UltraSharp',
+          category: "Electronics",
+          quantity: 40,
+          uom: "BOX",
+          length: 65,
+          width: 18,
+          height: 42,
+          weight: 6.5,
+          batchNumber: "BAT-9921",
+          expiryDate: "2028-12-31",
+          confidenceScore: 94,
+          validationStatus: "Warning"
+        }
+      ],
+      warnings: 2
+    },
+    {
+      id: "OCR-002",
+      fileName: "hp_printer_packing_slip.jpg",
+      documentType: "Packing List",
+      supplierName: "HP Supply Logistics",
+      uploadedAt: "2026-06-14T14:30:00Z",
+      uploadedBy: "inventory@warehouseai.com",
+      status: "OCR_UPLOADED",
+      confidenceScore: 88,
+      extractedItems: [
+        {
+          id: "EXT-002",
+          sku: "SKU-7734",
+          productName: "HP LaserJet Printer Pro",
+          category: "Electronics",
+          quantity: 15,
+          uom: "BOX",
+          length: "",
+          width: "",
+          height: "",
+          weight: 14.2,
+          batchNumber: "BAT-1029",
+          expiryDate: "2029-06-30",
+          confidenceScore: 88,
+          validationStatus: "Warning"
+        }
+      ],
+      warnings: 1
+    },
+    {
+      id: "OCR-003",
+      fileName: "logitech_mouse_bol.png",
+      documentType: "Bill of Lading",
+      supplierName: "Logitech Imports Inc",
+      uploadedAt: "2026-06-14T10:15:00Z",
+      uploadedBy: "inventory@warehouseai.com",
+      status: "OCR_PROCESSING",
+      confidenceScore: 68,
+      extractedItems: [
+        {
+          id: "EXT-003",
+          sku: "SKU-1198",
+          productName: "Logitech Wireless Mouse M510",
+          category: "Accessories",
+          quantity: 250,
+          uom: "PCS",
+          length: 12,
+          width: 6,
+          height: 4,
+          weight: 0.12,
+          batchNumber: "BAT-0881",
+          expiryDate: "2031-01-01",
+          confidenceScore: 68,
+          validationStatus: "Warning"
+        }
+      ],
+      warnings: 2
+    },
+    {
+      id: "OCR-004",
+      fileName: "drill_delivery_docket.pdf",
+      documentType: "Delivery Docket",
+      supplierName: "Industrial Tools Corp",
+      uploadedAt: "2026-06-13T16:00:00Z",
+      uploadedBy: "inventory@warehouseai.com",
+      status: "VERIFIED",
+      confidenceScore: 98,
+      extractedItems: [
+        {
+          id: "EXT-004",
+          sku: "SKU-3092",
+          productName: "Heavy Duty Drilling Rig 500W",
+          category: "Industrial Tools",
+          quantity: 8,
+          uom: "BOX",
+          length: 52,
+          width: 32,
+          height: 28,
+          weight: 18.5,
+          batchNumber: "BAT-4412",
+          expiryDate: "2030-05-01",
+          confidenceScore: 98,
+          validationStatus: "Valid"
+        }
+      ],
+      warnings: 0
+    }
+  ]);
+
+  const [inboundReceipts, setInboundReceipts] = useState([
+    {
+      id: "IR-001",
+      documentId: "OCR-004",
+      documentReference: "DD-9901",
+      sku: "SKU-3092",
+      productName: "Heavy Duty Drilling Rig 500W",
+      category: "Industrial Tools",
+      quantityReceived: 8,
+      verifiedQuantity: 8,
+      supplier: "Industrial Tools Corp",
+      receivedDate: "2026-06-13",
+      dimensions: "52 x 32 x 28 cm",
+      weight: "18.5 kg",
+      status: "WAITING_FOR_BIN_ASSIGNMENT",
+      binRecommendationStatus: "WAITING_FOR_BIN_ASSIGNMENT"
+    }
+  ]);
+
+  const addOcrDocument = (doc) => {
+    setOcrDocuments(prev => [doc, ...prev]);
+  };
+
+  const verifyOcrDocument = (docId, updatedItems, docDetails) => {
+    setOcrDocuments(prev => prev.map(d => d.id === docId ? { ...d, status: 'VERIFIED', extractedItems: updatedItems } : d));
+    
+    updatedItems.forEach((item, idx) => {
+      const receiptId = `IR-${Date.now()}-${idx}`;
+      const newReceipt = {
+        id: receiptId,
+        documentId: docId,
+        documentReference: docDetails.document_number || 'REF-UNK',
+        sku: item.sku,
+        productName: item.productName,
+        category: item.category,
+        quantityReceived: Number(item.quantity),
+        verifiedQuantity: Number(item.quantity),
+        supplier: docDetails.supplier || 'Unknown Supplier',
+        receivedDate: new Date().toISOString().split('T')[0],
+        dimensions: item.length ? `${item.length} x ${item.width} x ${item.height} cm` : 'Not Measured',
+        weight: item.weight ? `${item.weight} kg` : 'N/A',
+        status: 'WAITING_FOR_BIN_ASSIGNMENT',
+        binRecommendationStatus: 'WAITING_FOR_BIN_ASSIGNMENT'
+      };
+
+      setInboundReceipts(prev => [newReceipt, ...prev]);
+
+      setInventory(prev => {
+        const existingIdx = prev.findIndex(inv => inv.sku === item.sku);
+        if (existingIdx > -1) {
+          return prev.map((inv, index) => index === existingIdx ? {
+            ...inv,
+            status: "PENDING_PUTAWAY"
+          } : inv);
+        } else {
+          return [...prev, {
+            sku: item.sku,
+            name: item.productName,
+            category: item.category,
+            quantity: 0,
+            reserved: 0,
+            damaged: 0,
+            availableQuantity: 0,
+            reorderLevel: 10,
+            status: "PENDING_PUTAWAY",
+            warehouse: "Central Fulfillment A",
+            zone: "Zone A",
+            rack: "RACK-001",
+            shelf: "S-01",
+            bin: "Pending Bin",
+            weight: item.weight ? `${item.weight} kg` : 'N/A',
+            dimensions: item.length ? `${item.length} x ${item.width} x ${item.height} cm` : 'Not Measured',
+            lastUpdated: "Just added from OCR"
+          }];
+        }
+      });
+
+      const nextMovId = generateNextId('MOV-', movements.map(m => m.id));
+      setMovements(prev => [
+        {
+          id: nextMovId,
+          item: item.productName,
+          sku: item.sku,
+          from: "Receiving Dock",
+          to: "Inventory",
+          user: user?.email || "inventory@warehouseai.com",
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          type: "INBOUND_RECEIVED",
+          status: "Completed",
+          qty: Number(item.quantity),
+          timestamp: new Date().toISOString(),
+          reason: `Auto-created from verified OCR document ${docDetails.document_number}`
+        },
+        ...prev
+      ]);
+    });
+  };
+
+  const rejectOcrDocument = (docId, reason) => {
+    setOcrDocuments(prev => prev.map(d => d.id === docId ? { ...d, status: 'REJECTED', rejectReason: reason } : d));
+  };
 
   const [inboundTasks, setInboundTasks] = useState([
     {
@@ -676,7 +976,7 @@ export function WarehouseProvider({ children }) {
         // Map workers
         if (workersRes) {
           const mappedWorkers = workersRes.map(w => {
-            let role = "OPERATOR";
+            let role = "STAFF";
             if (w.role.toUpperCase() === 'SUPERVISOR') role = "MANAGER";
             else if (w.role.toUpperCase() === 'CLERK') role = "INVENTORY_CLERK";
 
@@ -761,7 +1061,7 @@ export function WarehouseProvider({ children }) {
               sku: m.productId,
               from: m.fromBin,
               to: m.toBin,
-              user: m.workerId || "AGV Operator",
+              user: m.workerId || "Warehouse Staff",
               time: new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               type: m.type || "Putaway",
               status: "Completed",
@@ -782,7 +1082,7 @@ export function WarehouseProvider({ children }) {
             sku: idx % 2 === 0 ? "SKU-1011" : "SKU-1015",
             from: `BIN-00${(idx % 4) + 1}`,
             to: `BIN-00${((idx + 2) % 4) + 1}`,
-            user: "AGV Operator",
+            user: "Warehouse Staff",
             time: new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             type: idx % 3 === 0 ? "Putaway" : idx % 3 === 1 ? "Relocation" : "Replenish",
             status: "Completed",
@@ -1447,11 +1747,139 @@ export function WarehouseProvider({ children }) {
   const startPutawayTask = (taskId) => {
     setPutawayTasks((prev) =>
       prev.map((task) =>
-        task.id === taskId ? { ...task, status: "In Progress" } : task
+        task.id === taskId ? { ...task, status: "IN_PROGRESS", startedAt: new Date().toISOString() } : task
       )
     );
 
+    const task = putawayTasks.find(t => t.id === taskId);
+    if (task) {
+      if (task.inboundId) {
+        setInboundReceipts(prev => prev.map(rec => rec.id === task.inboundId ? { ...rec, status: 'IN_PROGRESS' } : rec));
+      }
+      
+      const nextMovId = generateNextId('MOV-', movements.map(m => m.id));
+      setMovements(prev => [
+        {
+          id: nextMovId,
+          taskId: taskId,
+          item: task.product,
+          sku: task.sku,
+          from: task.pickupLocation || "Receiving Dock",
+          to: task.destinationBin || task.bin || "BIN-002",
+          user: task.assignedStaffName || "Warehouse Staff",
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          type: "PUTAWAY_STARTED",
+          status: "In Progress",
+          qty: task.quantity,
+          timestamp: new Date().toISOString()
+        },
+        ...prev
+      ]);
+    }
+
     logAudit("staff@warehouseai.com", "STAFF", "START_PUTAWAY", "Putaway", `Started putaway task ${taskId}.`);
+  };
+
+  const confirmPickedFromReceiving = (taskId) => {
+    setPutawayTasks((prev) =>
+      prev.map((task) =>
+        task.id === taskId ? { ...task, status: "PICKED_FROM_RECEIVING" } : task
+      )
+    );
+
+    const task = putawayTasks.find(t => t.id === taskId);
+    if (task) {
+      const nextMovId = generateNextId('MOV-', movements.map(m => m.id));
+      setMovements(prev => [
+        {
+          id: nextMovId,
+          taskId: taskId,
+          item: task.product,
+          sku: task.sku,
+          from: task.pickupLocation || "Receiving Dock",
+          to: task.destinationBin || task.bin || "BIN-002",
+          user: task.assignedStaffName || "Warehouse Staff",
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          type: "PICKED_FROM_RECEIVING",
+          status: "Picked",
+          qty: task.quantity,
+          timestamp: new Date().toISOString()
+        },
+        ...prev
+      ]);
+    }
+  };
+
+  const confirmReachedBin = (taskId) => {
+    setPutawayTasks((prev) =>
+      prev.map((task) =>
+        task.id === taskId ? { ...task, status: "REACHED_BIN" } : task
+      )
+    );
+
+    const task = putawayTasks.find(t => t.id === taskId);
+    if (task) {
+      const nextMovId = generateNextId('MOV-', movements.map(m => m.id));
+      setMovements(prev => [
+        {
+          id: nextMovId,
+          taskId: taskId,
+          item: task.product,
+          sku: task.sku,
+          from: task.pickupLocation || "Receiving Dock",
+          to: task.destinationBin || task.bin || "BIN-002",
+          user: task.assignedStaffName || "Warehouse Staff",
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          type: "REACHED_BIN",
+          status: "Reached Bin",
+          qty: task.quantity,
+          timestamp: new Date().toISOString()
+        },
+        ...prev
+      ]);
+    }
+  };
+
+  const reportPutawayIssue = (taskId, issueType, description, user) => {
+    setPutawayTasks((prev) =>
+      prev.map((task) =>
+        task.id === taskId ? { 
+          ...task, 
+          status: "DELAYED", 
+          issue: {
+            issueType,
+            description,
+            reportedBy: user?.email || "staff@warehouseai.com",
+            reportedAt: new Date().toISOString(),
+            status: "Reported"
+          } 
+        } : task
+      )
+    );
+
+    const task = putawayTasks.find(t => t.id === taskId);
+    if (task) {
+      const nextMovId = generateNextId('MOV-', movements.map(m => m.id));
+      setMovements(prev => [
+        {
+          id: nextMovId,
+          taskId: taskId,
+          item: task.product,
+          sku: task.sku,
+          from: task.pickupLocation || "Receiving Dock",
+          to: task.destinationBin || task.bin || "BIN-002",
+          user: user?.name || user?.email || "Warehouse Staff",
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          type: "ISSUE_REPORTED",
+          status: "Delayed",
+          qty: task.quantity,
+          timestamp: new Date().toISOString(),
+          reason: `${issueType}: ${description}`
+        },
+        ...prev
+      ]);
+      logAudit(user?.email || "staff@warehouseai.com", "STAFF", "REPORT_ISSUE", "Putaway", `Reported issue on task ${taskId}: ${issueType}`);
+    }
   };
 
   const completePutawayTask = (taskId, user) => {
@@ -1459,34 +1887,58 @@ export function WarehouseProvider({ children }) {
 
     if (!task) return false;
 
-    setPutawayTasks((prev) => prev.filter((putaway) => putaway.id !== taskId));
+    // 1. Mark task status as COMPLETED
+    setPutawayTasks((prev) => prev.map((t) => t.id === taskId ? { 
+      ...t, 
+      status: "COMPLETED", 
+      completedAt: new Date().toISOString() 
+    } : t));
 
+    // 2. Add product to inventory and update location
     updateInventoryItem(task.sku, (old) => ({
       ...old,
       quantity: old.quantity + Number(task.quantity),
+      status: "AVAILABLE",
+      bin: task.destinationBin || task.bin || old.bin
     }));
 
-    const nextMovId = generateNextId('MOV-', movements.map(m => m.id));
+    // 3. Update inbound receipt to STORED
+    if (task.inboundId) {
+      setInboundReceipts(prev => prev.map(rec => rec.id === task.inboundId ? { ...rec, status: 'STORED' } : rec));
+    }
 
+    // 4. Update bin capacity occupancy
+    const targetBinCode = task.destinationBin || task.bin;
+    setBins(prev => prev.map(b => b.code === targetBinCode ? {
+      ...b,
+      currentCapacity: Math.min(b.maxCapacity, b.currentCapacity + Number(task.quantity)),
+      status: (b.currentCapacity + Number(task.quantity)) >= b.maxCapacity ? 'FULL' : 'PARTIAL'
+    } : b));
+
+    // 5. Log PUTAWAY_COMPLETED in movements log
+    const nextMovId = generateNextId('MOV-', movements.map(m => m.id));
     setMovements((prev) => [
       {
         id: nextMovId,
+        taskId: taskId,
         item: task.product,
         sku: task.sku,
-        from: "INBOUND-ZONE",
-        to: task.bin,
-        user: user.email,
+        from: task.pickupLocation || "Receiving Dock",
+        to: targetBinCode || "BIN-002",
+        user: user?.name || user?.email || "Warehouse Staff",
         time: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
         }),
-        type: "Putaway",
+        type: "PUTAWAY_COMPLETED",
         status: "Completed",
         qty: task.quantity,
+        timestamp: new Date().toISOString()
       },
       ...prev,
     ]);
 
+    // 6. Update KPIs
     setKpis((prev) => ({
       ...prev,
       pendingPutaway: Math.max(0, prev.pendingPutaway - 1),
@@ -1494,7 +1946,7 @@ export function WarehouseProvider({ children }) {
       assignedMovements: Math.max(0, prev.assignedMovements - 1),
     }));
 
-    logAudit(user.email, user.role, "COMPLETE_PUTAWAY", "Putaway", `Completed putaway task ${taskId}.`);
+    logAudit(user?.email || "staff@warehouseai.com", "STAFF", "COMPLETE_PUTAWAY", "Putaway", `Completed putaway task ${taskId}.`);
     return true;
   };
 
@@ -1562,72 +2014,188 @@ export function WarehouseProvider({ children }) {
   const acceptAiRecommendation = (recId) => {
     setAiRecommendations((prev) =>
       prev.map((rec) =>
-        rec.id === recId ? { ...rec, status: "Accepted" } : rec
+        rec.id === recId ? { ...rec, status: "RECOMMENDATION_APPROVED" } : rec
       )
     );
 
     // Find the recommendation to extract its details
     const recommendation = aiRecommendations.find(r => r.id === recId);
-    if (recommendation) {
-      // Create a putaway task from the accepted recommendation
-      const nextPtwId = generateNextId('PTW-', putawayTasks.map(t => t.id));
-      const newTask = {
-        id: nextPtwId,
-        product: recommendation.title || recommendation.product || 'Product',
-        sku: recommendation.sku || 'SKU-UNKNOWN',
-        quantity: recommendation.quantity || 1,
-        zone: recommendation.zone || 'Zone B',
-        aisle: recommendation.aisle || 'A2',
-        rack: recommendation.rack || 'R-12',
-        shelf: recommendation.shelf || 'S-03',
-        bin: recommendation.bin || 'BIN-B-12-03',
-        priority: recommendation.priority || "High",
-        estTime: recommendation.estTime || "6 mins",
-        distance: recommendation.distance || "45m",
-        status: "Pending",
-        confidence: recommendation.confidence || 96,
-        createdAt: new Date().toISOString(),
-      };
-
-      setPutawayTasks((prev) => [newTask, ...prev]);
-
-      // Log the movement
-      const nextMovId = generateNextId('MOV-', movements.map(m => m.id));
-      setMovements((prev) => [
-        {
-          id: nextMovId,
-          item: recommendation.title || 'Product',
-          sku: recommendation.sku || 'SKU-UNKNOWN',
-          from: "AI-RECOMMENDATION",
-          to: recommendation.bin || 'BIN-B-12-03',
-          user: "AI-System",
-          time: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          type: "Putaway",
-          status: "Assigned",
-          qty: recommendation.quantity || 1,
-        },
-        ...prev,
-      ]);
-
-      // Update KPIs
-      setKpis((prev) => ({
-        ...prev,
-        pendingPutaway: (prev.pendingPutaway || 0) + 1,
-        aiAccepted: (prev.aiAccepted || 0) + 1,
-        assignedMovements: (prev.assignedMovements || 0) + 1,
-      }));
+    if (recommendation && recommendation.inboundId) {
+      setInboundReceipts(prev => prev.map(rec => rec.id === recommendation.inboundId ? {
+        ...rec,
+        status: 'RECOMMENDATION_APPROVED',
+        binRecommendationStatus: 'RECOMMENDATION_APPROVED'
+      } : rec));
     }
 
-    logAudit("manager@warehouseai.com", "MANAGER", "ACCEPT_AI_RECOMMENDATION", "AI Recommendations", `Accepted recommendation ${recId} and created putaway task.`);
+    logAudit("manager@warehouseai.com", "MANAGER", "ACCEPT_AI_RECOMMENDATION", "AI Recommendations", `Approved AI recommendation ${recId}.`);
   };
 
   const rejectAiRecommendation = (recId) => {
-    setAiRecommendations((prev) => prev.filter((rec) => rec.id !== recId));
+    setAiRecommendations((prev) =>
+      prev.map((rec) =>
+        rec.id === recId ? { ...rec, status: "REJECTED" } : rec
+      )
+    );
+
+    const recommendation = aiRecommendations.find(r => r.id === recId);
+    if (recommendation && recommendation.inboundId) {
+      setInboundReceipts(prev => prev.map(rec => rec.id === recommendation.inboundId ? {
+        ...rec,
+        status: 'WAITING_FOR_BIN_ASSIGNMENT',
+        binRecommendationStatus: 'WAITING_FOR_BIN_ASSIGNMENT'
+      } : rec));
+    }
 
     logAudit("manager@warehouseai.com", "MANAGER", "REJECT_AI_RECOMMENDATION", "AI Recommendations", `Rejected recommendation ${recId}.`);
+  };
+
+  const generateBinRecommendation = (inboundId) => {
+    const receipt = inboundReceipts.find(r => r.id === inboundId);
+    if (!receipt) return;
+
+    // Transition status to BIN_SUGGESTED
+    setInboundReceipts(prev => prev.map(rec => rec.id === inboundId ? {
+      ...rec,
+      status: 'BIN_SUGGESTED',
+      binRecommendationStatus: 'BIN_SUGGESTED'
+    } : rec));
+
+    // Create a mock recommendation
+    const nextRecId = generateNextId('REC-', aiRecommendations.map(r => r.id));
+    // Pick a mock shelf bin
+    const targetBin = bins[Math.floor(Math.random() * bins.length)] || { code: "BIN-002", zone: "Zone B", shelf: "S-10" };
+    
+    const newRec = {
+      id: nextRecId,
+      inboundId: inboundId,
+      title: `Slotting Suggestion for ${receipt.productName}`,
+      sku: receipt.sku,
+      productName: receipt.productName,
+      quantity: receipt.verifiedQuantity || receipt.quantityReceived,
+      zone: targetBin.zone || 'Zone B',
+      aisle: 'A1',
+      rack: 'Rack 2',
+      shelf: targetBin.shelf || 'S-10',
+      bin: targetBin.code || 'BIN-002',
+      fitScore: 94,
+      capacityScore: 92,
+      weightSafetyScore: 95,
+      routeEfficiencyScore: 88,
+      zoneSuitabilityScore: 96,
+      confidence: 94,
+      priority: receipt.priority || "Medium",
+      estTime: "5 mins",
+      distance: "40m",
+      reason: `Layout balancing optimization: placed ${receipt.productName} in ${targetBin.zone} at ${targetBin.code} based on load balancing, category segregation, and proximity efficiency.`,
+      status: "PENDING_REVIEW",
+      createdAt: new Date().toISOString()
+    };
+
+    setAiRecommendations(prev => [newRec, ...prev]);
+    logAudit("manager@warehouseai.com", "MANAGER", "GENERATE_AI_RECOMMENDATION", "AI Recommendations", `Generated AI bin recommendation for inbound item ${receipt.productName}.`);
+  };
+
+  const assignPutawayTask = (inboundId, staffId, staffName, priority) => {
+    const receipt = inboundReceipts.find(r => r.id === inboundId);
+    if (!receipt) return;
+
+    const recommendation = aiRecommendations.find(r => r.inboundId === inboundId) || {};
+
+    const nextPtwId = generateNextId('PTW-', putawayTasks.map(t => t.id));
+    const newTask = {
+      id: nextPtwId,
+      inboundId: inboundId,
+      product: receipt.productName,
+      sku: receipt.sku,
+      quantity: receipt.verifiedQuantity || receipt.quantityReceived,
+      pickupLocation: "Receiving Dock",
+      destinationZone: recommendation.zone || 'Zone B',
+      destinationRack: recommendation.rack || 'Rack 2',
+      destinationShelf: recommendation.shelf || 'Level 1',
+      destinationBin: recommendation.bin || 'BIN-002',
+      assignedStaffId: staffId || 'WRK-003',
+      assignedStaffName: staffName || 'Warehouse Staff',
+      priority: priority || receipt.priority || "Medium",
+      dueTime: "Today, 18:00",
+      routePath: `Receiving Dock -> Aisle 1 -> ${recommendation.zone || 'Zone B'} -> ${recommendation.rack || 'Rack 2'} -> ${recommendation.shelf || 'Level 1'} -> ${recommendation.bin || 'BIN-002'}`,
+      status: "ASSIGNED",
+      createdAt: new Date().toISOString(),
+    };
+
+    setPutawayTasks(prev => [newTask, ...prev]);
+
+    // Transition inbound status to ASSIGNED_TO_STAFF
+    setInboundReceipts(prev => prev.map(r => r.id === inboundId ? { ...r, status: 'ASSIGNED_TO_STAFF' } : r));
+
+    // Log movement task dispatch
+    const nextMovId = generateNextId('MOV-', movements.map(m => m.id));
+    setMovements(prev => [
+      {
+        id: nextMovId,
+        taskId: nextPtwId,
+        item: receipt.productName,
+        sku: receipt.sku,
+        from: "Receiving Dock",
+        to: recommendation.bin || 'BIN-002',
+        user: staffName,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: "PUTAWAY_ASSIGNED",
+        status: "Assigned",
+        qty: receipt.verifiedQuantity,
+      },
+      ...prev
+    ]);
+
+    logAudit("manager@warehouseai.com", "MANAGER", "TASK_ASSIGNED", "Putaway", `Assigned putaway task for ${receipt.productName} to ${staffName}.`);
+  };
+
+  const addRack = (rack) => {
+    const nextRackId = generateNextId('RACK-', racks.map(r => r.id));
+    const newRack = {
+      id: rack.id || nextRackId,
+      zoneId: rack.zoneId || "ZONE-Z1",
+      name: rack.name || `Rack ${racks.length + 1}`,
+      maxWeight: Number(rack.maxWeight) || 1000,
+      currentWeight: Number(rack.currentWeight) || 0,
+      status: rack.status || "Active"
+    };
+    setRacks((prev) => [...prev, newRack]);
+    logAudit("manager@warehouseai.com", "MANAGER", "ADD_RACK", "Zones & Bins", `Created rack ${newRack.name}.`);
+  };
+
+  const editRack = (updatedRack) => {
+    setRacks((prev) => prev.map((r) => r.id === updatedRack.id ? { ...r, ...updatedRack } : r));
+    logAudit("manager@warehouseai.com", "MANAGER", "EDIT_RACK", "Zones & Bins", `Updated rack ${updatedRack.name}.`);
+  };
+
+  const deleteRack = (rackId) => {
+    setRacks((prev) => prev.filter((r) => r.id !== rackId));
+    logAudit("manager@warehouseai.com", "MANAGER", "DELETE_RACK", "Zones & Bins", `Deleted rack ${rackId}.`);
+  };
+
+  const addShelf = (shelf) => {
+    const nextShelfId = generateNextId('SHELF-', shelves.map(s => s.id));
+    const newShelf = {
+      id: shelf.id || nextShelfId,
+      rackId: shelf.rackId || "RACK-001",
+      shelfLevel: shelf.shelfLevel || `Level ${shelves.length + 1}`,
+      maxWeight: Number(shelf.maxWeight) || 300,
+      currentWeight: Number(shelf.currentWeight) || 0,
+      status: shelf.status || "Active"
+    };
+    setShelves((prev) => [...prev, newShelf]);
+    logAudit("manager@warehouseai.com", "MANAGER", "ADD_SHELF", "Zones & Bins", `Created shelf ${newShelf.shelfLevel}.`);
+  };
+
+  const editShelf = (updatedShelf) => {
+    setShelves((prev) => prev.map((s) => s.id === updatedShelf.id ? { ...s, ...updatedShelf } : s));
+    logAudit("manager@warehouseai.com", "MANAGER", "EDIT_SHELF", "Zones & Bins", `Updated shelf ${updatedShelf.id}.`);
+  };
+
+  const deleteShelf = (shelfId) => {
+    setShelves((prev) => prev.filter((s) => s.id !== shelfId));
+    logAudit("manager@warehouseai.com", "MANAGER", "DELETE_SHELF", "Zones & Bins", `Deleted shelf ${shelfId}.`);
   };
 
   return (
@@ -1672,16 +2240,38 @@ export function WarehouseProvider({ children }) {
         releaseReservation,
         acceptAiRecommendation,
         rejectAiRecommendation,
+        generateBinRecommendation,
+        assignPutawayTask,
+        racks,
+        setRacks,
+        addRack,
+        editRack,
+        deleteRack,
+        shelves,
+        setShelves,
+        addShelf,
+        editShelf,
+        deleteShelf,
         addRecentScan,
         acceptRecommendation,
         startInboundTask,
         completeInboundTask,
         startPutawayTask,
         completePutawayTask,
+        confirmPickedFromReceiving,
+        confirmReachedBin,
+        reportPutawayIssue,
         createOrder,
         createInboundShipment,
         assignInboundStaff,
         dispatchOrder,
+        ocrDocuments,
+        setOcrDocuments,
+        inboundReceipts,
+        setInboundReceipts,
+        addOcrDocument,
+        verifyOcrDocument,
+        rejectOcrDocument,
       }}
     >
       {children}

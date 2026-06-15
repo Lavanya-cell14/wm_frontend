@@ -84,19 +84,6 @@ export default function RoleManagement() {
         'inv:read': true,
         'agv:control': false,
       }
-    },
-    OPERATOR: {
-      description: 'Path routing configuration, AGV dispatch telemetry, and manual route overriding.',
-      permissions: {
-        'sys:config': false,
-        'user:write': false,
-        'user:read': false,
-        'wh:write': false,
-        'wh:read': true,
-        'inv:write': false,
-        'inv:read': true,
-        'agv:control': true,
-      }
     }
   });
 
@@ -180,7 +167,7 @@ export default function RoleManagement() {
             <CardContent className="p-4 space-y-3">
               {Object.keys(rolesPermissions).map((role) => {
                 const isActive = selectedRole === role;
-                const count = role === 'ADMIN' ? 1 : role === 'OPERATOR' ? 1 : 1; // display indicators
+                const count = 1; // display indicators
                 let badgeVariant = 'default';
                 if (role === 'ADMIN') badgeVariant = 'error';
                 else if (role === 'MANAGER') badgeVariant = 'primary';
