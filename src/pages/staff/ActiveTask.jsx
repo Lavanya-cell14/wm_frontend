@@ -2,12 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
-import Card, { CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
-import Badge from '../../components/ui/Badge';
-import AlertBanner from '../../components/ui/AlertBanner';
-import Modal from '../../components/ui/Modal';
-import Input from '../../components/ui/Input';
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge, AlertBanner, Modal, Input } from 'shared-ui';
 import { 
   Navigation, Check, Play, AlertTriangle, Clock, MapPin, 
   Package, Weight, Ruler, ChevronRight, UserCheck, ShieldAlert 
@@ -69,8 +64,8 @@ export default function ActiveTask() {
   const handleComplete = () => {
     if (!activeTask) return;
     completePutawayTask(activeTask.id, user);
-    showToast(`Putaway completed successfully! Product stored.`);
-    setTimeout(() => navigate('/staff/dashboard'), 1000);
+    showToast(`Storage completed successfully! Product stored.`);
+    setTimeout(() => navigate('/operator/dashboard'), 1000);
   };
 
   const handleReportIssue = (e) => {
@@ -89,10 +84,10 @@ export default function ActiveTask() {
         <Package className="w-16 h-16 text-gray-300 animate-pulse" />
         <h2 className="text-xl font-bold text-gray-900">No In-Progress Tasks</h2>
         <p className="text-gray-500 text-sm max-w-sm">
-          Please select and start a putaway task from the dashboard or putaway queue.
+          Please select and start a storage task from the dashboard or storage tasks queue.
         </p>
-        <Button onClick={() => navigate('/staff/putaway')} className="bg-[#0071C1] hover:bg-[#005c9e] text-white font-bold py-2 px-6">
-          Open Putaway Queue
+        <Button onClick={() => navigate('/operator/storage-tasks')} className="bg-[#0071C1] hover:bg-[#005c9e] text-white font-bold py-2 px-6">
+          Open Storage Tasks Queue
         </Button>
       </div>
     );
@@ -111,7 +106,7 @@ export default function ActiveTask() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
             <Navigation className="w-7 h-7 text-blue-600 animate-pulse" />
-            Active Putaway Workspace
+            Active Storage Task Workspace
           </h1>
           <p className="text-gray-500 text-sm mt-1">
             Task ID: <span className="font-mono font-bold text-gray-900">{activeTask.id}</span> • Inbound ID: <span className="font-mono font-bold text-gray-900">{activeTask.inboundId}</span>
@@ -131,7 +126,7 @@ export default function ActiveTask() {
       <Card className="border border-blue-150 bg-blue-50/10">
         <CardContent className="p-5 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex-1 space-y-2">
-            <h3 className="font-bold text-gray-950 text-sm">Putaway Step Actions</h3>
+            <h3 className="font-bold text-gray-950 text-sm">Storage Step Actions</h3>
             <p className="text-xs text-gray-500">Perform the task actions sequentially as you retrieve and place the inventory.</p>
           </div>
           
@@ -156,16 +151,16 @@ export default function ActiveTask() {
 
             {activeTask.status === 'REACHED_BIN' && (
               <Button onClick={handleComplete} className="bg-green-600 hover:bg-green-700 text-white font-bold text-xs py-2 px-5 gap-1.5 flex-1 md:flex-initial">
-                <Check className="w-4 h-4" /> Complete Putaway
+                <Check className="w-4 h-4" /> Complete Storage
               </Button>
             )}
 
             <Button 
               variant="outline" 
-              onClick={() => navigate('/staff/route-guidance')}
+              onClick={() => navigate('/operator/navigation')}
               className="text-blue-600 border-blue-200 hover:bg-blue-50 font-bold text-xs py-2 px-4 flex-1 md:flex-initial"
             >
-              Open Route Guidance
+              Open Navigation
             </Button>
             
             <Button 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, mockUsers } from '../context/AuthContext';
 import { Box, Lock, Mail } from 'lucide-react';
-import Button from '../components/ui/Button';
+import { Button } from 'shared-ui';
 
 export default function Login() {
   const [email, setEmail] = useState('');

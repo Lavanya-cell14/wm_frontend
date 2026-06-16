@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
-import Card, { CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import Badge from '../../components/ui/Badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/Table';
-import SearchFilterBar from '../../components/ui/SearchFilterBar';
+import { Card, CardContent, CardHeader, CardTitle, Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, SearchFilterBar, Pagination } from 'shared-ui';
 import { CheckSquare, Clock, MapPin, Box, ArrowRight, Tag, Calendar, Sparkles } from 'lucide-react';
-import Pagination from '../../components/ui/Pagination';
 
 export default function CompletedTasks() {
   const { putawayTasks } = useWarehouse();
@@ -87,41 +83,30 @@ export default function CompletedTasks() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Task ID</TableHead>
-                  <TableHead>Inbound ID</TableHead>
-                  <TableHead>SKU & Product</TableHead>
+                  <TableHead>Product</TableHead>
                   <TableHead>Quantity</TableHead>
-                  <TableHead>Destination Bin (Z/R/S/B)</TableHead>
-                  <TableHead>Completed Time</TableHead>
-                  <TableHead>Duration / Est</TableHead>
+                  <TableHead>Stored Bin</TableHead>
+                  <TableHead>Completed At</TableHead>
+                  <TableHead>Operator</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {pagedTasks.map((task) => {
-                  // Calculate duration if start and end exist
-                  let durationStr = task.duration || task.estTime || 'N/A';
-                  if (task.startedAt && task.completedAt) {
-                    const diffMs = new Date(task.completedAt) - new Date(task.startedAt);
-                    const diffMins = Math.round(diffMs / 60000);
-                    durationStr = `${diffMins} mins`;
-                  }
                   return (
                     <TableRow key={task.id} className="hover:bg-slate-50/50 transition-colors">
                       <TableCell className="font-bold text-gray-900 font-mono text-xs">{task.id}</TableCell>
-                      <TableCell className="font-bold text-gray-400 font-mono text-xs">{task.inboundId || 'N/A'}</TableCell>
                       <TableCell>
                         <div className="font-bold text-gray-900">{task.product}</div>
                         <div className="text-[10px] text-gray-400 font-mono mt-0.5">{task.sku}</div>
                       </TableCell>
                       <TableCell className="font-bold text-gray-950">{task.quantity} Units</TableCell>
                       <TableCell>
-                        <div className="flex flex-col gap-0.5 text-xs text-gray-700">
-                          <span className="font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 font-bold w-fit">
-                            {task.destinationBin || task.bin || 'BIN-002'}
-                          </span>
-                          <span className="text-[10px] text-gray-400 font-semibold mt-0.5">
-                            Zone: {task.destinationZone || task.zone} | Rack: {task.destinationRack || task.rack || 'Rack 2'} | Shelf: {task.destinationShelf || task.shelf || 'Level 1'}
-                          </span>
+                        <span className="font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 font-bold w-fit">
+                          {task.destinationBin || task.bin || 'BIN-002'}
+                        </span>
+                        <div className="text-[9px] text-gray-400 font-medium mt-0.5">
+                          Zone: {task.destinationZone || task.zone}
                         </div>
                       </TableCell>
                       <TableCell className="text-gray-600 text-xs font-semibold">
@@ -130,15 +115,8 @@ export default function CompletedTasks() {
                           {formatDateTime(task.completedAt)}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="text-xs text-gray-700 font-semibold">
-                          {durationStr}
-                        </div>
-                        {task.estTime && task.duration && (
-                          <div className="text-[9px] text-gray-400">
-                            Est: {task.estTime}
-                          </div>
-                        )}
+                      <TableCell className="text-gray-700 font-semibold text-xs">
+                        {task.assignedStaffName || 'Warehouse Operator'}
                       </TableCell>
                       <TableCell>
                         <Badge variant="success" className="text-[10px] uppercase font-bold">

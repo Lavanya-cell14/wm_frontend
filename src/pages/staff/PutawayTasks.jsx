@@ -15,10 +15,10 @@ import {
   TableBody, 
   TableRow, 
   TableHead, 
-  TableCell 
+  TableCell,
+  Modal,
+  Pagination
 } from 'shared-ui';
-import Modal from '../../components/ui/Modal';
-import Pagination from '../../components/ui/Pagination';
 import { ClipboardList, Play, CheckCircle2, Navigation, MapPin, Box, ArrowRight, Hourglass, Sparkles, Clock, X, Eye } from 'lucide-react';
 
 export default function PutawayTasks() {
@@ -45,7 +45,7 @@ export default function PutawayTasks() {
     startPutawayTask(taskId);
     showToast(`Putaway task ${taskId} initiated! Status changed to IN_PROGRESS.`);
     // Navigate to active task page to perform steps
-    setTimeout(() => navigate('/staff/active'), 800);
+    setTimeout(() => navigate('/operator/active'), 800);
   };
 
   return (
@@ -60,10 +60,10 @@ export default function PutawayTasks() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
             <ClipboardList className="w-7 h-7 text-[#0071C1]" />
-            Putaway Queue
+            Storage Tasks
           </h1>
           <p className="text-gray-500 text-sm mt-1">
-            Storage operations queue. Follow path coordinates to store verified inbounds.
+            View assigned storage tasks, follow placement instructions, and mark completion.
           </p>
         </div>
         <Badge variant="warning" className="text-sm px-3 py-1 font-bold">
@@ -135,7 +135,7 @@ export default function PutawayTasks() {
                             <Play className="w-3.5 h-3.5" /> Start
                           </Button>
                         ) : (
-                          <Button size="sm" className="bg-[#0071C1] hover:bg-[#005c9e] text-white gap-1.5 py-1 text-xs font-bold" onClick={() => navigate('/staff/active')}>
+                          <Button size="sm" className="bg-[#0071C1] hover:bg-[#005c9e] text-white gap-1.5 py-1 text-xs font-bold" onClick={() => navigate('/operator/active')}>
                             <Eye className="w-3.5 h-3.5" /> View Active
                           </Button>
                         )}
@@ -166,7 +166,7 @@ export default function PutawayTasks() {
         <Modal
           isOpen={!!selectedTaskForModal}
           onClose={() => setSelectedTaskForModal(null)}
-          title={`Putaway Task Details: ${selectedTaskForModal.id}`}
+          title={`Storage Task Details: ${selectedTaskForModal.id}`}
           maxWidth="max-w-xl"
           footer={
             <Button onClick={() => setSelectedTaskForModal(null)}>Close Task</Button>

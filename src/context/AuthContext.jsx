@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export const mockUsers = [
-  { name: 'Warehouse Manager', email: 'manager@warehouseai.com', password: 'Manager@123', role: 'MANAGER' },
-  { name: 'Warehouse Staff', email: 'staff@warehouseai.com', password: 'Staff@123', role: 'STAFF' },
-  { name: 'Inventory Clerk', email: 'inventory@warehouseai.com', password: 'Inventory@123', role: 'INVENTORY_CLERK' },
+  { name: 'Warehouse Manager', email: 'manager@warehouseai.com', password: 'Manager@123', role: 'WAREHOUSE_MANAGER' },
+  { name: 'Warehouse Operator', email: 'staff@warehouseai.com', password: 'Staff@123', role: 'WAREHOUSE_OPERATOR' },
+  { name: 'Receiving & Inventory Officer', email: 'inventory@warehouseai.com', password: 'Inventory@123', role: 'RECEIVING_INVENTORY_OFFICER' },
   { name: 'System Admin', email: 'admin@warehouseai.com', password: 'Admin@123', role: 'ADMIN' }
 ];
 

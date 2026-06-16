@@ -1,16 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
-import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import StatCard from '../components/dashboard/StatCard';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
-import StatusBadge from '../components/ui/StatusBadge';
-import SearchFilterBar from '../components/ui/SearchFilterBar';
-import Pagination from '../components/ui/Pagination';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
+import { Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Button, Badge, StatusBadge, SearchFilterBar, Pagination, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Modal, Input } from 'shared-ui';
 import { ArrowUpFromLine, Clock, UserCheck } from 'lucide-react';
-import Modal from '../components/ui/Modal';
-import Input from '../components/ui/Input';
 
 export default function Orders() {
   const { orders, createOrder, dispatchOrder, generateNextId } = useWarehouse();
@@ -75,16 +66,16 @@ export default function Orders() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
-          <StatCard title="Fulfillment Rate" value="98.7%" icon={ArrowUpFromLine} />
+          <DashboardStatCard title="Fulfillment Rate" value="98.7%" icon={ArrowUpFromLine} />
         </div>
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
-          <StatCard title="Pending Outbounds" value={orders.filter(o => o.status !== 'Dispatched').length} icon={Clock} />
+          <DashboardStatCard title="Pending Outbounds" value={orders.filter(o => o.status !== 'Dispatched').length} icon={Clock} />
         </div>
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
-          <StatCard title="Dispatched Today" value={orders.filter(o => o.status === 'Dispatched').length} icon={UserCheck} />
+          <DashboardStatCard title="Dispatched Today" value={orders.filter(o => o.status === 'Dispatched').length} icon={UserCheck} />
         </div>
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
-          <StatCard title="Average Dispatch Time" value="25 mins" icon={Clock} />
+          <DashboardStatCard title="Average Dispatch Time" value="25 mins" icon={Clock} />
         </div>
       </div>
 

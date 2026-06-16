@@ -44,7 +44,7 @@ export default function UserManagement() {
   // Form Fields
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
-  const [formRole, setFormRole] = useState('STAFF');
+  const [formRole, setFormRole] = useState('WAREHOUSE_OPERATOR');
   const [formWarehouse, setFormWarehouse] = useState('Central Fulfillment A');
   const [formStatus, setFormStatus] = useState('Active');
 
@@ -58,7 +58,7 @@ export default function UserManagement() {
     setModalMode('add');
     setFormName('');
     setFormEmail('');
-    setFormRole('STAFF');
+    setFormRole('WAREHOUSE_OPERATOR');
     setFormWarehouse('Central Fulfillment A');
     setFormStatus('Active');
     setIsModalOpen(true);
@@ -248,8 +248,8 @@ export default function UserManagement() {
                 paginatedUsers.map((user) => {
                   let roleBadge = 'default';
                   if (user.role === 'ADMIN') roleBadge = 'error';
-                  else if (user.role === 'MANAGER') roleBadge = 'primary';
-                  else if (user.role === 'INVENTORY_CLERK') roleBadge = 'warning';
+                  else if (user.role === 'WAREHOUSE_MANAGER') roleBadge = 'primary';
+                  else if (user.role === 'RECEIVING_INVENTORY_OFFICER') roleBadge = 'warning';
 
                   return (
                     <TableRow key={user.id} className="hover:bg-slate-50/20 transition-colors">
@@ -392,9 +392,9 @@ export default function UserManagement() {
                 className="w-full border border-gray-200 p-2.5 rounded-xl font-medium outline-none focus:border-blue-500 bg-gray-50/50"
               >
                 <option value="ADMIN">ADMIN (System Control)</option>
-                <option value="MANAGER">MANAGER (Fulfillment Control)</option>
-                <option value="STAFF">STAFF (Floor Operations)</option>
-                <option value="INVENTORY_CLERK">INVENTORY_CLERK (Quarantines & Audits)</option>
+                <option value="WAREHOUSE_MANAGER">WAREHOUSE_MANAGER (Warehouse Manager)</option>
+                <option value="WAREHOUSE_OPERATOR">Warehouse Operator (Floor Operations)</option>
+                <option value="RECEIVING_INVENTORY_OFFICER">RECEIVING_INVENTORY_OFFICER (Receiving & Inventory)</option>
               </select>
             </div>
 

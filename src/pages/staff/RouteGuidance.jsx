@@ -1,10 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
-import Card, { CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
-import Badge from '../../components/ui/Badge';
-import AlertBanner from '../../components/ui/AlertBanner';
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge, AlertBanner } from 'shared-ui';
 import WarehouseScene from '../../three/WarehouseScene';
 import { 
   Navigation, MapPin, ArrowRight, Play, CheckCircle2, 
@@ -65,19 +62,19 @@ export default function RouteGuidance() {
   const handleArrive = () => {
     if (!activeTask) return;
     showToast("Destination confirmed. Redirecting to placement completion...");
-    setTimeout(() => navigate('/staff/active'), 1000);
+    setTimeout(() => navigate('/operator/active'), 1000);
   };
 
   if (!activeTask) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-4 select-none">
         <Navigation className="w-16 h-16 text-gray-300 animate-pulse" />
-        <h2 className="text-xl font-bold text-gray-900">No Active Path guidance</h2>
+        <h2 className="text-xl font-bold text-gray-900">No Active Routing Guidance</h2>
         <p className="text-gray-500 text-sm max-w-sm">
-          Please select and start a putaway task from the putaway queue first.
+          Please select and start a storage task from the storage tasks queue first.
         </p>
-        <Button onClick={() => navigate('/staff/putaway')} className="bg-[#0071C1] hover:bg-[#005c9e] text-white font-bold py-2 px-6">
-          Open Putaway Queue
+        <Button onClick={() => navigate('/operator/storage-tasks')} className="bg-[#0071C1] hover:bg-[#005c9e] text-white font-bold py-2 px-6">
+          Open Storage Tasks Queue
         </Button>
       </div>
     );
@@ -96,7 +93,7 @@ export default function RouteGuidance() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
             <Navigation className="w-7 h-7 text-[#0071C1]" />
-            WMS Route Guidance
+            Navigation
           </h1>
           <p className="text-gray-500 text-sm mt-1">
             Task ID: <span className="font-mono font-bold text-gray-950">{activeTask.id}</span> • Product: <span className="font-bold text-gray-800">{activeTask.product}</span>

@@ -2,12 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../context/WarehouseContext';
 import { useAuth } from '../context/AuthContext';
-import Card, { CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
-import StatusBadge from '../components/ui/StatusBadge';
-import AlertBanner from '../components/ui/AlertBanner';
-import Input from '../components/ui/Input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Badge, StatusBadge, AlertBanner, Input } from 'shared-ui';
 import { 
   CheckSquare, XSquare, Plus, Trash2, ArrowLeft, Save, HelpCircle, AlertTriangle, 
   FileText, ShieldCheck, Sparkles, Check, CheckCircle2, ChevronRight 

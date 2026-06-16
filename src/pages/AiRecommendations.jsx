@@ -92,7 +92,7 @@ export default function AiRecommendations() {
 
   const handleOpenAssign = (receipt) => {
     setSelectedReceiptForAssign(receipt);
-    const staffWorkers = workers.filter(w => w.role === 'STAFF');
+    const staffWorkers = workers.filter(w => w.role === 'WAREHOUSE_OPERATOR');
     setSelectedStaffId(staffWorkers[0] ? staffWorkers[0].id : (workers[0]?.id || ''));
     setAssignPriority(receipt.priority || 'Medium');
   };
@@ -101,7 +101,7 @@ export default function AiRecommendations() {
   const pendingReviews = aiRecommendations.filter(rec => rec.status === 'PENDING_REVIEW');
   const approvedPlacements = inboundReceipts.filter(r => r.status === 'RECOMMENDATION_APPROVED');
   const trackedInbounds = inboundReceipts;
-  const staffWorkers = workers.filter(w => w.role === 'STAFF');
+  const staffWorkers = workers.filter(w => w.role === 'WAREHOUSE_OPERATOR');
 
   // Derived stats
   const accuracyConfidence = '96.4%';

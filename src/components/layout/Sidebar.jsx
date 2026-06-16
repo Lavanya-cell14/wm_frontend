@@ -80,7 +80,7 @@ export default function Sidebar({ onMobileClose, isCollapsed = false, onToggleCo
       {/* Footer Block */}
       <div className="relative border-t border-white/10 px-3 py-3 shrink-0 flex flex-col gap-2">
         {/* System Operations Status indicator */}
-        {!isCollapsed && (
+        {!isCollapsed && user?.role !== 'ADMIN' && (
           <div className="flex flex-col gap-1 animate-in fade-in duration-200">
             <div className="text-[10px] font-semibold text-blue-200/50 uppercase tracking-widest mb-1 pl-2">System</div>
             <div className="flex items-center cursor-pointer py-2.5 rounded-xl text-blue-100/70 hover:text-white hover:bg-white/8 transition-all text-[13px] font-medium gap-3 pl-4 px-4">

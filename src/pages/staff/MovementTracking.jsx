@@ -1,13 +1,7 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
-import Card, { CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
-import Badge from '../../components/ui/Badge';
-import StatusBadge from '../../components/ui/StatusBadge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/Table';
-import SearchFilterBar from '../../components/ui/SearchFilterBar';
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, SearchFilterBar, Pagination } from 'shared-ui';
 import { Activity, Clock, MapPin, ArrowRightLeft, Eye, Navigation, Filter } from 'lucide-react';
-import Pagination from '../../components/ui/Pagination';
 
 export default function MovementTracking() {
   const { movements } = useWarehouse();

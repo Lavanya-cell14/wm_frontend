@@ -1,8 +1,8 @@
 import { apiClient } from './apiClient';
 
 /**
- * Manager API Service Layer
- * Wraps dynamic backend operations for warehouse managers.
+ * Warehouse Manager API Service Layer
+ * Wraps dynamic backend operations for the WAREHOUSE_MANAGER role.
  * Integrates with VITE_API_BASE_URL via apiClient and falls back gracefully.
  */
 

@@ -15,10 +15,10 @@ import {
   TableBody, 
   TableRow, 
   TableHead, 
-  TableCell 
+  TableCell,
+  Modal,
+  Pagination
 } from 'shared-ui';
-import Modal from '../components/ui/Modal';
-import Pagination from '../components/ui/Pagination';
 import { LayoutGrid, Layers, Plus, Map, Trash2, Edit2, ShieldAlert, BarChart3, AlertTriangle, Lightbulb, Box } from 'lucide-react';
 import { getZoneLabel } from '../utils/zoneMapping';
 

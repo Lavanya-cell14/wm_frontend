@@ -1,17 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
-import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import StatCard from '../components/dashboard/StatCard';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
-import StatusBadge from '../components/ui/StatusBadge';
-import SearchFilterBar from '../components/ui/SearchFilterBar';
-import Pagination from '../components/ui/Pagination';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
+import { Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Button, Badge, StatusBadge, SearchFilterBar, Pagination, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, AlertBanner, Modal, Input } from 'shared-ui';
 import { ArrowDownToLine, Clock, UserCheck, User, Loader2 } from 'lucide-react';
-import AlertBanner from '../components/ui/AlertBanner';
-import Modal from '../components/ui/Modal';
-import Input from '../components/ui/Input';
 
 export default function Inbound() {
   const { inboundTasks, createInboundShipment, assignInboundStaff, inventory, generateNextId, isLoading, error } = useWarehouse();
@@ -133,16 +123,16 @@ export default function Inbound() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
-          <StatCard title="Total Shipments Logged" value={inboundTasks.length} icon={ArrowDownToLine} />
+          <DashboardStatCard title="Total Shipments Logged" value={inboundTasks.length} icon={ArrowDownToLine} />
         </div>
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
-          <StatCard title="Pending Shipments" value={inboundTasks.filter(t => t.status === 'Pending').length} icon={Clock} />
+          <DashboardStatCard title="Pending Shipments" value={inboundTasks.filter(t => t.status === 'Pending').length} icon={Clock} />
         </div>
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
-          <StatCard title="Receiving Verification" value={inboundTasks.filter(t => t.status === 'In Progress').length} icon={UserCheck} />
+          <DashboardStatCard title="Receiving Verification" value={inboundTasks.filter(t => t.status === 'In Progress').length} icon={UserCheck} />
         </div>
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
-          <StatCard title="Fully Received" value={inboundTasks.filter(t => t.status === 'Completed').length} icon={StatusBadge} />
+          <DashboardStatCard title="Fully Received" value={inboundTasks.filter(t => t.status === 'Completed').length} icon={StatusBadge} />
         </div>
       </div>
 

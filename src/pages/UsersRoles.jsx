@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Shield, Plus, Building, Mail, CheckCircle, XCircle } from 'lucide-react';
-import StatCard from '../components/dashboard/StatCard';
-import Button from '../components/ui/Button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
-import Badge from '../components/ui/Badge';
-import SearchFilterBar from '../components/ui/SearchFilterBar';
-import Pagination from '../components/ui/Pagination';
+import { DashboardStatCard, Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Badge, SearchFilterBar, Pagination } from 'shared-ui';
 
 const mockUsers = [
   { id: 'USR-01', name: 'Sarah Jenkins', email: 's.jenkins@warehouse.ai', role: 'admin', warehouse: 'All Facilities', status: 'active' },
@@ -60,9 +55,9 @@ export default function UsersRoles() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard title="Total Users" value={String(mockUsers.length)} icon={Users} trend={2} trendLabel="new this month" />
-        <StatCard title="Active Staff" value={String(mockUsers.filter(u => u.role === 'staff' && u.status === 'active').length)} icon={CheckCircle} />
-        <StatCard title="Pending Invites" value="5" icon={Mail} />
+        <DashboardStatCard title="Total Users" value={String(mockUsers.length)} icon={Users} trend={2} trendLabel="new this month" />
+        <DashboardStatCard title="Active Staff" value={String(mockUsers.filter(u => u.role === 'staff' && u.status === 'active').length)} icon={CheckCircle} />
+        <DashboardStatCard title="Pending Invites" value="5" icon={Mail} />
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100">

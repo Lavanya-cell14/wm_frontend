@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ScanBarcode, Box, Loader2, CheckCircle2, Lightbulb, PackageSearch, AlertCircle, ArrowRight, Play, RefreshCw, Eye, X, MapPin, Weight, Ruler, Clock, Zap, Package } from 'lucide-react';
-import Button from '../../components/ui/Button';
-import Card, { CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import Badge from '../../components/ui/Badge';
-import AlertBanner from '../../components/ui/AlertBanner';
+import { Button, Card, CardContent, CardHeader, CardTitle, Badge, AlertBanner } from 'shared-ui';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
 import { getZoneLabel } from '../../utils/zoneMapping';

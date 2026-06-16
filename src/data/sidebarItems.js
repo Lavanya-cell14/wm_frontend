@@ -3,164 +3,110 @@ import {
   ArrowDownToLine, Activity, MonitorPlay, Map,
   Lightbulb, BarChart3, ListChecks, Users, Shield,
   ClipboardList, CheckSquare, Wrench, AlertTriangle,
-  Search, Navigation, Package, UploadCloud, Settings
+  Search, Navigation, Package, UploadCloud, Settings, Layers, Bot, FileText
 } from 'lucide-react';
 
 export const sidebarItems = [
-  // ─── MANAGER ──────────────────────────────────────────────────────────────
+  // ─── WAREHOUSE MANAGER ──────────────────────────────────────────────────────
   {
     name: 'Dashboard',
     path: '/manager/dashboard',
     icon: LayoutDashboard,
-    allowedRoles: ['MANAGER'],
-  },
-  {
-    name: 'Inbound Monitoring',
-    path: '/inbound',
-    icon: ArrowDownToLine,
-    allowedRoles: ['MANAGER'],
-  },
-  {
-    name: 'AI Recommendations',
-    path: '/ai-recommendations',
-    icon: Lightbulb,
-    allowedRoles: ['MANAGER'],
-  },
-  {
-    name: 'Warehouse Layout',
-    path: '/warehouse',
-    icon: Building2,
-    allowedRoles: ['MANAGER'],
-  },
-  {
-    name: 'Zones & Bins',
-    path: '/zones-bins',
-    icon: LayoutGrid,
-    allowedRoles: ['MANAGER'],
-  },
-  {
-    name: 'Digital Twin',
-    path: '/digital-twin',
-    icon: MonitorPlay,
-    allowedRoles: ['MANAGER'],
-  },
-  {
-    name: 'Inventory Overview',
-    path: '/inventory',
-    icon: Box,
-    allowedRoles: ['MANAGER'],
-  },
-  {
-    name: 'Movements Log',
-    path: '/movements',
-    icon: Activity,
-    allowedRoles: ['MANAGER'],
+    allowedRoles: ['WAREHOUSE_MANAGER'],
   },
   {
     name: 'Analytics',
-    path: '/analytics',
+    path: '/manager/analytics',
     icon: BarChart3,
-    allowedRoles: ['MANAGER'],
+    allowedRoles: ['WAREHOUSE_MANAGER'],
   },
   {
-    name: 'Routes Overview',
-    path: '/routes',
-    icon: Map,
-    allowedRoles: ['MANAGER'],
+    name: 'Digital Twin',
+    path: '/manager/digital-twin',
+    icon: MonitorPlay,
+    allowedRoles: ['WAREHOUSE_MANAGER'],
+  },
+  {
+    name: 'AI Assistant',
+    path: '/manager/ai-assistant',
+    icon: Bot,
+    allowedRoles: ['WAREHOUSE_MANAGER'],
+  },
+  {
+    name: 'Reports',
+    path: '/manager/reports',
+    icon: FileText,
+    allowedRoles: ['WAREHOUSE_MANAGER'],
   },
 
-  // ─── INVENTORY CLERK ──────────────────────────────────────────────────────
+  // ─── RECEIVING & INVENTORY OFFICER ────────────────────────────────────────
   {
     name: 'Dashboard',
     path: '/inventory/dashboard',
     icon: LayoutDashboard,
-    allowedRoles: ['INVENTORY_CLERK'],
+    allowedRoles: ['RECEIVING_INVENTORY_OFFICER'],
   },
   {
-    name: 'OCR Upload',
-    path: '/ocr-upload',
+    name: 'OCR Center',
+    path: '/inventory/ocr-center',
     icon: UploadCloud,
-    allowedRoles: ['INVENTORY_CLERK'],
+    allowedRoles: ['RECEIVING_INVENTORY_OFFICER'],
   },
   {
-    name: 'OCR Verification',
-    path: '/ocr-verification',
-    icon: CheckSquare,
-    allowedRoles: ['INVENTORY_CLERK'],
-  },
-  {
-    name: 'Inbound Products',
-    path: '/inventory/inbound',
-    icon: ArrowDownToLine,
-    allowedRoles: ['INVENTORY_CLERK'],
-  },
-  {
-    name: 'Inventory List',
-    path: '/inventory/list',
-    icon: Box,
-    allowedRoles: ['INVENTORY_CLERK'],
-  },
-  {
-    name: 'Stock Adjustment',
-    path: '/inventory/adjust',
-    icon: Wrench,
-    allowedRoles: ['INVENTORY_CLERK'],
-  },
-  {
-    name: 'Damaged Stock',
-    path: '/inventory/damaged',
-    icon: AlertTriangle,
-    allowedRoles: ['INVENTORY_CLERK'],
-  },
-  {
-    name: 'Reserved Stock',
-    path: '/inventory/reserved',
+    name: 'Products',
+    path: '/inventory/products',
     icon: Package,
-    allowedRoles: ['INVENTORY_CLERK'],
+    allowedRoles: ['RECEIVING_INVENTORY_OFFICER'],
   },
   {
-    name: 'Product Lookup',
-    path: '/inventory/lookup',
-    icon: Search,
-    allowedRoles: ['INVENTORY_CLERK'],
+    name: 'Inventory',
+    path: '/inventory/inventory',
+    icon: Box,
+    allowedRoles: ['RECEIVING_INVENTORY_OFFICER'],
   },
   {
-    name: 'Inventory Movements',
-    path: '/inventory/movements',
-    icon: Activity,
-    allowedRoles: ['INVENTORY_CLERK'],
+    name: 'Recommendations',
+    path: '/inventory/recommendations',
+    icon: Lightbulb,
+    allowedRoles: ['RECEIVING_INVENTORY_OFFICER'],
+  },
+  {
+    name: 'Allocations',
+    path: '/inventory/allocations',
+    icon: CheckSquare,
+    allowedRoles: ['RECEIVING_INVENTORY_OFFICER'],
   },
 
-  // ─── STAFF ────────────────────────────────────────────────────────────────
+  // ─── WAREHOUSE OPERATOR ───────────────────────────────────────────────────
   {
     name: 'Dashboard',
-    path: '/staff/dashboard',
+    path: '/operator/dashboard',
     icon: LayoutDashboard,
-    allowedRoles: ['STAFF'],
+    allowedRoles: ['WAREHOUSE_OPERATOR'],
   },
   {
-    name: 'Putaway Tasks',
-    path: '/staff/putaway',
+    name: 'Storage Tasks',
+    path: '/operator/storage-tasks',
     icon: ClipboardList,
-    allowedRoles: ['STAFF'],
+    allowedRoles: ['WAREHOUSE_OPERATOR'],
   },
   {
-    name: 'Active Task',
-    path: '/staff/active',
-    icon: Activity,
-    allowedRoles: ['STAFF'],
-  },
-  {
-    name: 'Route Guidance',
-    path: '/staff/route-guidance',
+    name: 'Navigation',
+    path: '/operator/navigation',
     icon: Navigation,
-    allowedRoles: ['STAFF'],
+    allowedRoles: ['WAREHOUSE_OPERATOR'],
+  },
+  {
+    name: 'Placement Guidance',
+    path: '/operator/placement-guidance',
+    icon: Layers,
+    allowedRoles: ['WAREHOUSE_OPERATOR'],
   },
   {
     name: 'Completed Tasks',
-    path: '/staff/completed',
+    path: '/operator/completed-tasks',
     icon: CheckSquare,
-    allowedRoles: ['STAFF'],
+    allowedRoles: ['WAREHOUSE_OPERATOR'],
   },
 
   // ─── ADMIN ────────────────────────────────────────────────────────────────
@@ -171,27 +117,33 @@ export const sidebarItems = [
     allowedRoles: ['ADMIN'],
   },
   {
-    name: 'User Management',
+    name: 'Warehouse Setup',
+    path: '/admin/warehouse-setup',
+    icon: Building2,
+    allowedRoles: ['ADMIN'],
+  },
+  {
+    name: 'Navigation Setup',
+    path: '/admin/navigation-setup',
+    icon: Map,
+    allowedRoles: ['ADMIN'],
+  },
+  {
+    name: 'Users',
     path: '/admin/users',
     icon: Users,
     allowedRoles: ['ADMIN'],
   },
   {
-    name: 'Role Management',
-    path: '/admin/roles',
-    icon: Shield,
-    allowedRoles: ['ADMIN'],
-  },
-  {
-    name: 'Audit Logs',
-    path: '/admin/audit',
-    icon: ListChecks,
-    allowedRoles: ['ADMIN'],
-  },
-  {
-    name: 'System Health',
-    path: '/admin/health',
+    name: 'System Monitoring',
+    path: '/admin/monitoring',
     icon: Activity,
+    allowedRoles: ['ADMIN'],
+  },
+  {
+    name: 'Reports',
+    path: '/admin/reports',
+    icon: BarChart3,
     allowedRoles: ['ADMIN'],
   },
   {
@@ -201,3 +153,4 @@ export const sidebarItems = [
     allowedRoles: ['ADMIN'],
   },
 ];
+

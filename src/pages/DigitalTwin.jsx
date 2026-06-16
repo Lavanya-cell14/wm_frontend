@@ -1,10 +1,6 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
-import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
-import AlertBanner from '../components/ui/AlertBanner';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge, AlertBanner, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Map, Layers, Navigation, Box, HelpCircle, ShieldAlert, Sparkles, LayoutGrid, MonitorPlay } from 'lucide-react';
 import WarehouseScene from '../three/WarehouseScene';
 

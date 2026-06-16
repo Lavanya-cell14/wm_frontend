@@ -1,11 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import StatCard from '../components/dashboard/StatCard';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
-import SearchFilterBar from '../components/ui/SearchFilterBar';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
+import { Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Button, Badge, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { BrainCircuit, Cpu, Scale, HelpCircle, ArrowRight, Eye, Sparkles } from 'lucide-react';
 import { useWarehouse } from '../context/WarehouseContext';
 
@@ -42,11 +37,11 @@ export default function ProductIntelligence() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard title="Total Catalog SKUs" value="124 SKUs" icon={Cpu} />
-        <StatCard title="Electronics Class" value="48 SKUs" icon={Sparkles} />
-        <StatCard title="Heavy Items Class" value="16 SKUs" icon={Scale} />
-        <StatCard title="Fast Moving Class" value="35 SKUs" icon={BrainCircuit} />
-        <StatCard title="Needing AI Review" value="3 SKUs" icon={HelpCircle} />
+        <DashboardStatCard title="Total Catalog SKUs" value="124 SKUs" icon={Cpu} />
+        <DashboardStatCard title="Electronics Class" value="48 SKUs" icon={Sparkles} />
+        <DashboardStatCard title="Heavy Items Class" value="16 SKUs" icon={Scale} />
+        <DashboardStatCard title="Fast Moving Class" value="35 SKUs" icon={BrainCircuit} />
+        <DashboardStatCard title="Needing AI Review" value="3 SKUs" icon={HelpCircle} />
       </div>
 
       {/* Filter */}

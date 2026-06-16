@@ -14,9 +14,9 @@ export default function ProtectedRoute({ allowedRoles }) {
     // Determine the dashboard based on role
     const getRoleDashboard = (role) => {
       switch (role) {
-        case 'MANAGER': return '/manager/dashboard';
-        case 'STAFF': return '/staff/dashboard';
-        case 'INVENTORY_CLERK': return '/inventory/dashboard';
+        case 'WAREHOUSE_MANAGER': return '/manager/dashboard';
+        case 'WAREHOUSE_OPERATOR': return '/operator/dashboard';
+        case 'RECEIVING_INVENTORY_OFFICER': return '/inventory/dashboard';
         case 'ADMIN': return '/admin/dashboard';
         default: return '/login';
       }

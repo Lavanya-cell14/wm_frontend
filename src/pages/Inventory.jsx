@@ -1,18 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
 import { useAuth } from '../context/AuthContext';
-import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import StatCard from '../components/dashboard/StatCard';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
-import StatusBadge from '../components/ui/StatusBadge';
-import SearchFilterBar from '../components/ui/SearchFilterBar';
-import Pagination from '../components/ui/Pagination';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
+import { Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Button, Badge, StatusBadge, SearchFilterBar, Pagination, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, AlertBanner, Modal, Input } from 'shared-ui';
 import { Package, ShieldCheck, ShieldAlert, Settings, AlertCircle } from 'lucide-react';
-import AlertBanner from '../components/ui/AlertBanner';
-import Modal from '../components/ui/Modal';
-import Input from '../components/ui/Input';
 
 export default function Inventory() {
   const { isLoading, error, inventory, adjustStock, markDamaged, warehouses, zones } = useWarehouse();
@@ -141,19 +131,19 @@ export default function Inventory() {
       {/* KPI Stats - Hover scale transitions applied */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
-          <StatCard title="Total Stock Units" value={stats.totalStock} icon={Package} />
+          <DashboardStatCard title="Total Stock Units" value={stats.totalStock} icon={Package} />
         </div>
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
-          <StatCard title="Available Stock" value={stats.availableStock} icon={ShieldCheck} />
+          <DashboardStatCard title="Available Stock" value={stats.availableStock} icon={ShieldCheck} />
         </div>
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
-          <StatCard title="Reserved Stock" value={stats.reservedStock} icon={Settings} />
+          <DashboardStatCard title="Reserved Stock" value={stats.reservedStock} icon={Settings} />
         </div>
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
-          <StatCard title="Damaged Stock" value={stats.damagedStock} icon={ShieldAlert} />
+          <DashboardStatCard title="Damaged Stock" value={stats.damagedStock} icon={ShieldAlert} />
         </div>
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
-          <StatCard title="Low Stock Items" value={stats.lowStockCount} icon={AlertCircle} trend={stats.lowStockCount > 3 ? 10 : 0} />
+          <DashboardStatCard title="Low Stock Items" value={stats.lowStockCount} icon={AlertCircle} trend={stats.lowStockCount > 3 ? 10 : 0} />
         </div>
       </div>
 

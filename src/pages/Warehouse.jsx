@@ -1,12 +1,6 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
-import StatCard from '../components/dashboard/StatCard';
-import Button from '../components/ui/Button';
-import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import Badge from '../components/ui/Badge';
-import StatusBadge from '../components/ui/StatusBadge';
-import SearchFilterBar from '../components/ui/SearchFilterBar';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
+import { DashboardStatCard, Button, Card, CardContent, CardHeader, CardTitle, Badge, StatusBadge, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Building2, Plus, MapPin, ChevronRight, Activity, Package, Users, Layers, X, ShieldAlert } from 'lucide-react';
 
 export default function Warehouse() {
@@ -62,10 +56,10 @@ export default function Warehouse() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Warehouses" value={warehouses.length} icon={Building2} />
-        <StatCard title="Operational Facilities" value={warehouses.filter(w => w.status === 'operational').length} icon={Activity} />
-        <StatCard title="Total Staff" value={warehouses.reduce((sum, w) => sum + w.activeStaff, 0)} icon={Users} />
-        <StatCard title="Total Bins" value={bins.length} icon={Layers} />
+        <DashboardStatCard title="Total Warehouses" value={warehouses.length} icon={Building2} />
+        <DashboardStatCard title="Operational Facilities" value={warehouses.filter(w => w.status === 'operational').length} icon={Activity} />
+        <DashboardStatCard title="Total Staff" value={warehouses.reduce((sum, w) => sum + w.activeStaff, 0)} icon={Users} />
+        <DashboardStatCard title="Total Bins" value={bins.length} icon={Layers} />
       </div>
 
       {/* Warehouses Table */}

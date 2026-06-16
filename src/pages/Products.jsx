@@ -8,9 +8,9 @@ import {
   CardDescription,
   Badge, 
   Button, 
-  AlertBanner 
+  AlertBanner,
+  Pagination
 } from 'shared-ui';
-import Pagination from '../components/ui/Pagination';
 import { Box, Search, Filter, Layers, ShieldCheck, AlertCircle, Sparkles, Loader2 } from 'lucide-react';
 
 export default function Products() {

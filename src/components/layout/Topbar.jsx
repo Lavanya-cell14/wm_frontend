@@ -46,7 +46,7 @@ export default function Topbar({ onMenuClick }) {
           </div>
           <div className="hidden sm:flex flex-col items-start mr-2">
             <span className="text-sm font-semibold text-gray-700 leading-tight">{user?.name || 'Admin User'}</span>
-            <span className="text-[11px] text-gray-500 capitalize">{user?.role?.toLowerCase().replace('_', ' ') || 'Manager'}</span>
+            <span className="text-[11px] text-gray-500 capitalize">{user?.role?.toLowerCase().replaceAll('_', ' ') || 'User'}</span>
           </div>
         </div>
 

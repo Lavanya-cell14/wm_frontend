@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
-import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
-import StatusBadge from '../components/ui/StatusBadge';
-import SearchFilterBar from '../components/ui/SearchFilterBar';
-import Pagination from '../components/ui/Pagination';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge, StatusBadge, SearchFilterBar, Pagination, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Activity, Clock, MapPin, ArrowRightLeft } from 'lucide-react';
 
 export default function Movements() {

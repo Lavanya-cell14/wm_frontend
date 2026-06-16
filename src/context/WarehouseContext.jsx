@@ -351,9 +351,9 @@ export function WarehouseProvider({ children }) {
 
   const [workers, setWorkers] = useState([
     { id: 'WRK-001', name: 'System Admin', email: 'admin@warehouseai.com', role: 'ADMIN', warehouse: 'All Facilities', status: 'Active', lastLogin: '5 mins ago', createdAt: '2026-01-10' },
-    { id: 'WRK-002', name: 'Warehouse Manager', email: 'manager@warehouseai.com', role: 'MANAGER', warehouse: 'Central Fulfillment A', status: 'Active', lastLogin: '1 hr ago', createdAt: '2026-01-12' },
-    { id: 'WRK-003', name: 'Warehouse Staff', email: 'staff@warehouseai.com', role: 'STAFF', warehouse: 'East Coast Distribution', status: 'Active', lastLogin: '3 hrs ago', createdAt: '2026-01-15' },
-    { id: 'WRK-004', name: 'Inventory Clerk', email: 'inventory@warehouseai.com', role: 'INVENTORY_CLERK', warehouse: 'Central Fulfillment A', status: 'Active', lastLogin: '2 hrs ago', createdAt: '2026-02-01' }
+    { id: 'WRK-002', name: 'Warehouse Manager', email: 'manager@warehouseai.com', role: 'WAREHOUSE_MANAGER', warehouse: 'Central Fulfillment A', status: 'Active', lastLogin: '1 hr ago', createdAt: '2026-01-12' },
+    { id: 'WRK-003', name: 'Warehouse Operator', email: 'staff@warehouseai.com', role: 'WAREHOUSE_OPERATOR', warehouse: 'East Coast Distribution', status: 'Active', lastLogin: '3 hrs ago', createdAt: '2026-01-15' },
+    { id: 'WRK-004', name: 'Receiving & Inventory Officer', email: 'inventory@warehouseai.com', role: 'RECEIVING_INVENTORY_OFFICER', warehouse: 'Central Fulfillment A', status: 'Active', lastLogin: '2 hrs ago', createdAt: '2026-02-01' }
   ]);
 
   const [putawayTasks, setPutawayTasks] = useState([
@@ -976,9 +976,9 @@ export function WarehouseProvider({ children }) {
         // Map workers
         if (workersRes) {
           const mappedWorkers = workersRes.map(w => {
-            let role = "STAFF";
-            if (w.role.toUpperCase() === 'SUPERVISOR') role = "MANAGER";
-            else if (w.role.toUpperCase() === 'CLERK') role = "INVENTORY_CLERK";
+            let role = "WAREHOUSE_OPERATOR";
+            if (w.role.toUpperCase() === 'SUPERVISOR') role = "WAREHOUSE_MANAGER";
+            else if (w.role.toUpperCase() === 'CLERK') role = "RECEIVING_INVENTORY_OFFICER";
 
             return {
               id: w.workerId,
@@ -1346,7 +1346,7 @@ export function WarehouseProvider({ children }) {
     };
 
     setWarehouses((prev) => [...prev, newWarehouse]);
-    logAudit("manager@warehouseai.com", "MANAGER", "ADD_WAREHOUSE", "Warehouse", `Added warehouse ${wh.name}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "ADD_WAREHOUSE", "Warehouse", `Added warehouse ${wh.name}.`);
   };
 
   const addZone = (zone) => {
@@ -1369,7 +1369,7 @@ export function WarehouseProvider({ children }) {
     };
 
     setZones((prev) => [...prev, newZone]);
-    logAudit("manager@warehouseai.com", "MANAGER", "ADD_ZONE", "Zones & Bins", `Created zone ${newZone.name}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "ADD_ZONE", "Zones & Bins", `Created zone ${newZone.name}.`);
   };
 
   const editZone = (updatedZone) => {
@@ -1379,12 +1379,12 @@ export function WarehouseProvider({ children }) {
       )
     );
 
-    logAudit("manager@warehouseai.com", "MANAGER", "EDIT_ZONE", "Zones & Bins", `Updated zone ${updatedZone.name}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "EDIT_ZONE", "Zones & Bins", `Updated zone ${updatedZone.name}.`);
   };
 
   const deleteZone = (zoneId) => {
     setZones((prev) => prev.filter((zone) => zone.id !== zoneId));
-    logAudit("manager@warehouseai.com", "MANAGER", "DELETE_ZONE", "Zones & Bins", `Deleted zone ${zoneId}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "DELETE_ZONE", "Zones & Bins", `Deleted zone ${zoneId}.`);
   };
 
   const addBin = (bin) => {
@@ -1402,7 +1402,7 @@ export function WarehouseProvider({ children }) {
     };
 
     setBins((prev) => [...prev, newBin]);
-    logAudit("manager@warehouseai.com", "MANAGER", "ADD_BIN", "Zones & Bins", `Created bin ${newBin.code}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "ADD_BIN", "Zones & Bins", `Created bin ${newBin.code}.`);
   };
 
   const editBin = (updatedBin) => {
@@ -1412,12 +1412,12 @@ export function WarehouseProvider({ children }) {
       )
     );
 
-    logAudit("manager@warehouseai.com", "MANAGER", "EDIT_BIN", "Zones & Bins", `Updated bin ${updatedBin.code}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "EDIT_BIN", "Zones & Bins", `Updated bin ${updatedBin.code}.`);
   };
 
   const deleteBin = (binCode) => {
     setBins((prev) => prev.filter((bin) => bin.code !== binCode));
-    logAudit("manager@warehouseai.com", "MANAGER", "DELETE_BIN", "Zones & Bins", `Deleted bin ${binCode}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "DELETE_BIN", "Zones & Bins", `Deleted bin ${binCode}.`);
   };
 
   const adjustStock = (sku, qtyDelta, user, reason = "Manual stock adjustment") => {
@@ -1720,13 +1720,13 @@ export function WarehouseProvider({ children }) {
           ? {
               ...task,
               status: "In Progress",
-              assignedStaff: "Warehouse Staff",
+              assignedStaff: "Warehouse Operator",
             }
           : task
       )
     );
 
-    logAudit("staff@warehouseai.com", "STAFF", "START_RECEIVING", "Inbound", `Started inbound shipment ${taskId}.`);
+    logAudit("staff@warehouseai.com", "WAREHOUSE_OPERATOR", "START_RECEIVING", "Inbound", `Started inbound shipment ${taskId}.`);
   };
 
   const completeInboundTask = (taskId, user) => {
@@ -1766,7 +1766,7 @@ export function WarehouseProvider({ children }) {
           sku: task.sku,
           from: task.pickupLocation || "Receiving Dock",
           to: task.destinationBin || task.bin || "BIN-002",
-          user: task.assignedStaffName || "Warehouse Staff",
+          user: task.assignedStaffName || "Warehouse Operator",
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           type: "PUTAWAY_STARTED",
           status: "In Progress",
@@ -1777,7 +1777,7 @@ export function WarehouseProvider({ children }) {
       ]);
     }
 
-    logAudit("staff@warehouseai.com", "STAFF", "START_PUTAWAY", "Putaway", `Started putaway task ${taskId}.`);
+    logAudit("staff@warehouseai.com", "WAREHOUSE_OPERATOR", "START_PUTAWAY", "Putaway", `Started putaway task ${taskId}.`);
   };
 
   const confirmPickedFromReceiving = (taskId) => {
@@ -1798,7 +1798,7 @@ export function WarehouseProvider({ children }) {
           sku: task.sku,
           from: task.pickupLocation || "Receiving Dock",
           to: task.destinationBin || task.bin || "BIN-002",
-          user: task.assignedStaffName || "Warehouse Staff",
+          user: task.assignedStaffName || "Warehouse Operator",
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           type: "PICKED_FROM_RECEIVING",
           status: "Picked",
@@ -1828,7 +1828,7 @@ export function WarehouseProvider({ children }) {
           sku: task.sku,
           from: task.pickupLocation || "Receiving Dock",
           to: task.destinationBin || task.bin || "BIN-002",
-          user: task.assignedStaffName || "Warehouse Staff",
+          user: task.assignedStaffName || "Warehouse Operator",
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           type: "REACHED_BIN",
           status: "Reached Bin",
@@ -1868,7 +1868,7 @@ export function WarehouseProvider({ children }) {
           sku: task.sku,
           from: task.pickupLocation || "Receiving Dock",
           to: task.destinationBin || task.bin || "BIN-002",
-          user: user?.name || user?.email || "Warehouse Staff",
+          user: user?.name || user?.email || "Warehouse Operator",
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           type: "ISSUE_REPORTED",
           status: "Delayed",
@@ -1878,7 +1878,7 @@ export function WarehouseProvider({ children }) {
         },
         ...prev
       ]);
-      logAudit(user?.email || "staff@warehouseai.com", "STAFF", "REPORT_ISSUE", "Putaway", `Reported issue on task ${taskId}: ${issueType}`);
+      logAudit(user?.email || "staff@warehouseai.com", "WAREHOUSE_OPERATOR", "REPORT_ISSUE", "Putaway", `Reported issue on task ${taskId}: ${issueType}`);
     }
   };
 
@@ -1925,7 +1925,7 @@ export function WarehouseProvider({ children }) {
         sku: task.sku,
         from: task.pickupLocation || "Receiving Dock",
         to: targetBinCode || "BIN-002",
-        user: user?.name || user?.email || "Warehouse Staff",
+        user: user?.name || user?.email || "Warehouse Operator",
         time: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
@@ -1946,7 +1946,7 @@ export function WarehouseProvider({ children }) {
       assignedMovements: Math.max(0, prev.assignedMovements - 1),
     }));
 
-    logAudit(user?.email || "staff@warehouseai.com", "STAFF", "COMPLETE_PUTAWAY", "Putaway", `Completed putaway task ${taskId}.`);
+    logAudit(user?.email || "staff@warehouseai.com", "WAREHOUSE_OPERATOR", "COMPLETE_PUTAWAY", "Putaway", `Completed putaway task ${taskId}.`);
     return true;
   };
 
@@ -1962,7 +1962,7 @@ export function WarehouseProvider({ children }) {
     };
 
     setOrders((prev) => [newOrder, ...prev]);
-    logAudit("manager@warehouseai.com", "MANAGER", "CREATE_ORDER", "Orders", `Created order ${newOrder.id} for ${order.customer}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "CREATE_ORDER", "Orders", `Created order ${newOrder.id} for ${order.customer}.`);
   };
 
   const createInboundShipment = (shipment) => {
@@ -1982,7 +1982,7 @@ export function WarehouseProvider({ children }) {
     };
 
     setInboundTasks((prev) => [newShipment, ...prev]);
-    logAudit("manager@warehouseai.com", "MANAGER", "CREATE_INBOUND", "Inbound", `Created inbound shipment ${newShipment.id} from ${shipment.supplier}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "CREATE_INBOUND", "Inbound", `Created inbound shipment ${newShipment.id} from ${shipment.supplier}.`);
   };
 
   const assignInboundStaff = (id, staffName) => {
@@ -1992,7 +1992,7 @@ export function WarehouseProvider({ children }) {
       )
     );
 
-    logAudit("manager@warehouseai.com", "MANAGER", "ASSIGN_STAFF", "Inbound", `Assigned ${staffName} to ${id}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "ASSIGN_STAFF", "Inbound", `Assigned ${staffName} to ${id}.`);
   };
 
   const dispatchOrder = (orderId) => {
@@ -2008,7 +2008,7 @@ export function WarehouseProvider({ children }) {
       )
     );
 
-    logAudit("manager@warehouseai.com", "MANAGER", "DISPATCH_ORDER", "Orders", `Dispatched order ${orderId}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "DISPATCH_ORDER", "Orders", `Dispatched order ${orderId}.`);
   };
 
   const acceptAiRecommendation = (recId) => {
@@ -2028,7 +2028,7 @@ export function WarehouseProvider({ children }) {
       } : rec));
     }
 
-    logAudit("manager@warehouseai.com", "MANAGER", "ACCEPT_AI_RECOMMENDATION", "AI Recommendations", `Approved AI recommendation ${recId}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "ACCEPT_AI_RECOMMENDATION", "AI Recommendations", `Approved AI recommendation ${recId}.`);
   };
 
   const rejectAiRecommendation = (recId) => {
@@ -2047,7 +2047,7 @@ export function WarehouseProvider({ children }) {
       } : rec));
     }
 
-    logAudit("manager@warehouseai.com", "MANAGER", "REJECT_AI_RECOMMENDATION", "AI Recommendations", `Rejected recommendation ${recId}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "REJECT_AI_RECOMMENDATION", "AI Recommendations", `Rejected recommendation ${recId}.`);
   };
 
   const generateBinRecommendation = (inboundId) => {
@@ -2093,7 +2093,7 @@ export function WarehouseProvider({ children }) {
     };
 
     setAiRecommendations(prev => [newRec, ...prev]);
-    logAudit("manager@warehouseai.com", "MANAGER", "GENERATE_AI_RECOMMENDATION", "AI Recommendations", `Generated AI bin recommendation for inbound item ${receipt.productName}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "GENERATE_AI_RECOMMENDATION", "AI Recommendations", `Generated AI bin recommendation for inbound item ${receipt.productName}.`);
   };
 
   const assignPutawayTask = (inboundId, staffId, staffName, priority) => {
@@ -2147,7 +2147,7 @@ export function WarehouseProvider({ children }) {
       ...prev
     ]);
 
-    logAudit("manager@warehouseai.com", "MANAGER", "TASK_ASSIGNED", "Putaway", `Assigned putaway task for ${receipt.productName} to ${staffName}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "TASK_ASSIGNED", "Putaway", `Assigned putaway task for ${receipt.productName} to ${staffName}.`);
   };
 
   const addRack = (rack) => {
@@ -2161,17 +2161,17 @@ export function WarehouseProvider({ children }) {
       status: rack.status || "Active"
     };
     setRacks((prev) => [...prev, newRack]);
-    logAudit("manager@warehouseai.com", "MANAGER", "ADD_RACK", "Zones & Bins", `Created rack ${newRack.name}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "ADD_RACK", "Zones & Bins", `Created rack ${newRack.name}.`);
   };
 
   const editRack = (updatedRack) => {
     setRacks((prev) => prev.map((r) => r.id === updatedRack.id ? { ...r, ...updatedRack } : r));
-    logAudit("manager@warehouseai.com", "MANAGER", "EDIT_RACK", "Zones & Bins", `Updated rack ${updatedRack.name}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "EDIT_RACK", "Zones & Bins", `Updated rack ${updatedRack.name}.`);
   };
 
   const deleteRack = (rackId) => {
     setRacks((prev) => prev.filter((r) => r.id !== rackId));
-    logAudit("manager@warehouseai.com", "MANAGER", "DELETE_RACK", "Zones & Bins", `Deleted rack ${rackId}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "DELETE_RACK", "Zones & Bins", `Deleted rack ${rackId}.`);
   };
 
   const addShelf = (shelf) => {
@@ -2185,17 +2185,17 @@ export function WarehouseProvider({ children }) {
       status: shelf.status || "Active"
     };
     setShelves((prev) => [...prev, newShelf]);
-    logAudit("manager@warehouseai.com", "MANAGER", "ADD_SHELF", "Zones & Bins", `Created shelf ${newShelf.shelfLevel}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "ADD_SHELF", "Zones & Bins", `Created shelf ${newShelf.shelfLevel}.`);
   };
 
   const editShelf = (updatedShelf) => {
     setShelves((prev) => prev.map((s) => s.id === updatedShelf.id ? { ...s, ...updatedShelf } : s));
-    logAudit("manager@warehouseai.com", "MANAGER", "EDIT_SHELF", "Zones & Bins", `Updated shelf ${updatedShelf.id}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "EDIT_SHELF", "Zones & Bins", `Updated shelf ${updatedShelf.id}.`);
   };
 
   const deleteShelf = (shelfId) => {
     setShelves((prev) => prev.filter((s) => s.id !== shelfId));
-    logAudit("manager@warehouseai.com", "MANAGER", "DELETE_SHELF", "Zones & Bins", `Deleted shelf ${shelfId}.`);
+    logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "DELETE_SHELF", "Zones & Bins", `Deleted shelf ${shelfId}.`);
   };
 
   return (

@@ -2,14 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
-import Card, { CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
-import Badge from '../../components/ui/Badge';
-import AlertBanner from '../../components/ui/AlertBanner';
-import StatusBadge from '../../components/ui/StatusBadge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/Table';
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge, AlertBanner, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from 'shared-ui';
 import { ArrowDownToLine, ScanBarcode, Play, CheckSquare, Eye, Clock, Box } from 'lucide-react';
-import Pagination from '../../components/ui/Pagination';
 
 export default function InboundTasks() {
   const navigate = useNavigate();

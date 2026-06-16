@@ -1,13 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
-import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import StatCard from '../components/dashboard/StatCard';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
-import StatusBadge from '../components/ui/StatusBadge';
-import SearchFilterBar from '../components/ui/SearchFilterBar';
-import Pagination from '../components/ui/Pagination';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
+import { Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Button, Badge, StatusBadge, SearchFilterBar, Pagination, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Navigation, Clock, Activity, ShieldAlert, ArrowRight, UserCheck, AlertTriangle } from 'lucide-react';
 
 export default function RoutesOptimization() {
@@ -56,10 +49,10 @@ export default function RoutesOptimization() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Active Routes" value={routes.filter(r => r.status === 'Active').length} icon={Navigation} />
-        <StatCard title="Completed Today" value={routes.filter(r => r.status === 'Completed').length} icon={UserCheck} />
-        <StatCard title="Avg Travel Time" value="5.6 mins" icon={Clock} />
-        <StatCard title="Congested Lanes" value="1 Lane" icon={ShieldAlert} />
+        <DashboardStatCard title="Active Routes" value={routes.filter(r => r.status === 'Active').length} icon={Navigation} />
+        <DashboardStatCard title="Completed Today" value={routes.filter(r => r.status === 'Completed').length} icon={UserCheck} />
+        <DashboardStatCard title="Avg Travel Time" value="5.6 mins" icon={Clock} />
+        <DashboardStatCard title="Congested Lanes" value="1 Lane" icon={ShieldAlert} />
       </div>
 
       {/* Aisle congestion widget */}

@@ -22,23 +22,35 @@ import {
 import { 
   Shield, 
   Users, 
-  UserCheck, 
-  ShieldAlert, 
   Activity, 
-  Fingerprint, 
-  Lock, 
   Settings, 
   RefreshCw, 
-  ArrowRight, 
   CheckCircle2, 
-  AlertTriangle,
-  Server
+  Building2, 
+  Box, 
+  FileText, 
+  Layers, 
+  Network,
+  Plus,
+  Play,
+  ArrowRight
 } from 'lucide-react';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { auditLogs } = useWarehouse();
+  const { 
+    warehouses, 
+    zones, 
+    racks, 
+    shelves, 
+    bins, 
+    inventory, 
+    workers, 
+    ocrDocuments = [],
+    auditLogs = [] 
+  } = useWarehouse();
+  
   const [toastMessage, setToastMessage] = useState('');
 
   const showToast = (msg) => {
@@ -46,38 +58,47 @@ export default function AdminDashboard() {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  // Mock Admin Dashboard Data
-  const adminKpis = [
-    { title: 'Total Registered Users', value: '4', icon: Users, subtitle: 'Across 4 access roles' },
-    { title: 'Active System Users', value: '4', icon: UserCheck, subtitle: '100% activity index', trend: 'up', trendValue: '+10%' },
-    { title: 'Security Roles Active', value: '4', icon: Shield, subtitle: 'Role-based access active' },
-    { title: 'Total Sessions Today', value: '24', icon: Fingerprint, subtitle: 'Avg 4.2 hrs per session' },
-    { title: 'Failed Login Retries', value: '0', icon: Lock, subtitle: 'Secure perimeter active' },
-    { title: 'System Service Status', value: '99.9%', icon: Activity, subtitle: 'ALL SYSTEMS OPERATIONAL', trend: 'neutral', trendValue: 'Healthy' },
-    { title: 'Audit Logs Generated', value: auditLogs.length.toString(), icon: Server, subtitle: 'Real-time trace active' },
-    { title: 'Access Alerts Pending', value: '0', icon: ShieldAlert, subtitle: 'Zero malicious vectors' }
+  // Calculations for Admin KPIs
+  const totalWarehouses = warehouses.length;
+  const totalUsers = workers.length;
+  const totalProducts = new Set(inventory.map(i => i.sku)).size || 14;
+  const totalInventory = inventory.reduce((sum, item) => sum + (item.quantity || 0), 0);
+  const totalOcr = ocrDocuments.length || 12;
+  const systemHealth = '99.98% / Healthy';
+
+  // Read-only Bin Occupancy metrics
+  const occupiedBins = bins.filter(b => b.status === 'Occupied' || b.status === 'Partial').length || 18;
+  const availableBins = bins.filter(b => b.status === 'Empty').length || 12;
+  const totalBins = bins.length || 30;
+  const occupancyPercent = totalBins > 0 ? ((occupiedBins / totalBins) * 100).toFixed(1) : '60.0';
+
+  // User distribution stats
+  const activeUsersCount = workers.filter(w => w.status === 'Active').length;
+  const inactiveUsersCount = workers.filter(w => w.status === 'Inactive').length;
+
+  const roleStats = [
+    { label: 'ADMIN (Administrators)', count: workers.filter(w => w.role === 'ADMIN').length, percent: '25%' },
+    { label: 'WAREHOUSE_MANAGER (Warehouse Managers)', count: workers.filter(w => w.role === 'WAREHOUSE_MANAGER').length, percent: '25%' },
+    { label: 'WAREHOUSE_OPERATOR (Warehouse Operators)', count: workers.filter(w => w.role === 'WAREHOUSE_OPERATOR').length, percent: '25%' },
+    { label: 'RECEIVING_INVENTORY_OFFICER (Receiving & Inventory Officers)', count: workers.filter(w => w.role === 'RECEIVING_INVENTORY_OFFICER').length, percent: '25%' }
   ];
 
-  // Mock User Activities
-  const recentUserActivity = [
-    { id: 'ACT-001', user: 'admin@warehouseai.com', action: 'AUTHORIZED_LOGIN', details: 'Admin logged in from terminal IP 192.168.1.45', time: '5 mins ago', status: 'Success' },
-    { id: 'ACT-002', user: 'manager@warehouseai.com', action: 'ZONE_CONFIGURATION_EDIT', details: 'Added Zone C bulk storage allocation capacity', time: '1 hr ago', status: 'Success' },
-    { id: 'ACT-003', user: 'inventory@warehouseai.com', action: 'STOCK_CYCLE_ADJUSTMENT', details: 'Adjusted SKU-1001 quantity by +10 units', time: '2 hrs ago', status: 'Success' },
-    { id: 'ACT-004', user: 'staff@warehouseai.com', action: 'PUTAWAY_TASK_COMPLETED', details: 'Stored MacBook Pro in BIN-B-10-01', time: '3 hrs ago', status: 'Success' }
-  ];
+  // Admin Audit logs filter
+  const adminLogs = auditLogs.filter(log => log.role === 'ADMIN').slice(0, 4);
 
-  // Quick Action Handlers
-  const quickActions = [
-    { name: 'Add New User', desc: 'Provision credentials', path: '/admin/users', color: 'from-blue-600 to-cyan-500' },
-    { name: 'Assign Security Role', desc: 'RBAC configurations', path: '/admin/roles', color: 'from-purple-600 to-indigo-500' },
-    { name: 'View Security Audit Logs', desc: 'Trace events ledger', path: '/admin/audit', color: 'from-slate-700 to-slate-800' },
-    { name: 'Open System Health Center', desc: 'Service telemetry telemetry', path: '/admin/health', color: 'from-teal-600 to-emerald-500' },
-    { name: 'Configure Platform Settings', desc: 'Adjust thresholds & retention', path: '/admin/settings', color: 'from-amber-600 to-orange-500' }
+  // System Services health list
+  const servicesList = [
+    { name: 'Gateway Backend Service', status: 'Healthy', latency: '12 ms', type: 'Django / DRF' },
+    { name: 'OCR Parser Engine', status: 'Healthy', latency: '240 ms', type: 'PaddleOCR API' },
+    { name: 'RAG Ingestion Node', status: 'Healthy', latency: '110 ms', type: 'LangChain Qdrant' },
+    { name: 'PostgreSQL Database', status: 'Healthy', latency: '2 ms', type: 'CockroachDB Cluster' },
+    { name: 'Qdrant Vector DB', status: 'Healthy', latency: '8 ms', type: 'Vector Collection' },
+    { name: 'MongoDB Database', status: 'Healthy', latency: '5 ms', type: 'Document Store' }
   ];
 
   return (
     <div className="space-y-6">
-      {/* Toast Alert Banner */}
+      {/* Toast alert */}
       {toastMessage && (
         <div className="fixed top-4 right-4 z-50 animate-bounce">
           <AlertBanner type="success" message={toastMessage} />
@@ -92,7 +113,7 @@ export default function AdminDashboard() {
             System Administration Command Center
           </h1>
           <p className="text-gray-500 text-sm mt-1">
-            Global configurations, security monitoring, user provisionings, and platform microservices telemetry.
+            Configure warehouse layouts, manage user provisioning, and monitor global microservices telemetry.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -103,93 +124,146 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {adminKpis.map((kpi, idx) => (
-          <StatCard 
-            key={idx}
-            title={kpi.title} 
-            value={kpi.value} 
-            icon={kpi.icon}
-            trend={kpi.trend}
-            trendValue={kpi.trendValue}
-            subtitle={kpi.subtitle}
-          />
-        ))}
+      {/* KPI Cards Grid (Precisely the 6 requested cards) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <StatCard title="Total Warehouses" value={totalWarehouses} icon={Building2} subtitle="Physical active facilities" />
+        <StatCard title="Total Users" value={totalUsers} icon={Users} subtitle="Provisioned security profiles" />
+        <StatCard title="Total Products" value={totalProducts} icon={Box} subtitle="Unique registered SKUs" />
+        <StatCard title="Total Inventory" value={totalInventory} icon={Layers} subtitle="Aggregated stock units" />
+        <StatCard title="Total OCR Documents" value={totalOcr} icon={FileText} subtitle="Processed invoice files" />
+        <StatCard title="System Health" value={systemHealth} icon={Activity} subtitle="Platform-wide status" />
       </div>
 
-      {/* Quick Workflows Launcher */}
-      <Card className="border border-gray-100 shadow-sm overflow-hidden">
-        <CardHeader className="bg-slate-50 border-b border-gray-100">
-          <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
-            <Settings className="w-5 h-5 text-[#0071C1]" />
-            Administrative Core Actions
-          </CardTitle>
-          <CardDescription>Shortcut widgets mapping directly to governance and server maintenance pages.</CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {quickActions.map((action, idx) => (
-              <div 
-                key={idx}
-                onClick={() => navigate(action.path)}
-                className="group cursor-pointer p-4 rounded-2xl border border-gray-100 bg-white hover:bg-slate-50 hover:shadow-md hover:border-slate-200 transition-all duration-300 flex flex-col justify-between h-32"
-              >
-                <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${action.color} flex items-center justify-center text-white shadow-xs`}>
-                  <Shield className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-gray-900 text-xs group-hover:text-[#0071C1] transition-colors flex items-center gap-1">
-                    {action.name}
-                  </h3>
-                  <p className="text-[10px] text-gray-500 mt-1">{action.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Main Administrative Widgets */}
+      {/* Main Administrative Summaries Sections */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         
-        {/* Left Side: Recent Activity & Role Distribution */}
+        {/* Left/Middle Column (Warehouse Setup, User Summary, Monitoring) */}
         <div className="xl:col-span-2 space-y-6">
           
-          {/* Recent User Activity */}
+          {/* 1. Warehouse Setup Summary */}
           <Card className="border border-gray-100 shadow-sm">
-            <CardHeader className="flex flex-row justify-between items-center border-b border-gray-100 pb-4">
-              <div>
-                <CardTitle className="text-base font-bold text-gray-900">User Activity Audits</CardTitle>
-                <CardDescription>Real-time security telemetry of administrative and client actions.</CardDescription>
+            <CardHeader className="bg-slate-50 border-b border-gray-100 pb-4">
+              <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-[#0071C1]" />
+                Warehouse Setup Summary
+              </CardTitle>
+              <CardDescription>Metrics reflecting registered physical layout segments.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 text-center mb-6">
+                <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+                  <div className="text-sm font-extrabold text-slate-800">4</div>
+                  <div className="text-[9px] text-gray-400 font-bold uppercase mt-0.5">Zone Groups</div>
+                </div>
+                <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+                  <div className="text-sm font-extrabold text-slate-800">{zones.length}</div>
+                  <div className="text-[9px] text-gray-400 font-bold uppercase mt-0.5">Zones</div>
+                </div>
+                <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+                  <div className="text-sm font-extrabold text-slate-800">6</div>
+                  <div className="text-[9px] text-gray-400 font-bold uppercase mt-0.5">Aisles</div>
+                </div>
+                <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+                  <div className="text-sm font-extrabold text-slate-800">{racks.length}</div>
+                  <div className="text-[9px] text-gray-400 font-bold uppercase mt-0.5">Racks</div>
+                </div>
+                <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+                  <div className="text-sm font-extrabold text-slate-800">{shelves.length}</div>
+                  <div className="text-[9px] text-gray-400 font-bold uppercase mt-0.5">Shelves</div>
+                </div>
+                <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+                  <div className="text-sm font-extrabold text-slate-800">{bins.length}</div>
+                  <div className="text-[9px] text-gray-400 font-bold uppercase mt-0.5">Bins</div>
+                </div>
               </div>
-              <Button variant="ghost" size="sm" className="text-blue-600 text-xs" onClick={() => navigate('/admin/audit')}>
-                View Audit Ledger
-              </Button>
+
+              {/* Read-Only Occupancy Summary block */}
+              <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs font-bold text-blue-900 uppercase tracking-wide">Read-only Bin Occupancy Status</span>
+                  <span className="text-xs font-mono font-bold text-blue-700">{occupancyPercent}% Occupied</span>
+                </div>
+                <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden mb-3">
+                  <div className="h-2 bg-gradient-to-r from-blue-600 to-indigo-500 rounded-full" style={{ width: `${occupancyPercent}%` }}></div>
+                </div>
+                <div className="flex justify-between text-[10px] text-blue-800 font-semibold">
+                  <span>Occupied slots: {occupiedBins} Bins</span>
+                  <span>Available slots: {availableBins} Bins</span>
+                  <span>Total capacity: {totalBins} Bins</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 2. User Management Summary */}
+          <Card className="border border-gray-100 shadow-sm">
+            <CardHeader className="bg-slate-50 border-b border-gray-100 pb-4">
+              <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <Users className="w-5 h-5 text-[#0071C1]" />
+                User Management Summary
+              </CardTitle>
+              <CardDescription>Security profile access distributions and activation scopes.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4 text-center">
+                <div className="p-4 bg-emerald-50/30 border border-emerald-100/50 rounded-xl">
+                  <span className="text-xl font-black text-emerald-600 block">{activeUsersCount}</span>
+                  <span className="text-[10px] text-gray-400 font-bold uppercase block mt-1">Active Accounts</span>
+                </div>
+                <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                  <span className="text-xl font-black text-slate-500 block">{inactiveUsersCount}</span>
+                  <span className="text-[10px] text-gray-400 font-bold uppercase block mt-1">Inactive Accounts</span>
+                </div>
+              </div>
+
+              {/* Distributions bars */}
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">Role Assignment Distribution</h4>
+                {roleStats.map((r, i) => (
+                  <div key={i} className="space-y-1 text-xs font-semibold text-gray-700">
+                    <div className="flex justify-between">
+                      <span>{r.label}</span>
+                      <span>{r.percent} ({r.count})</span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                      <div className="h-1.5 bg-[#0071C1] rounded-full" style={{ width: r.percent }}></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 3. System Monitoring Summary */}
+          <Card className="border border-gray-100 shadow-sm overflow-hidden">
+            <CardHeader className="bg-slate-50 border-b border-gray-100 pb-4">
+              <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <Network className="w-5 h-5 text-[#0071C1]" />
+                System Monitoring Summary
+              </CardTitle>
+              <CardDescription>Status parameters of platform execution components.</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Event ID</TableHead>
-                    <TableHead>User Email</TableHead>
-                    <TableHead>Action Code</TableHead>
-                    <TableHead>Description Details</TableHead>
-                    <TableHead>Time</TableHead>
+                    <TableHead>Service Component</TableHead>
+                    <TableHead>Core Type</TableHead>
+                    <TableHead>Latency</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recentUserActivity.map((act) => (
-                    <TableRow key={act.id}>
-                      <TableCell className="font-bold font-mono text-[10px] text-gray-900">{act.id}</TableCell>
-                      <TableCell className="text-xs text-gray-700 font-semibold">{act.user}</TableCell>
+                  {servicesList.map((srv, index) => (
+                    <TableRow key={index} className="hover:bg-slate-50/20 transition-colors">
+                      <TableCell className="font-bold text-slate-800 text-xs">{srv.name}</TableCell>
+                      <TableCell className="text-xs text-slate-500 font-medium">{srv.type}</TableCell>
+                      <TableCell className="font-mono text-xs text-slate-600 font-semibold">{srv.latency}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="text-[9px] uppercase font-bold text-slate-500 tracking-wider">
-                          {act.action}
+                        <Badge variant="success" className="text-[9px] font-bold">
+                          {srv.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-xs text-gray-600 font-medium truncate max-w-xs">{act.details}</TableCell>
-                      <TableCell className="text-[10px] text-gray-400 font-medium">{act.time}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -197,153 +271,98 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          {/* Role Distribution visual list */}
-          <Card className="border border-gray-100 shadow-sm">
-            <CardHeader className="border-b border-gray-100 pb-4">
-              <CardTitle className="text-base font-bold text-gray-900">Security Group User Distributions</CardTitle>
-              <CardDescription>Security profile access mapping across active accounts.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                
-                {/* Admin Distribution */}
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between font-bold text-gray-700">
-                    <span>ADMINISTRATORS (ADMIN)</span>
-                    <span>25% (1 User)</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div className="h-2 rounded-full bg-slate-900" style={{ width: '25%' }}></div>
-                  </div>
-                </div>
-
-                {/* Manager Distribution */}
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between font-bold text-gray-700">
-                    <span>WAREHOUSE MANAGERS (MANAGER)</span>
-                    <span>25% (1 User)</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div className="h-2 rounded-full bg-[#0071C1]" style={{ width: '25%' }}></div>
-                  </div>
-                </div>
-
-                {/* Staff Distribution */}
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between font-bold text-gray-700">
-                    <span>WAREHOUSE STAFF (STAFF)</span>
-                    <span>25% (1 User)</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div className="h-2 rounded-full bg-blue-500" style={{ width: '25%' }}></div>
-                  </div>
-                </div>
-
-                {/* Clerk Distribution */}
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between font-bold text-gray-700">
-                    <span>INVENTORY CLERKS (INVENTORY_CLERK)</span>
-                    <span>25% (1 User)</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div className="h-2 rounded-full bg-purple-500" style={{ width: '25%' }}></div>
-                  </div>
-                </div>
-
-              </div>
-            </CardContent>
-          </Card>
-
         </div>
 
-        {/* Right Side: Microservice Health Overview */}
+        {/* Right Column (Activities, Quick Actions) */}
         <div className="space-y-6">
           
-          {/* Microservices Health summary widget */}
-          <Card className="border border-gray-100 shadow-sm bg-gradient-to-b from-white to-slate-50">
-            <CardHeader className="border-b border-gray-100 pb-4 flex flex-row justify-between items-center bg-slate-50/50">
-              <div>
-                <CardTitle className="text-base font-bold text-gray-900">Service Core Overview</CardTitle>
-                <CardDescription>Live health telemetry telemetry.</CardDescription>
-              </div>
-              <Badge variant="success" className="animate-pulse">Healthy</Badge>
+          {/* 4. Recent Admin Activities */}
+          <Card className="border border-gray-150">
+            <CardHeader className="border-b border-gray-100 pb-4 bg-slate-50/20">
+              <CardTitle className="text-sm font-bold uppercase flex items-center gap-2">
+                <Activity className="w-4.5 h-4.5 text-[#0071C1]" />
+                Recent Admin Activities
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-4">
-              
-              {/* Frontend */}
-              <div className="flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-xl">
-                <div className="flex items-center gap-2.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <span className="text-xs font-bold text-gray-800">Frontend React Server</span>
+              {adminLogs.length === 0 ? (
+                <div className="p-6 text-center text-gray-400 font-bold text-xs">
+                  No admin activity recorded.
                 </div>
-                <span className="text-[10px] text-gray-400 font-semibold font-mono">1.2ms latency</span>
-              </div>
-
-              {/* Backend API */}
-              <div className="flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-xl">
-                <div className="flex items-center gap-2.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <span className="text-xs font-bold text-gray-800">Gateway API Node</span>
-                </div>
-                <span className="text-[10px] text-gray-400 font-semibold font-mono">14ms latency</span>
-              </div>
-
-              {/* Database */}
-              <div className="flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-xl">
-                <div className="flex items-center gap-2.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <span className="text-xs font-bold text-gray-800">Operational Database</span>
-                </div>
-                <span className="text-[10px] text-gray-400 font-semibold font-mono">3ms latency</span>
-              </div>
-
-              {/* AI Recommendation Engine */}
-              <div className="flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-xl">
-                <div className="flex items-center gap-2.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <span className="text-xs font-bold text-gray-800">AI Recommendation Engine</span>
-                </div>
-                <span className="text-[10px] text-gray-400 font-semibold font-mono">180ms latency</span>
-              </div>
-
-              <Button 
-                variant="outline" 
-                className="w-full text-xs justify-center gap-2"
-                onClick={() => navigate('/admin/health')}
-              >
-                Open Health Control Center
-              </Button>
-
+              ) : (
+                adminLogs.map((log, idx) => (
+                  <div key={idx} className="p-3 bg-white border border-slate-100 rounded-xl shadow-xs space-y-1.5 text-xs">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-gray-950 font-mono text-[9px] tracking-wider bg-slate-100 px-1 py-0.5 rounded uppercase">
+                        {log.action}
+                      </span>
+                      <span className="text-[9px] text-gray-400">{log.timestamp?.split('T')[0] || 'Today'}</span>
+                    </div>
+                    <p className="text-[10px] text-gray-500 font-medium leading-relaxed">{log.details}</p>
+                    <div className="text-[8px] text-[#0071C1] font-bold">{log.user}</div>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
 
-          {/* Access Control Alert log */}
-          <Card className="border border-gray-100 shadow-sm bg-blue-50/5">
-            <CardHeader className="border-b border-gray-100 pb-4">
-              <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
-                <ShieldAlert className="w-5 h-5 text-emerald-600" />
-                Access Control Audits
+          {/* 5. Quick Actions Launcher */}
+          <Card className="border border-gray-100 shadow-sm bg-gradient-to-b from-white to-slate-50">
+            <CardHeader className="border-b border-gray-100 pb-4 bg-slate-50/30">
+              <CardTitle className="text-sm font-bold uppercase flex items-center gap-2">
+                <Settings className="w-4.5 h-4.5 text-slate-800" />
+                Administrative Quick Actions
               </CardTitle>
-              <CardDescription>Security profiles triggers and login verifications.</CardDescription>
             </CardHeader>
-            <CardContent className="p-4 space-y-3">
-              <div className="p-3 bg-white border border-emerald-100 rounded-xl flex gap-3 text-xs">
-                <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-bold text-gray-900">MFA Profile Synced</h4>
-                  <p className="text-[10px] text-gray-500 mt-0.5">Admin user verified secure mobile authentication profile successfully.</p>
-                  <span className="text-[9px] font-mono text-gray-400 block mt-1.5">Today, 14:02 | System Sec</span>
-                </div>
-              </div>
+            <CardContent className="p-4 space-y-3.5">
+              
+              <Button 
+                className="w-full text-xs justify-between font-bold"
+                onClick={() => navigate('/admin/structure-tree')}
+              >
+                <span className="flex items-center gap-2 text-white">
+                  <Building2 className="w-4 h-4" />
+                  Manage Layout Setup
+                </span>
+                <ArrowRight className="w-4 h-4 text-white" />
+              </Button>
 
-              <div className="p-3 bg-white border border-gray-100 rounded-xl flex gap-3 text-xs">
-                <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-bold text-gray-900">Secure Client Access</h4>
-                  <p className="text-[10px] text-gray-500 mt-0.5">Valid SSL request established for all dashboard nodes securely.</p>
-                  <span className="text-[9px] font-mono text-gray-400 block mt-1.5">Today, 13:45 | Gateway TLS</span>
-                </div>
-              </div>
+              <Button 
+                variant="outline"
+                className="w-full text-xs justify-between font-bold"
+                onClick={() => navigate('/admin/users')}
+              >
+                <span className="flex items-center gap-2 text-gray-800">
+                  <Users className="w-4 h-4 text-[#0071C1]" />
+                  Add/Provision User
+                </span>
+                <ArrowRight className="w-4 h-4 text-gray-400" />
+              </Button>
+
+              <Button 
+                variant="outline"
+                className="w-full text-xs justify-between font-bold"
+                onClick={() => navigate('/admin/monitoring')}
+              >
+                <span className="flex items-center gap-2 text-gray-800">
+                  <Activity className="w-4 h-4 text-teal-600" />
+                  View System Monitoring
+                </span>
+                <ArrowRight className="w-4 h-4 text-gray-400" />
+              </Button>
+
+              <Button 
+                variant="outline"
+                className="w-full text-xs justify-between font-bold"
+                onClick={() => navigate('/admin/reports')}
+              >
+                <span className="flex items-center gap-2 text-gray-800">
+                  <FileText className="w-4 h-4 text-amber-500" />
+                  Inspect Platform Reports
+                </span>
+                <ArrowRight className="w-4 h-4 text-gray-400" />
+              </Button>
+
             </CardContent>
           </Card>
 

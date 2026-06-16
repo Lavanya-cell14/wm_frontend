@@ -24,7 +24,7 @@ export default function RoleManagement() {
   const { logAudit } = useWarehouse();
   
   const [toastMessage, setToastMessage] = useState('');
-  const [selectedRole, setSelectedRole] = useState('MANAGER');
+  const [selectedRole, setSelectedRole] = useState('WAREHOUSE_MANAGER');
   
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -46,8 +46,8 @@ export default function RoleManagement() {
         'agv:control': true,
       }
     },
-    MANAGER: {
-      description: 'Management of warehouse configurations, staffing, orders, and zone layouts.',
+    WAREHOUSE_MANAGER: {
+      description: 'Executive monitoring, analytics, and decision-support for warehouse operations.',
       permissions: {
         'sys:config': false,
         'user:write': false,
@@ -59,8 +59,8 @@ export default function RoleManagement() {
         'agv:control': true,
       }
     },
-    STAFF: {
-      description: 'Floor level putaways, product scanning, and route execution duties.',
+    WAREHOUSE_OPERATOR: {
+      description: 'Floor level storage tasks, validation scanning, and route execution duties.',
       permissions: {
         'sys:config': false,
         'user:write': false,
@@ -72,7 +72,7 @@ export default function RoleManagement() {
         'agv:control': false,
       }
     },
-    INVENTORY_CLERK: {
+    RECEIVING_INVENTORY_OFFICER: {
       description: 'Quarantine approvals, stock audits, adjustments, and reservations hold management.',
       permissions: {
         'sys:config': false,
@@ -170,8 +170,8 @@ export default function RoleManagement() {
                 const count = 1; // display indicators
                 let badgeVariant = 'default';
                 if (role === 'ADMIN') badgeVariant = 'error';
-                else if (role === 'MANAGER') badgeVariant = 'primary';
-                else if (role === 'INVENTORY_CLERK') badgeVariant = 'warning';
+                else if (role === 'WAREHOUSE_MANAGER') badgeVariant = 'primary';
+                else if (role === 'RECEIVING_INVENTORY_OFFICER') badgeVariant = 'warning';
 
                 return (
                   <div

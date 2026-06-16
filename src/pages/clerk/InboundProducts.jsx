@@ -59,7 +59,7 @@ export default function InboundProducts() {
     if (receipt) {
       logAudit(
         user?.email || 'inventory@warehouseai.com',
-        user?.role || 'INVENTORY_CLERK',
+        user?.role || 'RECEIVING_INVENTORY_OFFICER',
         'BIN_RECOMMENDATION_REQUEST',
         'Inbound Products',
         `Requested AI slotting bin recommendation for product ${receipt.productName} (SKU: ${receipt.sku})`

@@ -2,12 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../context/WarehouseContext';
 import { useAuth } from '../context/AuthContext';
-import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import StatCard from '../components/dashboard/StatCard';
-import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
-import StatusBadge from '../components/ui/StatusBadge';
-import AlertBanner from '../components/ui/AlertBanner';
+import { Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Button, Badge, StatusBadge, AlertBanner } from 'shared-ui';
 import { 
   FileText, UploadCloud, Trash2, ShieldAlert, Sparkles, 
   CheckCircle2, AlertCircle, RefreshCw, Send, Loader2, X, AlertTriangle, CheckSquare
@@ -254,7 +249,7 @@ export default function OcrUpload() {
       
       logAudit(
         user?.email || 'inventory@warehouseai.com',
-        user?.role || 'INVENTORY_CLERK',
+        user?.role || 'RECEIVING_INVENTORY_OFFICER',
         'OCR_DOCUMENT_PROCESS',
         'Inbound OCR',
         `Processed document ${activeDoc.fileName} using Warehouse Neural OCR Engine.`
@@ -364,10 +359,10 @@ export default function OcrUpload() {
 
       {/* KPI Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <StatCard title="Selected Documents" value={totalFiles} icon={FileText} />
-        <StatCard title="Pending Process" value={pendingCount} icon={RefreshCw} />
-        <StatCard title="Pending Verification" value={verificationPendingCount} icon={AlertCircle} />
-        <StatCard title="Fully Verified" value={verifiedCount} icon={CheckCircle2} />
+        <DashboardStatCard title="Selected Documents" value={totalFiles} icon={FileText} />
+        <DashboardStatCard title="Pending Process" value={pendingCount} icon={RefreshCw} />
+        <DashboardStatCard title="Pending Verification" value={verificationPendingCount} icon={AlertCircle} />
+        <DashboardStatCard title="Fully Verified" value={verifiedCount} icon={CheckCircle2} />
       </div>
 
       {/* Drag & Drop File Container */}
