@@ -1,21 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription,
-  Badge, 
-  Button, 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableRow, 
-  TableHead, 
-  TableCell,
-  SearchFilterBar,
-  AlertBanner
-} from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import Modal from '../../components/ui/Modal';
 import Pagination from '../../components/ui/Pagination';
 import { Activity, Plus, Edit2, Trash2 } from 'lucide-react';
@@ -241,7 +225,7 @@ export default function NavigationEdges() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-gray-500 uppercase block text-[10px]">Source Waypoint ID</label>
-                <input 
+                <Input 
                   type="text"
                   placeholder="e.g. NODE-001"
                   value={source}
@@ -252,7 +236,7 @@ export default function NavigationEdges() {
               </div>
               <div className="space-y-1">
                 <label className="text-gray-500 uppercase block text-[10px]">Target Waypoint ID</label>
-                <input 
+                <Input 
                   type="text"
                   placeholder="e.g. NODE-002"
                   value={target}
@@ -265,7 +249,7 @@ export default function NavigationEdges() {
 
             <div className="space-y-1">
               <label className="text-gray-500 uppercase block text-[10px]">Edge Weight Distance (m)</label>
-              <input 
+              <Input 
                 type="number"
                 step="0.1"
                 placeholder="e.g. 15.6"

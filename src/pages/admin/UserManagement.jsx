@@ -1,23 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription,
-  Badge, 
-  Button, 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableRow, 
-  TableHead, 
-  TableCell,
-  AlertBanner,
-  SearchFilterBar
-} from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import Modal from '../../components/ui/Modal';
 import Pagination from '../../components/ui/Pagination';
 import { Users, Plus, Mail, CheckCircle2, XCircle, Lock, Edit2, ShieldAlert, KeyRound } from 'lucide-react';
@@ -360,7 +344,7 @@ export default function UserManagement() {
             {/* Full Name */}
             <div className="space-y-1">
               <label className="text-gray-500 uppercase tracking-wide block text-[10px]">Full Name</label>
-              <input 
+              <Input 
                 type="text"
                 placeholder="e.g. Liam Sterling"
                 value={formName}
@@ -373,7 +357,7 @@ export default function UserManagement() {
             {/* Email Address */}
             <div className="space-y-1">
               <label className="text-gray-500 uppercase tracking-wide block text-[10px]">Email Address</label>
-              <input 
+              <Input 
                 type="email"
                 placeholder="e.g. l.sterling@warehouseai.com"
                 value={formEmail}

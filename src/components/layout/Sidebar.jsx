@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from 'shared-ui';
 import { NavLink } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { sidebarItems } from '../../data/sidebarItems';
@@ -24,12 +25,12 @@ export default function Sidebar({ onMobileClose, isCollapsed = false, onToggleCo
             )}
             
             {onMobileClose && (
-              <button 
+              <Button 
                 onClick={onMobileClose}
                 className="ml-auto p-1.5 bg-black/15 hover:bg-black/25 rounded-lg transition-colors lg:hidden"
               >
                 <ChevronLeft className="text-white w-5 h-5" />
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -92,7 +93,7 @@ export default function Sidebar({ onMobileClose, isCollapsed = false, onToggleCo
 
         {/* Collapsible toggle chevron button on desktop */}
         {onToggleCollapse && (
-          <button
+          <Button
             onClick={onToggleCollapse}
             className="w-10 h-10 mx-auto hidden lg:flex items-center justify-center bg-black/10 hover:bg-black/20 text-white rounded-xl transition-all border border-white/5 shadow-inner"
             title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
@@ -102,7 +103,7 @@ export default function Sidebar({ onMobileClose, isCollapsed = false, onToggleCo
             ) : (
               <ChevronLeft className="w-4 h-4 text-white" />
             )}
-          </button>
+          </Button>
         )}
       </div>
     </aside>

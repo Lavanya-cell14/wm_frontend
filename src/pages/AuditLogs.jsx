@@ -1,21 +1,6 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  Button, 
-  Badge, 
-  StatusBadge, 
-  SearchFilterBar, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from 'shared-ui';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, SearchFilterBar, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { ShieldCheck, Download, Clock } from 'lucide-react';
 import Pagination from '../components/ui/Pagination';
 
@@ -75,7 +60,7 @@ export default function AuditLogs() {
           </div>
           <div className="flex gap-2 w-full md:w-auto shrink-0 justify-end text-xs">
             {modules.map((mod) => (
-              <button
+              <Button
                 key={mod}
                 onClick={() => setFilterModule(mod)}
                 className={`px-3 py-1.5 font-bold rounded-lg border transition-all ${
@@ -85,7 +70,7 @@ export default function AuditLogs() {
                 }`}
               >
                 {mod}
-              </button>
+              </Button>
             ))}
           </div>
         </CardContent>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge, StatusBadge, SearchFilterBar, Pagination, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Pagination, SearchFilterBar, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Activity, Clock, MapPin, ArrowRightLeft } from 'lucide-react';
 
 export default function Movements() {
@@ -55,7 +55,7 @@ export default function Movements() {
           </div>
           <div className="flex gap-2 w-full md:w-auto shrink-0 justify-end text-xs">
             {['All', 'Putaway', 'Picking', 'Reallocation'].map((type) => (
-              <button
+              <Button
                 key={type}
                 onClick={() => setFilterType(type)}
                 className={`px-3 py-1.5 font-bold rounded-lg border transition-all ${
@@ -65,7 +65,7 @@ export default function Movements() {
                 }`}
               >
                 {type}
-              </button>
+              </Button>
             ))}
           </div>
         </CardContent>

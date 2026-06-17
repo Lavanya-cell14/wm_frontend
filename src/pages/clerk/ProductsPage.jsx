@@ -1,22 +1,6 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription,
-  Badge, 
-  Button, 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableRow, 
-  TableHead, 
-  TableCell,
-  StatCard,
-  SearchFilterBar
-} from 'shared-ui';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, SearchFilterBar, StatCard, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import Pagination from '../../components/ui/Pagination';
 import { Package, Plus, ChevronRight, Filter, Info, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -127,7 +111,7 @@ export default function ProductsPage() {
                 <TableHead>Dimensions</TableHead>
                 <TableHead>Classification</TableHead>
                 <TableHead>Created Date</TableHead>
-                <th className="p-3 text-right">Actions</th>
+                <TableHead className="p-3 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

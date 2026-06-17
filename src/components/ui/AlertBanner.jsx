@@ -1,4 +1,5 @@
 import React from 'react';
+import Button from './Button';
 import { AlertTriangle, Info, CheckCircle2, XCircle } from 'lucide-react';
 
 export default function AlertBanner({ type = 'warning', message, actionText, onAction }) {
@@ -47,12 +48,12 @@ export default function AlertBanner({ type = 'warning', message, actionText, onA
         <p className={`text-sm font-medium ${config.textColor}`}>{message}</p>
       </div>
       {actionText && onAction && (
-        <button 
+        <Button 
           onClick={onAction}
           className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors shrink-0 ${config.btnClass}`}
         >
           {actionText}
-        </button>
+        </Button>
       )}
     </div>
   );

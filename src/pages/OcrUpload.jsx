@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../context/WarehouseContext';
 import { useAuth } from '../context/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Button, Badge, StatusBadge, AlertBanner } from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Input, StatusBadge } from 'shared-ui';
 import { 
   FileText, UploadCloud, Trash2, ShieldAlert, Sparkles, 
   CheckCircle2, AlertCircle, RefreshCw, Send, Loader2, X, AlertTriangle, CheckSquare
@@ -330,30 +330,30 @@ export default function OcrUpload() {
         {/* Quick Demo Fills */}
         <div className="flex flex-wrap items-center gap-2 bg-slate-100 p-2 rounded-xl border border-slate-200">
           <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider pl-1.5 mr-1">Load Demo Documents:</span>
-          <button 
+          <Button 
             onClick={() => handleFillDemoFile('dell_monitor_invoice.pdf')}
             className="px-2.5 py-1 text-[10px] font-bold bg-white text-blue-700 hover:bg-blue-50 border border-slate-200 rounded-lg transition-colors"
           >
             Dell Invoice
-          </button>
-          <button 
+          </Button>
+          <Button 
             onClick={() => handleFillDemoFile('hp_printer_packing_slip.jpg')}
             className="px-2.5 py-1 text-[10px] font-bold bg-white text-blue-700 hover:bg-blue-50 border border-slate-200 rounded-lg transition-colors"
           >
             HP Slip
-          </button>
-          <button 
+          </Button>
+          <Button 
             onClick={() => handleFillDemoFile('logitech_mouse_bol.png')}
             className="px-2.5 py-1 text-[10px] font-bold bg-white text-blue-700 hover:bg-blue-50 border border-slate-200 rounded-lg transition-colors"
           >
             Logitech BOL
-          </button>
-          <button 
+          </Button>
+          <Button 
             onClick={() => handleFillDemoFile('drill_delivery_docket.pdf')}
             className="px-2.5 py-1 text-[10px] font-bold bg-white text-blue-700 hover:bg-blue-50 border border-slate-200 rounded-lg transition-colors"
           >
             Drill Docket
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -379,7 +379,7 @@ export default function OcrUpload() {
                 : 'border-gray-200 hover:border-blue-300 bg-[#F4FCFF]/50'
             }`}
           >
-            <input 
+            <Input 
               ref={fileInputRef}
               type="file" 
               multiple 
@@ -476,7 +476,7 @@ export default function OcrUpload() {
                         {f.status === 'REJECTED' && (
                           <Badge variant="danger" className="text-[9px]">Rejected</Badge>
                         )}
-                        <button
+                        <Button
                           onClick={(e) => {
                             e.stopPropagation();
                             removeFile(f.id);
@@ -484,7 +484,7 @@ export default function OcrUpload() {
                           className="text-gray-400 hover:text-red-500 p-1 rounded-lg hover:bg-gray-100 transition-colors"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ))}

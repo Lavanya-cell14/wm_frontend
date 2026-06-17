@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, Badge, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, SearchFilterBar } from 'shared-ui';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import Pagination from '../../components/ui/Pagination';
 import { History, FileText, ChevronRight, Eye, Download } from 'lucide-react';
 
@@ -113,14 +113,14 @@ export default function OcrHistory() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-1.5 justify-end">
-                        <button 
+                        <Button 
                           onClick={() => handleExportCSV(doc)}
                           className="inline-flex items-center px-2 py-1 border border-slate-200 bg-white hover:bg-slate-50 rounded-lg text-[10px] text-slate-600 font-bold gap-1 transition-colors"
                           title="Export CSV"
                         >
                           <Download className="w-3 h-3 text-slate-500" />
                           Export
-                        </button>
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>

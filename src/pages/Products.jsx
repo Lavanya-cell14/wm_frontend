@@ -1,16 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription,
-  Badge, 
-  Button, 
-  AlertBanner,
-  Pagination
-} from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Pagination } from 'shared-ui';
 import { Box, Search, Filter, Layers, ShieldCheck, AlertCircle, Sparkles, Loader2 } from 'lucide-react';
 
 export default function Products() {
@@ -79,7 +69,7 @@ export default function Products() {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 text-xs">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
-          <input 
+          <Input 
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

@@ -2,23 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  Badge, 
-  Button, 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableRow, 
-  TableHead, 
-  TableCell, 
-  AlertBanner,
-  SearchFilterBar
-} from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { AlertTriangle, Clock, User, Eye } from 'lucide-react';
 import Pagination from '../../components/ui/Pagination';
 import Modal from '../../components/ui/Modal';
@@ -230,7 +214,7 @@ export default function DamagedStock() {
                 {/* Damaged Quantity */}
                 <div className="space-y-1">
                   <label className="text-gray-500 uppercase block text-[10px]">Damaged Quantity</label>
-                  <input 
+                  <Input 
                     type="number"
                     placeholder="e.g. 5"
                     value={quantity}
@@ -244,7 +228,7 @@ export default function DamagedStock() {
                 {/* Quarantine Bin Source */}
                 <div className="space-y-1">
                   <label className="text-gray-500 uppercase block text-[10px]">Source Bin Location</label>
-                  <input 
+                  <Input 
                     type="text"
                     placeholder="e.g. BIN-B-10-01"
                     value={customBin}

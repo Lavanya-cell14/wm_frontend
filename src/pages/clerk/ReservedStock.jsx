@@ -2,23 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  Badge, 
-  Button, 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableRow, 
-  TableHead, 
-  TableCell, 
-  AlertBanner,
-  SearchFilterBar
-} from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Package, Lock, Unlock, Clock, FileText } from 'lucide-react';
 import Pagination from '../../components/ui/Pagination';
 
@@ -204,7 +188,7 @@ export default function ReservedStock() {
                 {/* Reservation Quantity */}
                 <div className="space-y-1">
                   <label className="text-gray-500 uppercase block text-[10px]">Reservation Quantity</label>
-                  <input 
+                  <Input 
                     type="number"
                     placeholder="e.g. 10"
                     value={quantity}
@@ -218,7 +202,7 @@ export default function ReservedStock() {
                 {/* Order Reference */}
                 <div className="space-y-1">
                   <label className="text-gray-500 uppercase block text-[10px]">Order Reference / Client</label>
-                  <input 
+                  <Input 
                     type="text"
                     placeholder="e.g. ORD-98102 or Client A"
                     value={orderRef}

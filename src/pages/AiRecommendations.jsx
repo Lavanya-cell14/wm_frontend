@@ -1,15 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
-import { 
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  Button,
-  Badge,
-  AlertBanner
-} from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import StatCard from '../components/dashboard/StatCard';
 import Pagination from '../components/ui/Pagination';
 import Modal from '../components/ui/Modal';
@@ -169,7 +160,7 @@ export default function AiRecommendations() {
 
       {/* Tab controls */}
       <div className="flex border-b border-gray-200">
-        <button
+        <Button
           onClick={() => setActiveTab('review')}
           className={`py-3.5 px-6 font-bold text-sm border-b-2 transition-all flex items-center gap-2 ${
             activeTab === 'review'
@@ -179,8 +170,8 @@ export default function AiRecommendations() {
         >
           <Lightbulb className="w-4 h-4" />
           Review Queue ({pendingReviews.length})
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={() => setActiveTab('dispatch')}
           className={`py-3.5 px-6 font-bold text-sm border-b-2 transition-all flex items-center gap-2 ${
             activeTab === 'dispatch'
@@ -190,8 +181,8 @@ export default function AiRecommendations() {
         >
           <UserCheck className="w-4 h-4" />
           Dispatch Queue ({approvedPlacements.length})
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={() => setActiveTab('tracking')}
           className={`py-3.5 px-6 font-bold text-sm border-b-2 transition-all flex items-center gap-2 ${
             activeTab === 'tracking'
@@ -201,7 +192,7 @@ export default function AiRecommendations() {
         >
           <ClipboardList className="w-4 h-4" />
           Inbound Tracking ({trackedInbounds.length})
-        </button>
+        </Button>
       </div>
 
       {/* Tab Contents: REVIEW QUEUE */}
@@ -336,61 +327,61 @@ export default function AiRecommendations() {
           </CardHeader>
           <CardContent className="p-0">
             <div className="w-full overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-100 text-xs text-left">
-                <thead className="bg-[#F4FCFF] text-gray-700 uppercase tracking-wider font-bold">
-                  <tr>
-                    <th className="px-6 py-4">Inbound ID</th>
-                    <th className="px-6 py-4">Product Specs</th>
-                    <th className="px-6 py-4">Approved Location</th>
-                    <th className="px-6 py-4">Volume / Weight</th>
-                    <th className="px-6 py-4">Priority</th>
-                    <th className="px-6 py-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
+              <Table className="min-w-full divide-y divide-gray-100 text-xs text-left">
+                <TableHeader className="bg-[#F4FCFF] text-gray-700 uppercase tracking-wider font-bold">
+                  <TableRow>
+                    <TableHead className="px-6 py-4">Inbound ID</TableHead>
+                    <TableHead className="px-6 py-4">Product Specs</TableHead>
+                    <TableHead className="px-6 py-4">Approved Location</TableHead>
+                    <TableHead className="px-6 py-4">Volume / Weight</TableHead>
+                    <TableHead className="px-6 py-4">Priority</TableHead>
+                    <TableHead className="px-6 py-4 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-gray-100 bg-white">
                   {paginatedDispatch.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="text-center py-10 font-bold text-gray-400">
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-10 font-bold text-gray-400">
                         No approved slots waiting for staff assignment. Go to "Review Queue" and approve slotting proposals first.
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ) : (
                     paginatedDispatch.map((r) => {
                       const rec = aiRecommendations.find(a => a.inboundId === r.id) || {};
                       return (
-                        <tr key={r.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-6 py-4 font-bold font-mono text-gray-900">{r.id}</td>
-                          <td className="px-6 py-4">
+                        <TableRow key={r.id} className="hover:bg-slate-50/50 transition-colors">
+                          <TableCell className="px-6 py-4 font-bold font-mono text-gray-900">{r.id}</TableCell>
+                          <TableCell className="px-6 py-4">
                             <div className="font-bold text-gray-900">{r.productName}</div>
                             <div className="text-[10px] text-gray-400 font-mono mt-0.5">{r.sku}</div>
-                          </td>
-                          <td className="px-6 py-4">
+                          </TableCell>
+                          <TableCell className="px-6 py-4">
                             <span className="font-mono text-xs text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
                               {rec.bin || 'Pending'}
                             </span>
                             <div className="text-[10px] text-gray-400 mt-1 font-semibold">{rec.zone} | {rec.rack} | {rec.shelf}</div>
-                          </td>
-                          <td className="px-6 py-4 font-semibold text-gray-700">
+                          </TableCell>
+                          <TableCell className="px-6 py-4 font-semibold text-gray-700">
                             <div>{r.verifiedQuantity} units</div>
                             <div className="text-[10px] text-gray-400">{r.dimensions} ({r.weight})</div>
-                          </td>
-                          <td className="px-6 py-4">
+                          </TableCell>
+                          <TableCell className="px-6 py-4">
                             <Badge variant={r.priority === 'High' ? 'error' : 'warning'}>{r.priority || 'Medium'}</Badge>
-                          </td>
-                          <td className="px-6 py-4 text-right">
+                          </TableCell>
+                          <TableCell className="px-6 py-4 text-right">
                             <Button 
                               className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] py-1.5 px-3.5"
                               onClick={() => handleOpenAssign(r)}
                             >
                               Dispatch Personnel
                             </Button>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       );
                     })
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
           {dispatchTotalPages > 1 && (
@@ -418,22 +409,22 @@ export default function AiRecommendations() {
           </CardHeader>
           <CardContent className="p-0">
             <div className="w-full overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-100 text-xs text-left">
-                <thead className="bg-[#F4FCFF] text-gray-700 uppercase tracking-wider font-bold">
-                  <tr>
-                    <th className="px-6 py-4">Inbound Item</th>
-                    <th className="px-6 py-4">Destination Bin</th>
-                    <th className="px-6 py-4">Task Lifecycle Stage</th>
-                    <th className="px-6 py-4">Operational Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
+              <Table className="min-w-full divide-y divide-gray-100 text-xs text-left">
+                <TableHeader className="bg-[#F4FCFF] text-gray-700 uppercase tracking-wider font-bold">
+                  <TableRow>
+                    <TableHead className="px-6 py-4">Inbound Item</TableHead>
+                    <TableHead className="px-6 py-4">Destination Bin</TableHead>
+                    <TableHead className="px-6 py-4">Task Lifecycle Stage</TableHead>
+                    <TableHead className="px-6 py-4">Operational Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-gray-100 bg-white">
                   {paginatedTracking.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="text-center py-10 font-bold text-gray-400">
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-10 font-bold text-gray-400">
                         No tracked inbound receipts found in database.
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ) : (
                     paginatedTracking.map((r) => {
                       const rec = aiRecommendations.find(a => a.inboundId === r.id) || {};
@@ -451,12 +442,12 @@ export default function AiRecommendations() {
                       const currentIdx = statusSteps.findIndex(s => s.key === r.status);
 
                       return (
-                        <tr key={r.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-6 py-4">
+                        <TableRow key={r.id} className="hover:bg-slate-50/50 transition-colors">
+                          <TableCell className="px-6 py-4">
                             <div className="font-bold text-gray-900">{r.productName}</div>
                             <div className="text-[10px] text-gray-400 font-mono mt-0.5">ID: {r.id} | SKU: {r.sku} | Qty: {r.verifiedQuantity}</div>
-                          </td>
-                          <td className="px-6 py-4 font-mono font-bold">
+                          </TableCell>
+                          <TableCell className="px-6 py-4 font-mono font-bold">
                             {rec.bin ? (
                               <span className="text-blue-700 bg-blue-50/50 border border-blue-100 px-1.5 py-0.5 rounded">
                                 {rec.bin}
@@ -464,8 +455,8 @@ export default function AiRecommendations() {
                             ) : (
                               <span className="text-gray-400">Not Assigned</span>
                             )}
-                          </td>
-                          <td className="px-6 py-4">
+                          </TableCell>
+                          <TableCell className="px-6 py-4">
                             {/* Step progress graphic indicator */}
                             <div className="flex items-center gap-1.5 font-bold text-[10px] select-none">
                               {statusSteps.map((step, idx) => {
@@ -492,21 +483,21 @@ export default function AiRecommendations() {
                                 );
                               })}
                             </div>
-                          </td>
-                          <td className="px-6 py-4">
+                          </TableCell>
+                          <TableCell className="px-6 py-4">
                             <Badge 
                               variant={r.status === 'STORED' ? 'success' : r.status === 'WAITING_FOR_BIN_ASSIGNMENT' ? 'warning' : 'primary'}
                               className="text-[9px] uppercase font-bold"
                             >
                               {r.status.replace(/_/g, ' ')}
                             </Badge>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       );
                     })
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
           {trackingTotalPages > 1 && (

@@ -1,15 +1,7 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription,
-  Button, 
-  AlertBanner 
-} from 'shared-ui';
+import { AlertBanner, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from 'shared-ui';
 import { Settings, Save, RefreshCw, Sliders, Bell, Cpu, ShieldCheck } from 'lucide-react';
 
 export default function WarehouseSettings() {
@@ -109,7 +101,7 @@ export default function WarehouseSettings() {
                 {/* System Name */}
                 <div className="space-y-1">
                   <label className="text-gray-500 uppercase tracking-wide block text-[10px]">System Platform Name</label>
-                  <input 
+                  <Input 
                     type="text"
                     value={systemName}
                     onChange={(e) => setSystemName(e.target.value)}
@@ -199,7 +191,7 @@ export default function WarehouseSettings() {
                 <div className="space-y-1">
                   <label className="text-gray-500 uppercase tracking-wide block text-[10px]">Zone Capacity Warning Trigger (%)</label>
                   <div className="flex items-center gap-2">
-                    <input 
+                    <Input 
                       type="number"
                       min="50"
                       max="98"
@@ -216,7 +208,7 @@ export default function WarehouseSettings() {
                 {/* Reorder default quantity */}
                 <div className="space-y-1">
                   <label className="text-gray-500 uppercase tracking-wide block text-[10px]">Default Product Reorder Level (Units)</label>
-                  <input 
+                  <Input 
                     type="number"
                     min="1"
                     value={reorderLevelDefault}
@@ -247,7 +239,7 @@ export default function WarehouseSettings() {
                 <div className="space-y-1">
                   <label className="text-gray-500 uppercase tracking-wide block text-[10px]">Max AGV Cruising Speed (m/s)</label>
                   <div className="flex items-center gap-2">
-                    <input 
+                    <Input 
                       type="number"
                       step="0.1"
                       min="0.5"
@@ -266,7 +258,7 @@ export default function WarehouseSettings() {
                 <div className="space-y-1">
                   <label className="text-gray-500 uppercase tracking-wide block text-[10px]">AGV Proximity Safety Buffer (m)</label>
                   <div className="flex items-center gap-2">
-                    <input 
+                    <Input 
                       type="number"
                       step="0.1"
                       min="0.2"
@@ -322,7 +314,7 @@ export default function WarehouseSettings() {
                   <span className="text-xs font-bold text-gray-800">Critical Email Dispatch</span>
                   <span className="text-[10px] text-gray-400 mt-0.5">Dispatches emails for low stock & safety stops.</span>
                 </div>
-                <button
+                <Button
                   type="button"
                   onClick={() => setEmailAlerts(!emailAlerts)}
                   className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
@@ -334,7 +326,7 @@ export default function WarehouseSettings() {
                       emailAlerts ? 'translate-x-4' : 'translate-x-0'
                     }`}
                   />
-                </button>
+                </Button>
               </div>
 
               {/* SMS Toggle */}
@@ -343,7 +335,7 @@ export default function WarehouseSettings() {
                   <span className="text-xs font-bold text-gray-800">Emergency SMS Alerts</span>
                   <span className="text-[10px] text-gray-400 mt-0.5">Direct SMS dispatches for emergency AGV collision stops.</span>
                 </div>
-                <button
+                <Button
                   type="button"
                   onClick={() => setSmsAlerts(!smsAlerts)}
                   className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
@@ -355,7 +347,7 @@ export default function WarehouseSettings() {
                       smsAlerts ? 'translate-x-4' : 'translate-x-0'
                     }`}
                   />
-                </button>
+                </Button>
               </div>
 
               {/* Audit logs retention */}

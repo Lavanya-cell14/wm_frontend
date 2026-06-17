@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Bot, Send, User, Sparkles, Box, Search, PackageSearch, Navigation, Map, ShieldAlert, Cpu } from 'lucide-react';
-import { Button, Card, CardContent, Badge } from 'shared-ui';
+import { Badge, Button, Card, CardContent, Input } from 'shared-ui';
 
 export default function AiCopilot() {
   const [query, setQuery] = useState('');
@@ -114,7 +114,7 @@ export default function AiCopilot() {
           <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-2">Suggested Warehouse Queries</div>
           <div className="flex flex-wrap gap-2 max-w-4xl">
             {suggestedPrompts.map((prompt, i) => (
-              <button 
+              <Button 
                 key={i}
                 onClick={() => handleSendMessage(prompt)}
                 disabled={isTyping}
@@ -122,7 +122,7 @@ export default function AiCopilot() {
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                 {prompt}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -130,7 +130,7 @@ export default function AiCopilot() {
         {/* Input Area */}
         <div className="p-4 bg-white border-t border-slate-100 shrink-0">
           <div className="relative flex items-center max-w-4xl mx-auto">
-            <input 
+            <Input 
               type="text" 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -139,13 +139,13 @@ export default function AiCopilot() {
               disabled={isTyping}
               className="w-full bg-gray-50 border border-gray-200 rounded-full pl-5 pr-14 py-3 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-inner"
             />
-            <button 
+            <Button 
               onClick={() => handleSendMessage(query)}
               disabled={isTyping || !query.trim()}
               className="absolute right-2.5 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors flex items-center justify-center disabled:opacity-50"
             >
               <Send className="w-3.5 h-3.5 ml-0.5" />
-            </button>
+            </Button>
           </div>
           <div className="text-center mt-2.5">
             <span className="text-[10px] text-gray-400 font-bold tracking-wider">AI INSIGHTS MAY REFLECT MOCK HANDSHAKES. CONFIRM IN LIVE GRIDS.</span>

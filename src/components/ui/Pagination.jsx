@@ -86,7 +86,7 @@ export default function Pagination({
             }
             const isActive = currentPage === page;
             return (
-              <button
+              <Button
                 key={`page-${page}`}
                 onClick={() => onPageChange(page)}
                 className={`w-8 h-8 flex items-center justify-center font-bold text-[13px] rounded-lg transition-all border outline-none ${
@@ -96,7 +96,7 @@ export default function Pagination({
                 }`}
               >
                 {page}
-              </button>
+              </Button>
             );
           })}
         </div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Badge, AlertBanner, Modal } from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Modal } from 'shared-ui';
 import { 
   Layers, Package, MapPin, CheckSquare, Sparkles, 
   ArrowRight, ShieldAlert, CheckCircle2, QrCode, 
@@ -301,16 +301,16 @@ export default function PlacementGuidance() {
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
                 <label className="block font-bold text-gray-700 uppercase">1. Scan Product SKU / Barcode</label>
-                <button 
+                <Button 
                   type="button" 
                   onClick={handleDemoAutofillSku}
                   className="text-blue-600 hover:underline font-bold text-[10px]"
                 >
                   [Autofill SKU: {activeTask.sku}]
-                </button>
+                </Button>
               </div>
               <div className="relative">
-                <input 
+                <Input 
                   type="text" 
                   value={scannedSku}
                   onChange={(e) => { setScannedSku(e.target.value.toUpperCase()); setSkuError(''); }}
@@ -328,16 +328,16 @@ export default function PlacementGuidance() {
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
                 <label className="block font-bold text-gray-700 uppercase">2. Scan Destination Bin Label</label>
-                <button 
+                <Button 
                   type="button" 
                   onClick={handleDemoAutofillBin}
                   className="text-blue-600 hover:underline font-bold text-[10px]"
                 >
                   [Autofill Bin: {activeTask.destinationBin || activeTask.bin || 'BIN-002'}]
-                </button>
+                </Button>
               </div>
               <div className="relative">
-                <input 
+                <Input 
                   type="text" 
                   value={scannedBin}
                   onChange={(e) => { setScannedBin(e.target.value.toUpperCase()); setBinError(''); }}

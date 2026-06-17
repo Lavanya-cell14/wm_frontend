@@ -1,21 +1,6 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription,
-  Button, 
-  Badge, 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableRow, 
-  TableHead, 
-  TableCell,
-  SearchFilterBar 
-} from 'shared-ui';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Layers, Plus, X } from 'lucide-react';
 import Pagination from '../../components/ui/Pagination';
 
@@ -144,9 +129,9 @@ export default function ZoneList() {
                     <p className="text-[10px] text-gray-400 font-mono mt-0.5">{selectedZone.id}</p>
                   </div>
                 </div>
-                <button className="text-gray-400 hover:text-gray-600 font-bold" onClick={() => setSelectedZone(null)}>
+                <Button className="text-gray-400 hover:text-gray-600 font-bold" onClick={() => setSelectedZone(null)}>
                   <X className="w-5 h-5" />
-                </button>
+                </Button>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

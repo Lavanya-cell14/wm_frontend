@@ -1,4 +1,5 @@
 import React from 'react';
+import Button from './Button';
 import { Search, Filter } from 'lucide-react';
 import Input from './Input';
 
@@ -29,7 +30,7 @@ export default function SearchFilterBar({
         <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 hide-scrollbar">
           <Filter className="w-4 h-4 text-gray-400 shrink-0 mr-1" />
           {filters.map((filter) => (
-            <button
+            <Button
               key={filter.id}
               onClick={() => onFilterChange && onFilterChange(filter.id)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
@@ -39,7 +40,7 @@ export default function SearchFilterBar({
               }`}
             >
               {filter.label}
-            </button>
+            </Button>
           ))}
         </div>
       )}

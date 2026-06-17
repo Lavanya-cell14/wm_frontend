@@ -1,21 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription,
-  Badge, 
-  Button, 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableRow, 
-  TableHead, 
-  TableCell,
-  SearchFilterBar 
-} from 'shared-ui';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import Pagination from '../../components/ui/Pagination';
 import { Activity, FileDown, Clock, MessageSquare } from 'lucide-react';
 
@@ -114,7 +99,7 @@ export default function MovementHistory() {
             
             <div className="flex flex-wrap gap-2">
               {normalizedTypes.map(type => (
-                <button
+                <Button
                   key={type}
                   onClick={() => setSelectedType(type)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
@@ -124,7 +109,7 @@ export default function MovementHistory() {
                   }`}
                 >
                   {type === 'All' ? 'All Transactions' : type.replace(/_/g, ' ')}
-                </button>
+                </Button>
               ))}
             </div>
           </CardContent>

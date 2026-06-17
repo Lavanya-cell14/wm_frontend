@@ -2,18 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription,
-  Button, 
-  Badge, 
-  StatusBadge, 
-  AlertBanner, 
-  Input 
-} from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import Modal from '../../components/ui/Modal';
 import Pagination from '../../components/ui/Pagination';
 import { 
@@ -144,7 +133,7 @@ export default function InboundProducts() {
         <CardContent className="p-4 flex flex-col md:flex-row gap-4 justify-between items-center">
           <div className="relative w-full md:w-96">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-            <input
+            <Input
               type="text"
               placeholder="Search by Inbound ID, SKU, Product Title, Supplier..."
               className="pl-9 pr-4 py-2 w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-xs font-semibold bg-white"
@@ -174,35 +163,35 @@ export default function InboundProducts() {
       {/* Inbound Receipts List Table */}
       <Card className="border border-gray-100 shadow-sm overflow-hidden">
         <CardContent className="p-0 overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 text-left text-xs font-semibold">
-            <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-wider">
-              <tr>
-                <th className="p-3">Inbound ID</th>
-                <th className="p-3">SKU</th>
-                <th className="p-3">Product</th>
-                <th className="p-3">Quantity</th>
-                <th className="p-3">Status</th>
-                <th className="p-3">Recommendation Status</th>
-                <th className="p-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+          <Table className="min-w-full divide-y divide-gray-200 text-left text-xs font-semibold">
+            <TableHeader className="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-wider">
+              <TableRow>
+                <TableHead className="p-3">Inbound ID</TableHead>
+                <TableHead className="p-3">SKU</TableHead>
+                <TableHead className="p-3">Product</TableHead>
+                <TableHead className="p-3">Quantity</TableHead>
+                <TableHead className="p-3">Status</TableHead>
+                <TableHead className="p-3">Recommendation Status</TableHead>
+                <TableHead className="p-3 text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-gray-100 bg-white">
               {paginatedReceipts.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-12 text-gray-500 font-medium">
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-12 text-gray-500 font-medium">
                     No matching inbound records found in the system queue.
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 paginatedReceipts.map((rec) => (
-                  <tr key={rec.id} className="hover:bg-slate-50/40">
-                    <td className="p-3 font-mono font-bold text-slate-900">{rec.id}</td>
-                    <td className="p-3 font-mono text-[11px] text-[#0071C1] font-bold">{rec.sku}</td>
-                    <td className="p-3 font-bold text-gray-900">{rec.productName}</td>
-                    <td className="p-3 font-semibold text-slate-700">
+                  <TableRow key={rec.id} className="hover:bg-slate-50/40">
+                    <TableCell className="p-3 font-mono font-bold text-slate-900">{rec.id}</TableCell>
+                    <TableCell className="p-3 font-mono text-[11px] text-[#0071C1] font-bold">{rec.sku}</TableCell>
+                    <TableCell className="p-3 font-bold text-gray-900">{rec.productName}</TableCell>
+                    <TableCell className="p-3 font-semibold text-slate-700">
                       {rec.verifiedQuantity || rec.quantityReceived} units
-                    </td>
-                    <td className="p-3">
+                    </TableCell>
+                    <TableCell className="p-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase ${
                         rec.status === 'STORED' ? 'bg-green-50 text-green-700 border-green-200' :
                         rec.status === 'BIN_SUGGESTED' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
@@ -211,13 +200,13 @@ export default function InboundProducts() {
                       }`}>
                         {getStatusLabel(rec.status)}
                       </span>
-                    </td>
-                    <td className="p-3">
+                    </TableCell>
+                    <TableCell className="p-3">
                       <Badge variant={rec.binRecommendationStatus === 'BIN_SUGGESTED' ? 'primary' : 'outline'} className="text-[10px]">
                         {rec.binRecommendationStatus || 'PENDING'}
                       </Badge>
-                    </td>
-                    <td className="p-3 text-right">
+                    </TableCell>
+                    <TableCell className="p-3 text-right">
                       <div className="flex justify-end gap-1.5 items-center">
                         <Button
                           variant="outline"
@@ -248,12 +237,12 @@ export default function InboundProducts() {
                           <Eye className="w-4 h-4" />
                         </Button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
           <div className="p-4 border-t border-gray-50">
             <Pagination
               currentPage={currentPage}

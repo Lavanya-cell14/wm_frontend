@@ -1,14 +1,6 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription,
-  Button, 
-  Badge 
-} from 'shared-ui';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from 'shared-ui';
 import { 
   Building2, 
   FolderTree, 
@@ -95,7 +87,7 @@ export default function WarehouseTree() {
                 </div>
                 <div className="relative w-full sm:w-64">
                   <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                  <input 
+                  <Input 
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -119,9 +111,9 @@ export default function WarehouseTree() {
                 return (
                   <div key={wh.id} className="space-y-1">
                     <div className="flex items-center gap-1.5 py-1.5 px-2 hover:bg-slate-50 rounded-lg cursor-pointer" onClick={() => selectNodeDetails('Warehouse', wh.name, { location: wh.location, area: wh.area, status: 'Active' })}>
-                      <button onClick={(e) => { e.stopPropagation(); toggleNode(wh.id); }} className="p-0.5 hover:bg-gray-200 rounded">
+                      <Button onClick={(e) => { e.stopPropagation(); toggleNode(wh.id); }} className="p-0.5 hover:bg-gray-200 rounded">
                         {whExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                      </button>
+                      </Button>
                       <Building2 className="w-4 h-4 text-[#0071C1]" />
                       <span className="font-bold text-gray-900">{wh.name}</span>
                       <Badge variant="primary" className="text-[9px] scale-90">Root</Badge>
@@ -137,9 +129,9 @@ export default function WarehouseTree() {
                           return (
                             <div key={zg.id} className="space-y-1">
                               <div className="flex items-center gap-1.5 py-1.5 px-2 hover:bg-slate-50 rounded-lg cursor-pointer" onClick={() => selectNodeDetails('Zone Group', zg.name, { type: zg.type, zonesCount: zgZones.length })}>
-                                <button onClick={(e) => { e.stopPropagation(); toggleNode(zg.id); }} className="p-0.5 hover:bg-gray-200 rounded">
+                                <Button onClick={(e) => { e.stopPropagation(); toggleNode(zg.id); }} className="p-0.5 hover:bg-gray-200 rounded">
                                   {zgExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                                </button>
+                                </Button>
                                 <Layers className="w-4 h-4 text-purple-600" />
                                 <span className="font-bold text-slate-800">{zg.name}</span>
                                 <Badge variant="outline" className="text-[9px] scale-90">{zg.type}</Badge>
@@ -155,9 +147,9 @@ export default function WarehouseTree() {
                                     return (
                                       <div key={zone.id} className="space-y-1">
                                         <div className="flex items-center gap-1.5 py-1.5 px-2 hover:bg-slate-50 rounded-lg cursor-pointer" onClick={() => selectNodeDetails('Zone', zone.name, { type: zone.type, utilization: `${zone.capacityPercent}%`, status: zone.status })}>
-                                          <button onClick={(e) => { e.stopPropagation(); toggleNode(zone.id); }} className="p-0.5 hover:bg-gray-200 rounded">
+                                          <Button onClick={(e) => { e.stopPropagation(); toggleNode(zone.id); }} className="p-0.5 hover:bg-gray-200 rounded">
                                             {zoneExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                                          </button>
+                                          </Button>
                                           <Layers className="w-4 h-4 text-emerald-600" />
                                           <span className="font-semibold text-slate-700">{zone.name}</span>
                                           <span className="text-[10px] text-gray-400">({zone.type})</span>
@@ -175,9 +167,9 @@ export default function WarehouseTree() {
                                               return (
                                                 <div key={aisle.id} className="space-y-1">
                                                   <div className="flex items-center gap-1.5 py-1 px-2 hover:bg-slate-50 rounded-lg cursor-pointer" onClick={() => selectNodeDetails('Aisle', aisle.name, { status: aisle.status, racksCount: zoneRacks.length })}>
-                                                    <button onClick={(e) => { e.stopPropagation(); toggleNode(aisle.id); }} className="p-0.5 hover:bg-gray-200 rounded">
+                                                    <Button onClick={(e) => { e.stopPropagation(); toggleNode(aisle.id); }} className="p-0.5 hover:bg-gray-200 rounded">
                                                       {aisleExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                                                    </button>
+                                                    </Button>
                                                     <Activity className={`w-3.5 h-3.5 ${aisle.status === 'Blocked' ? 'text-red-500' : 'text-blue-500'}`} />
                                                     <span className="font-semibold text-slate-700">{aisle.name}</span>
                                                     {aisle.status === 'Blocked' && <span className="text-[9px] text-red-500 font-bold uppercase tracking-wider ml-1">Blocked</span>}
@@ -193,9 +185,9 @@ export default function WarehouseTree() {
                                                         return (
                                                           <div key={rack.id} className="space-y-1">
                                                             <div className="flex items-center gap-1.5 py-1 px-2 hover:bg-slate-50 rounded-lg cursor-pointer" onClick={() => selectNodeDetails('Rack', rack.name, { weight: `${rack.currentWeight}/${rack.maxWeight} kg`, status: rack.status })}>
-                                                              <button onClick={(e) => { e.stopPropagation(); toggleNode(rack.id); }} className="p-0.5 hover:bg-gray-200 rounded">
+                                                              <Button onClick={(e) => { e.stopPropagation(); toggleNode(rack.id); }} className="p-0.5 hover:bg-gray-200 rounded">
                                                                 {rackExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                                                              </button>
+                                                              </Button>
                                                               <Layers className="w-3.5 h-3.5 text-indigo-500" />
                                                               <span className="text-gray-700">{rack.name}</span>
                                                               <span className="text-[9px] text-gray-400 font-mono">({rack.id})</span>
@@ -213,9 +205,9 @@ export default function WarehouseTree() {
                                                                   return (
                                                                     <div key={shelf.id} className="space-y-1">
                                                                       <div className="flex items-center gap-1.5 py-1 px-2 hover:bg-slate-50 rounded-lg cursor-pointer" onClick={() => selectNodeDetails('Shelf', shelf.shelfLevel, { maxWeight: `${shelf.maxWeight} kg`, status: shelf.status })}>
-                                                                        <button onClick={(e) => { e.stopPropagation(); toggleNode(shelf.id); }} className="p-0.5 hover:bg-gray-200 rounded">
+                                                                        <Button onClick={(e) => { e.stopPropagation(); toggleNode(shelf.id); }} className="p-0.5 hover:bg-gray-200 rounded">
                                                                           {shelfExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                                                                        </button>
+                                                                        </Button>
                                                                         <Layers className="w-3.5 h-3.5 text-amber-500" />
                                                                         <span className="text-gray-600 font-medium">{shelf.shelfLevel}</span>
                                                                       </div>

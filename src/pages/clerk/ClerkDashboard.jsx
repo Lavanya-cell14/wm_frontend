@@ -2,23 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription,
-  StatCard, 
-  Badge, 
-  Button, 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableRow, 
-  TableHead, 
-  TableCell, 
-  AlertBanner 
-} from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, StatCard, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { 
   Box, 
   Activity, 
@@ -267,40 +251,40 @@ export default function ClerkDashboard() {
               <CardDescription>Latest placement slotting suggestions.</CardDescription>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-100 text-left text-xs">
-                <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[9px]">
-                  <tr>
-                    <th className="p-3">Product</th>
-                    <th className="p-3">Zone/ZG</th>
-                    <th className="p-3 text-center">Score</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
+              <Table className="min-w-full divide-y divide-gray-100 text-left text-xs">
+                <TableHeader className="bg-slate-50 text-slate-500 font-bold uppercase text-[9px]">
+                  <TableRow>
+                    <TableHead className="p-3">Product</TableHead>
+                    <TableHead className="p-3">Zone/ZG</TableHead>
+                    <TableHead className="p-3 text-center">Score</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-gray-100">
                   {aiRecommendations.length === 0 ? (
-                    <tr>
-                      <td colSpan={3} className="text-center py-4 text-gray-500">No proposals recorded.</td>
-                    </tr>
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-4 text-gray-500">No proposals recorded.</TableCell>
+                    </TableRow>
                   ) : (
                     aiRecommendations.slice(0, 3).map((rec) => {
                       const recommendedZg = rec.zone === 'Zone D' ? 'Cold Storage' : 'Ambient';
                       return (
-                        <tr key={rec.id} className="hover:bg-slate-50/10">
-                          <td className="p-3">
+                        <TableRow key={rec.id} className="hover:bg-slate-50/10">
+                          <TableCell className="p-3">
                             <div className="font-bold text-gray-900 text-[11px] truncate max-w-[120px]">{rec.productName}</div>
                             <div className="text-[9px] text-gray-400 font-mono">{rec.sku}</div>
-                          </td>
-                          <td className="p-3 text-gray-500 font-semibold text-[11px]">{rec.zone} ({recommendedZg})</td>
-                          <td className="p-3 text-center">
+                          </TableCell>
+                          <TableCell className="p-3 text-gray-500 font-semibold text-[11px]">{rec.zone} ({recommendedZg})</TableCell>
+                          <TableCell className="p-3 text-center">
                             <Badge variant={rec.confidence >= 90 ? 'success' : 'warning'} className="font-mono font-bold text-[9px]">
                               {rec.confidence}%
                             </Badge>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       );
                     })
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
 
@@ -311,19 +295,19 @@ export default function ClerkDashboard() {
               <CardDescription>Real-time slotting transit stages.</CardDescription>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-100 text-left text-xs">
-                <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[9px]">
-                  <tr>
-                    <th className="p-3">Product</th>
-                    <th className="p-3">Bin Code</th>
-                    <th className="p-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
+              <Table className="min-w-full divide-y divide-gray-100 text-left text-xs">
+                <TableHeader className="bg-slate-50 text-slate-500 font-bold uppercase text-[9px]">
+                  <TableRow>
+                    <TableHead className="p-3">Product</TableHead>
+                    <TableHead className="p-3">Bin Code</TableHead>
+                    <TableHead className="p-3">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-gray-100">
                   {inboundReceipts.length === 0 ? (
-                    <tr>
-                      <td colSpan={3} className="text-center py-4 text-gray-500">No active allocations.</td>
-                    </tr>
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-4 text-gray-500">No active allocations.</TableCell>
+                    </TableRow>
                   ) : (
                     inboundReceipts.slice(0, 3).map((r) => {
                       const rec = aiRecommendations.find(a => a.inboundId === r.id) || {};
@@ -340,21 +324,21 @@ export default function ClerkDashboard() {
                       }
 
                       return (
-                        <tr key={r.id} className="hover:bg-slate-50/10">
-                          <td className="p-3">
+                        <TableRow key={r.id} className="hover:bg-slate-50/10">
+                          <TableCell className="p-3">
                             <div className="font-bold text-gray-900 text-[11px] truncate max-w-[120px]">{r.productName}</div>
                             <div className="text-[9px] text-gray-400 font-mono">{r.sku}</div>
-                          </td>
-                          <td className="p-3 font-mono text-[11px] text-blue-700 font-bold">{bin}</td>
-                          <td className="p-3">
+                          </TableCell>
+                          <TableCell className="p-3 font-mono text-[11px] text-blue-700 font-bold">{bin}</TableCell>
+                          <TableCell className="p-3">
                             <Badge variant={statusVariant} className="text-[9px] font-bold uppercase">{statusLabel}</Badge>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       );
                     })
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
 

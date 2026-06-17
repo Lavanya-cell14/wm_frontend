@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge, AlertBanner, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardHeader, CardTitle, Pagination, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { ArrowDownToLine, ScanBarcode, Play, CheckSquare, Eye, Clock, Box } from 'lucide-react';
 
 export default function InboundTasks() {
@@ -58,7 +58,7 @@ export default function InboundTasks() {
         {['Pending', 'In Progress', 'Completed'].map((tab) => {
           const count = inboundTasks.filter(t => t.status === tab).length;
           return (
-            <button
+            <Button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`py-3.5 px-6 font-bold text-sm border-b-2 transition-all flex items-center gap-2 ${
@@ -73,7 +73,7 @@ export default function InboundTasks() {
               }`}>
                 {count}
               </span>
-            </button>
+            </Button>
           );
         })}
       </div>

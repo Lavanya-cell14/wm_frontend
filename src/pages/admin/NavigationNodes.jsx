@@ -1,21 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription,
-  Badge, 
-  Button, 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableRow, 
-  TableHead, 
-  TableCell,
-  SearchFilterBar,
-  AlertBanner
-} from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import Modal from '../../components/ui/Modal';
 import Pagination from '../../components/ui/Pagination';
 import { Navigation, Plus, Edit2, Trash2, ShieldAlert } from 'lucide-react';
@@ -248,7 +232,7 @@ export default function NavigationNodes() {
           <form onSubmit={handleFormSubmit} className="space-y-4 text-xs font-semibold text-gray-700">
             <div className="space-y-1">
               <label className="text-gray-500 uppercase block text-[10px]">Node Designation Label</label>
-              <input 
+              <Input 
                 type="text"
                 placeholder="e.g. Aisle 4 Intersection"
                 value={label}
@@ -261,7 +245,7 @@ export default function NavigationNodes() {
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
                 <label className="text-gray-500 uppercase block text-[10px]">X Coordinate (m)</label>
-                <input 
+                <Input 
                   type="number"
                   step="0.1"
                   value={x}
@@ -272,7 +256,7 @@ export default function NavigationNodes() {
               </div>
               <div className="space-y-1">
                 <label className="text-gray-500 uppercase block text-[10px]">Y Coordinate (m)</label>
-                <input 
+                <Input 
                   type="number"
                   step="0.1"
                   value={y}
@@ -283,7 +267,7 @@ export default function NavigationNodes() {
               </div>
               <div className="space-y-1">
                 <label className="text-gray-500 uppercase block text-[10px]">Z Coordinate (m)</label>
-                <input 
+                <Input 
                   type="number"
                   step="0.1"
                   value={z}

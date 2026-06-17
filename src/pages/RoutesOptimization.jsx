@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
-import { Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Button, Badge, StatusBadge, SearchFilterBar, Pagination, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Pagination, SearchFilterBar, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Navigation, Clock, Activity, ShieldAlert, ArrowRight, UserCheck, AlertTriangle } from 'lucide-react';
 
 export default function RoutesOptimization() {
@@ -160,7 +160,7 @@ export default function RoutesOptimization() {
                 <Navigation className="w-5 h-5 text-blue-400" />
                 <h3 className="font-bold text-sm">Pathfinding route: {selectedRoute.id}</h3>
               </div>
-              <button type="button" className="text-slate-400 hover:text-white font-semibold text-lg" onClick={() => setSelectedRoute(null)}>×</button>
+              <Button type="button" className="text-slate-400 hover:text-white font-semibold text-lg" onClick={() => setSelectedRoute(null)}>×</Button>
             </div>
             
             <div className="p-6 space-y-6 text-xs">

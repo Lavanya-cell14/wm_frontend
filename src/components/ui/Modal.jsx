@@ -33,13 +33,13 @@ export default function Modal({
         {/* Header */}
         <div className="bg-slate-900 text-white p-5 flex justify-between items-center shrink-0">
           <h3 className="font-bold text-sm tracking-wide">{title}</h3>
-          <button 
+          <Button 
             type="button" 
             className="text-slate-400 hover:text-white font-semibold text-lg transition-colors p-1 rounded-lg hover:bg-white/10" 
             onClick={onClose}
           >
             <X className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
 
         {/* Content Body */}

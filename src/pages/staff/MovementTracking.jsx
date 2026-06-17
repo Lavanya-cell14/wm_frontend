@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, SearchFilterBar, Pagination } from 'shared-ui';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Pagination, SearchFilterBar, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Activity, Clock, MapPin, ArrowRightLeft, Eye, Navigation, Filter } from 'lucide-react';
 
 export default function MovementTracking() {
@@ -63,7 +63,7 @@ export default function MovementTracking() {
           </div>
           <div className="flex gap-2 w-full md:w-auto shrink-0 justify-end">
             {['All', 'Putaway', 'Picking', 'Reallocation', 'Issue'].map((type) => (
-              <button
+              <Button
                 key={type}
                 onClick={() => setFilterType(type)}
                 className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all ${
@@ -73,7 +73,7 @@ export default function MovementTracking() {
                 }`}
               >
                 {type}
-              </button>
+              </Button>
             ))}
           </div>
         </CardContent>
@@ -242,7 +242,7 @@ export default function MovementTracking() {
                   <p className="text-xs text-slate-300">Movement ID: {activeRouteModal.id}</p>
                 </div>
               </div>
-              <button className="text-slate-400 hover:text-white font-semibold text-lg" onClick={() => setActiveRouteModal(null)}>×</button>
+              <Button className="text-slate-400 hover:text-white font-semibold text-lg" onClick={() => setActiveRouteModal(null)}>×</Button>
             </div>
             <div className="p-6 space-y-6">
               <div className="space-y-4">

@@ -1,23 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../context/WarehouseContext';
-import { 
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  Button,
-  Badge,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  DashboardStatCard,
-  Pagination
-} from 'shared-ui';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, DashboardStatCard, Pagination, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { 
   Package, Box, Building2, LayoutGrid, CheckCircle2, TrendingUp, AlertTriangle, 
   ArrowDownToLine, Activity, Lightbulb, Clock, Layers, 
@@ -238,13 +222,13 @@ export default function Dashboard() {
               
               <div className="grid grid-cols-2 gap-1.5">
                 {suggestedQuestions.slice(0, 4).map((q, idx) => (
-                  <button 
+                  <Button 
                     key={idx}
                     onClick={() => navigate('/manager/ai-assistant')}
                     className="text-left px-2 py-1.5 border border-gray-100 rounded-lg bg-gray-50 text-[10px] text-gray-600 font-bold hover:border-blue-200 hover:bg-blue-50/20 truncate"
                   >
                     {q}
-                  </button>
+                  </Button>
                 ))}
               </div>
 

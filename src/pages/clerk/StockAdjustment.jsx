@@ -2,22 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription,
-  Badge, 
-  Button, 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableRow, 
-  TableHead, 
-  TableCell, 
-  AlertBanner 
-} from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Wrench, RefreshCw, AlertCircle, CheckCircle2, TrendingUp, TrendingDown } from 'lucide-react';
 
 export default function StockAdjustment() {
@@ -154,7 +139,7 @@ export default function StockAdjustment() {
                 {/* Quantity Delta */}
                 <div className="space-y-1">
                   <label className="text-gray-500 uppercase block text-[10px]">Stock Count Offset (+/-)</label>
-                  <input 
+                  <Input 
                     type="number"
                     placeholder="e.g. 50 (Increase) or -10 (Decrease)"
                     value={qtyDelta}
@@ -187,7 +172,7 @@ export default function StockAdjustment() {
                 {/* Notes log field */}
                 <div className="space-y-1">
                   <label className="text-gray-500 uppercase block text-[10px]">Audit Notes / Explanation</label>
-                  <input 
+                  <Input 
                     type="text"
                     placeholder="Specify detailed reason or notes..."
                     value={notes}

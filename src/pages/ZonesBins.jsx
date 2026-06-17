@@ -1,24 +1,6 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  Button, 
-  Badge, 
-  AlertBanner, 
-  StatusBadge, 
-  SearchFilterBar, 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableRow, 
-  TableHead, 
-  TableCell,
-  Modal,
-  Pagination
-} from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Modal, Pagination, SearchFilterBar, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { LayoutGrid, Layers, Plus, Map, Trash2, Edit2, ShieldAlert, BarChart3, AlertTriangle, Lightbulb, Box } from 'lucide-react';
 import { getZoneLabel } from '../utils/zoneMapping';
 
@@ -315,7 +297,7 @@ export default function ZonesBins() {
       {/* Tabs */}
       <div className="flex border-b border-gray-200">
         {['Zones', 'Racks', 'Shelves', 'Bins', 'Capacity View'].map((tab) => (
-          <button
+          <Button
             key={tab}
             onClick={() => { setActiveTab(tab); setSearchQuery(''); }}
             className={`py-3.5 px-6 font-bold text-sm border-b-2 transition-all flex items-center gap-2 ${
@@ -325,7 +307,7 @@ export default function ZonesBins() {
             }`}
           >
             {tab}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -665,14 +647,14 @@ export default function ZonesBins() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="block font-bold text-gray-700 uppercase">Zone Name</label>
-                <input 
+                <Input 
                   type="text" value={zoneName} onChange={(e) => setZoneName(e.target.value)}
                   className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm font-semibold outline-none focus:border-blue-500 bg-white" required
                 />
               </div>
               <div className="space-y-1">
                 <label className="block font-bold text-gray-700 uppercase">Capacity (%)</label>
-                <input 
+                <Input 
                   type="number" min="0" max="100" value={zoneCapacityPercent} onChange={(e) => setZoneCapacityPercent(e.target.value)}
                   className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm font-semibold outline-none focus:border-blue-500 bg-white" required
                 />
@@ -720,7 +702,7 @@ export default function ZonesBins() {
           <div className="space-y-4 text-xs">
             <div className="space-y-1">
               <label className="block font-bold text-gray-700 uppercase">Rack Name</label>
-              <input 
+              <Input 
                 type="text" value={rackName} onChange={(e) => setRackName(e.target.value)}
                 className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm font-semibold outline-none focus:border-blue-500" required
               />
@@ -734,7 +716,7 @@ export default function ZonesBins() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="block font-bold text-gray-700 uppercase">Max Weight (kg)</label>
-                <input 
+                <Input 
                   type="number" value={rackMaxWeight} onChange={(e) => setRackMaxWeight(e.target.value)}
                   className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm font-semibold outline-none focus:border-blue-500" required
                 />
@@ -767,7 +749,7 @@ export default function ZonesBins() {
           <div className="space-y-4 text-xs">
             <div className="space-y-1">
               <label className="block font-bold text-gray-700 uppercase">Shelf Level</label>
-              <input 
+              <Input 
                 type="text" value={shelfLevel} onChange={(e) => setShelfLevel(e.target.value)}
                 className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm font-semibold outline-none focus:border-blue-500" required
               />
@@ -781,7 +763,7 @@ export default function ZonesBins() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="block font-bold text-gray-700 uppercase">Max Weight (kg)</label>
-                <input 
+                <Input 
                   type="number" value={shelfMaxWeight} onChange={(e) => setShelfMaxWeight(e.target.value)}
                   className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm font-semibold outline-none focus:border-blue-500" required
                 />
@@ -814,7 +796,7 @@ export default function ZonesBins() {
           <div className="space-y-4 text-xs">
             <div className="space-y-1">
               <label className="block font-bold text-gray-700 uppercase">Bin Code</label>
-              <input 
+              <Input 
                 type="text" value={binCode} readOnly 
                 className="w-full bg-slate-50 border border-gray-300 px-3 py-2 rounded-lg text-sm font-semibold outline-none text-slate-500 cursor-not-allowed" required
               />
@@ -837,11 +819,11 @@ export default function ZonesBins() {
               </div>
               <div className="space-y-1">
                 <label className="block font-bold text-gray-700 uppercase">Max Volume Capacity</label>
-                <input type="number" value={binMaxCap} onChange={(e) => setBinMaxCap(e.target.value)} className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm font-semibold outline-none focus:border-blue-500" required />
+                <Input type="number" value={binMaxCap} onChange={(e) => setBinMaxCap(e.target.value)} className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm font-semibold outline-none focus:border-blue-500" required />
               </div>
               <div className="space-y-1">
                 <label className="block font-bold text-gray-700 uppercase">Max Weight Capacity (kg)</label>
-                <input type="number" value={binMaxWeight} onChange={(e) => setBinMaxWeight(e.target.value)} className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm font-semibold outline-none focus:border-blue-500" required />
+                <Input type="number" value={binMaxWeight} onChange={(e) => setBinMaxWeight(e.target.value)} className="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm font-semibold outline-none focus:border-blue-500" required />
               </div>
               <div className="space-y-1 col-span-2">
                 <label className="block font-bold text-gray-700 uppercase">Status</label>

@@ -1,4 +1,5 @@
 import React from 'react';
+import Button from './Button';
 import Card, { CardContent } from './Card';
 import { Sparkles, ArrowRight } from 'lucide-react';
 
@@ -21,10 +22,10 @@ export default function RecommendationCard({ title, recommendations }) {
               <div>
                 <p className="text-sm font-medium text-gray-900 mb-0.5">{rec.message}</p>
                 {rec.action && (
-                  <button className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 mt-1 group">
+                  <Button className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 mt-1 group">
                     {rec.action}
                     <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../context/WarehouseContext';
 import { useAuth } from '../context/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Badge, StatusBadge, AlertBanner, Input } from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { 
   CheckSquare, XSquare, Plus, Trash2, ArrowLeft, Save, HelpCircle, AlertTriangle, 
   FileText, ShieldCheck, Sparkles, Check, CheckCircle2, ChevronRight 
@@ -251,7 +251,7 @@ export default function OcrVerification() {
                 <CardContent className="p-4 bg-slate-50/20 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                   <div>
                     <span className="text-[10px] text-gray-400 block font-medium">Supplier Entity Name</span>
-                    <input 
+                    <Input 
                       type="text" 
                       className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-xs font-semibold p-2 bg-white"
                       value={docDetails.supplier}
@@ -260,7 +260,7 @@ export default function OcrVerification() {
                   </div>
                   <div>
                     <span className="text-[10px] text-gray-400 block font-medium">Document ID / PO Code</span>
-                    <input 
+                    <Input 
                       type="text" 
                       className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-xs font-semibold p-2 bg-white"
                       value={docDetails.document_number}
@@ -297,31 +297,31 @@ export default function OcrVerification() {
                   </Button>
                 </CardHeader>
                 <CardContent className="p-0 overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200 text-left text-xs font-semibold">
-                    <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-wider">
-                      <tr>
-                        <th className="p-3">SKU *</th>
-                        <th className="p-3">Product Title *</th>
-                        <th className="p-3">Category</th>
-                        <th className="p-3">Quantity</th>
-                        <th className="p-3">UOM</th>
-                        <th className="p-3">Dims (LxWxH cm)</th>
-                        <th className="p-3">Weight (kg)</th>
-                        <th className="p-3 text-center">Confidence</th>
-                        <th className="p-3 text-right">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 bg-white">
+                  <Table className="min-w-full divide-y divide-gray-200 text-left text-xs font-semibold">
+                    <TableHeader className="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-wider">
+                      <TableRow>
+                        <TableHead className="p-3">SKU *</TableHead>
+                        <TableHead className="p-3">Product Title *</TableHead>
+                        <TableHead className="p-3">Category</TableHead>
+                        <TableHead className="p-3">Quantity</TableHead>
+                        <TableHead className="p-3">UOM</TableHead>
+                        <TableHead className="p-3">Dims (LxWxH cm)</TableHead>
+                        <TableHead className="p-3">Weight (kg)</TableHead>
+                        <TableHead className="p-3 text-center">Confidence</TableHead>
+                        <TableHead className="p-3 text-right">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="divide-y divide-gray-100 bg-white">
                       {items.map((item, idx) => {
                         const isLowConf = item.confidenceScore < 85;
                         const isSkuMissing = !item.sku;
                         const isDimsMissing = !item.length;
                         
                         return (
-                          <tr key={item.id || idx} className="hover:bg-slate-50/40">
+                          <TableRow key={item.id || idx} className="hover:bg-slate-50/40">
                             {/* SKU */}
-                            <td className="p-3 min-w-[100px]">
-                              <input 
+                            <TableCell className="p-3 min-w-[100px]">
+                              <Input 
                                 type="text"
                                 className={`w-full rounded-md border-gray-200 p-1.5 font-mono text-xs focus:ring-blue-500 focus:border-blue-500 ${
                                   isSkuMissing ? 'border-red-300 bg-red-50 text-red-700 font-bold placeholder-red-400' : isLowConf ? 'bg-amber-50' : 'border-gray-200'
@@ -330,20 +330,20 @@ export default function OcrVerification() {
                                 value={item.sku}
                                 onChange={(e) => handleItemChange(idx, 'sku', e.target.value.toUpperCase())}
                               />
-                            </td>
+                            </TableCell>
 
                             {/* Name */}
-                            <td className="p-3 min-w-[180px]">
-                              <input 
+                            <TableCell className="p-3 min-w-[180px]">
+                              <Input 
                                 type="text"
                                 className="w-full rounded-md border-gray-200 p-1.5 text-xs focus:ring-blue-500 focus:border-blue-500"
                                 value={item.productName}
                                 onChange={(e) => handleItemChange(idx, 'productName', e.target.value)}
                               />
-                            </td>
+                            </TableCell>
 
                             {/* Category */}
-                            <td className="p-3">
+                            <TableCell className="p-3">
                               <select 
                                 className="rounded-md border-gray-200 p-1.5 text-xs focus:ring-blue-500 focus:border-blue-500 bg-white"
                                 value={item.category}
@@ -355,32 +355,32 @@ export default function OcrVerification() {
                                 <option value="Safety Equipment">Safety Equipment</option>
                                 <option value="Packaging Supplies">Packaging Supplies</option>
                               </select>
-                            </td>
+                            </TableCell>
 
                             {/* Qty */}
-                            <td className="p-3 min-w-[70px]">
-                              <input 
+                            <TableCell className="p-3 min-w-[70px]">
+                              <Input 
                                 type="number"
                                 className="w-full rounded-md border-gray-200 p-1.5 text-xs focus:ring-blue-500 focus:border-blue-500 font-bold"
                                 value={item.quantity}
                                 onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)}
                               />
-                            </td>
+                            </TableCell>
 
                             {/* UOM */}
-                            <td className="p-3 min-w-[70px]">
-                              <input 
+                            <TableCell className="p-3 min-w-[70px]">
+                              <Input 
                                 type="text"
                                 className="w-full rounded-md border-gray-200 p-1.5 text-xs focus:ring-blue-500 focus:border-blue-500 font-mono"
                                 value={item.uom}
                                 onChange={(e) => handleItemChange(idx, 'uom', e.target.value)}
                               />
-                            </td>
+                            </TableCell>
 
                             {/* Dims */}
-                            <td className="p-3 min-w-[140px]">
+                            <TableCell className="p-3 min-w-[140px]">
                               <div className="flex items-center gap-1">
-                                <input 
+                                <Input 
                                   type="number"
                                   placeholder="L"
                                   className={`w-10 rounded-md border-gray-200 p-1 text-xs focus:ring-blue-500 focus:border-blue-500 ${
@@ -390,7 +390,7 @@ export default function OcrVerification() {
                                   onChange={(e) => handleItemChange(idx, 'length', e.target.value)}
                                 />
                                 <span className="text-gray-400 text-[10px]">x</span>
-                                <input 
+                                <Input 
                                   type="number"
                                   placeholder="W"
                                   className={`w-10 rounded-md border-gray-200 p-1 text-xs focus:ring-blue-500 focus:border-blue-500 ${
@@ -400,7 +400,7 @@ export default function OcrVerification() {
                                   onChange={(e) => handleItemChange(idx, 'width', e.target.value)}
                                 />
                                 <span className="text-gray-400 text-[10px]">x</span>
-                                <input 
+                                <Input 
                                   type="number"
                                   placeholder="H"
                                   className={`w-10 rounded-md border-gray-200 p-1 text-xs focus:ring-blue-500 focus:border-blue-500 ${
@@ -410,21 +410,21 @@ export default function OcrVerification() {
                                   onChange={(e) => handleItemChange(idx, 'height', e.target.value)}
                                 />
                               </div>
-                            </td>
+                            </TableCell>
 
                             {/* Weight */}
-                            <td className="p-3 min-w-[70px]">
-                              <input 
+                            <TableCell className="p-3 min-w-[70px]">
+                              <Input 
                                 type="number"
                                 step="any"
                                 className="w-full rounded-md border-gray-200 p-1.5 text-xs focus:ring-blue-500 focus:border-blue-500"
                                 value={item.weight}
                                 onChange={(e) => handleItemChange(idx, 'weight', e.target.value)}
                               />
-                            </td>
+                            </TableCell>
 
                             {/* Confidence Badge */}
-                            <td className="p-3 text-center">
+                            <TableCell className="p-3 text-center">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                 item.confidenceScore >= 90 
                                   ? 'bg-green-50 text-green-700 border border-green-200' 
@@ -432,22 +432,22 @@ export default function OcrVerification() {
                               }`}>
                                 {item.confidenceScore}%
                               </span>
-                            </td>
+                            </TableCell>
 
                             {/* Actions */}
-                            <td className="p-3 text-right">
-                              <button 
+                            <TableCell className="p-3 text-right">
+                              <Button 
                                 onClick={() => handleRemoveRow(idx)}
                                 className="text-gray-400 hover:text-red-500 p-1 rounded-lg hover:bg-gray-100 transition-colors"
                               >
                                 <Trash2 className="w-4 h-4" />
-                              </button>
-                            </td>
-                          </tr>
+                              </Button>
+                            </TableCell>
+                          </TableRow>
                         );
                       })}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
 

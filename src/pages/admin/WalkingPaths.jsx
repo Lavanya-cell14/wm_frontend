@@ -1,21 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription,
-  Badge, 
-  Button, 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableRow, 
-  TableHead, 
-  TableCell,
-  SearchFilterBar,
-  AlertBanner
-} from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import Modal from '../../components/ui/Modal';
 import Pagination from '../../components/ui/Pagination';
 import { Map, Plus, Edit2, Trash2 } from 'lucide-react';
@@ -239,7 +223,7 @@ export default function WalkingPaths() {
           <form onSubmit={handleFormSubmit} className="space-y-4 text-xs font-semibold text-gray-700">
             <div className="space-y-1">
               <label className="text-gray-500 uppercase block text-[10px]">Path Name</label>
-              <input 
+              <Input 
                 type="text"
                 placeholder="e.g. Dock A to Zone B Expressway"
                 value={name}
@@ -251,7 +235,7 @@ export default function WalkingPaths() {
 
             <div className="space-y-1">
               <label className="text-gray-500 uppercase block text-[10px]">Segment Nodes Sequence Sequence (→ separator)</label>
-              <input 
+              <Input 
                 type="text"
                 placeholder="e.g. NODE-001 → NODE-002 → NODE-005"
                 value={sequence}
@@ -263,7 +247,7 @@ export default function WalkingPaths() {
 
             <div className="space-y-1">
               <label className="text-gray-500 uppercase block text-[10px]">Total Distance (m)</label>
-              <input 
+              <Input 
                 type="number"
                 step="0.1"
                 placeholder="e.g. 45.8"

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
-import { Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Button, Badge, StatusBadge, SearchFilterBar, Pagination, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, AlertBanner, Modal, Input } from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Input, Modal, Pagination, SearchFilterBar, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { ArrowDownToLine, Clock, UserCheck, User, Loader2 } from 'lucide-react';
 
 export default function Inbound() {
@@ -139,7 +139,7 @@ export default function Inbound() {
       {/* Tabs */}
       <div className="flex border-b border-gray-200">
         {['Pending', 'In Progress', 'Completed'].map((tab) => (
-          <button
+          <Button
             key={tab}
             onClick={() => { setActiveTab(tab); setSearchQuery(''); }}
             className={`py-3.5 px-6 font-bold text-sm border-b-2 transition-all flex items-center gap-2 outline-none ${
@@ -154,7 +154,7 @@ export default function Inbound() {
             }`}>
               {inboundTasks.filter(t => t.status === tab).length}
             </span>
-          </button>
+          </Button>
         ))}
       </div>
 

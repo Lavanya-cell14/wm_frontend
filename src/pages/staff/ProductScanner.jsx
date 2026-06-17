@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ScanBarcode, Box, Loader2, CheckCircle2, Lightbulb, PackageSearch, AlertCircle, ArrowRight, Play, RefreshCw, Eye, X, MapPin, Weight, Ruler, Clock, Zap, Package } from 'lucide-react';
-import { Button, Card, CardContent, CardHeader, CardTitle, Badge, AlertBanner } from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardHeader, CardTitle, Input } from 'shared-ui';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
 import { getZoneLabel } from '../../utils/zoneMapping';
@@ -216,28 +216,28 @@ export default function ProductScanner() {
               <div className="flex justify-between items-center mb-1">
                 <label className="block text-sm font-semibold text-gray-700">Scan Barcode / SKU</label>
                 <div className="flex items-center gap-2 text-xs font-bold text-blue-600">
-                  <button 
+                  <Button 
                     type="button" 
                     onClick={() => handleDemoFill('SKU')}
                     className="hover:underline"
                   >
                     Demo SKU-1001
-                  </button>
+                  </Button>
                   <span className="text-gray-300">|</span>
-                  <button 
+                  <Button 
                     type="button" 
                     onClick={() => handleDemoFill('PRD')}
                     className="hover:underline"
                   >
                     Demo PRD-0001
-                  </button>
+                  </Button>
                 </div>
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <ScanBarcode className="h-5 w-5 text-gray-400" />
                 </div>
-                <input
+                <Input
                   type="text"
                   value={skuInput}
                   onChange={(e) => {
@@ -451,12 +451,12 @@ export default function ProductScanner() {
                 <Package className="w-5 h-5 text-[#0071C1]" />
                 Product & Recommendation Details
               </CardTitle>
-              <button
+              <Button
                 onClick={() => setShowDetailsModal(false)}
                 className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5 text-gray-500" />
-              </button>
+              </Button>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
               {/* Product Info */}

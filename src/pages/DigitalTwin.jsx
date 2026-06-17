@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge, AlertBanner, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Map, Layers, Navigation, Box, HelpCircle, ShieldAlert, Sparkles, LayoutGrid, MonitorPlay } from 'lucide-react';
 import WarehouseScene from '../three/WarehouseScene';
 
@@ -63,7 +63,7 @@ export default function DigitalTwin() {
               {Object.keys(activeLayers).map((layer) => (
                 <label key={layer} className="flex items-center justify-between text-xs font-semibold text-gray-700 cursor-pointer p-2 hover:bg-gray-50 rounded-lg">
                   <span className="capitalize">{layer} Layer</span>
-                  <input 
+                  <Input 
                     type="checkbox" 
                     checked={activeLayers[layer]} 
                     onChange={() => toggleLayer(layer)}
@@ -138,18 +138,18 @@ export default function DigitalTwin() {
               <div className="flex items-center gap-4">
                 <CardTitle className="text-base font-bold text-gray-900">Visual Layout Map</CardTitle>
                 <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
-                  <button 
+                  <Button 
                     onClick={() => setViewMode('3d')}
                     className={`px-3 py-1 text-xs font-bold rounded-md flex items-center gap-1 transition-all ${viewMode === '3d' ? 'bg-white text-[#0071C1] shadow-xs' : 'text-slate-500 hover:text-slate-700'}`}
                   >
                     <MonitorPlay className="w-3.5 h-3.5" /> 3D View
-                  </button>
-                  <button 
+                  </Button>
+                  <Button 
                     onClick={() => setViewMode('2d')}
                     className={`px-3 py-1 text-xs font-bold rounded-md flex items-center gap-1 transition-all ${viewMode === '2d' ? 'bg-white text-[#0071C1] shadow-xs' : 'text-slate-500 hover:text-slate-700'}`}
                   >
                     <LayoutGrid className="w-3.5 h-3.5" /> 2D Grid
-                  </button>
+                  </Button>
                 </div>
               </div>
               <Badge variant="success">Central Fulfillment A</Badge>
@@ -211,13 +211,13 @@ export default function DigitalTwin() {
                                 }
 
                                 return (
-                                  <button
+                                  <Button
                                     key={b.code}
                                     onClick={() => handleSelectBin(b)}
                                     className={`bg-slate-900 border rounded p-2 font-mono font-bold transition-all ${borderClass}`}
                                   >
                                     {b.code.replace('BIN-', '')}
-                                  </button>
+                                  </Button>
                                 );
                               })}
                             </div>

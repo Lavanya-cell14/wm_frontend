@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Badge, DashboardStatCard } from 'shared-ui';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, DashboardStatCard } from 'shared-ui';
 import { 
   BarChart3, TrendingUp, Cpu, Sparkles, Download, Layers, Box, LayoutGrid, 
   ArrowDownToLine, CheckCircle2, Bot, PieChart, Activity
@@ -54,7 +54,7 @@ export default function Analytics() {
 
       {/* Tabs Menu */}
       <div className="flex border-b border-gray-200">
-        <button
+        <Button
           onClick={() => setActiveTab('inventory')}
           className={`py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
             activeTab === 'inventory' 
@@ -64,8 +64,8 @@ export default function Analytics() {
         >
           <Box className="w-4 h-4" />
           Inventory Analytics
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={() => setActiveTab('occupancy')}
           className={`py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
             activeTab === 'occupancy' 
@@ -75,8 +75,8 @@ export default function Analytics() {
         >
           <Layers className="w-4 h-4" />
           Occupancy Analytics
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={() => setActiveTab('operational')}
           className={`py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
             activeTab === 'operational' 
@@ -86,7 +86,7 @@ export default function Analytics() {
         >
           <TrendingUp className="w-4 h-4" />
           Operational Analytics
-        </button>
+        </Button>
       </div>
 
       {/* Tab Contents */}

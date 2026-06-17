@@ -1,22 +1,7 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription,
-  Badge, 
-  Button, 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableRow, 
-  TableHead, 
-  TableCell,
-  AlertBanner 
-} from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Shield, ShieldCheck, ShieldAlert, Key, Save, RefreshCw, Check, X } from 'lucide-react';
 
 export default function RoleManagement() {
@@ -259,7 +244,7 @@ export default function RoleManagement() {
 
                         {/* Policy Switch Checkbox */}
                         <TableCell className="text-right">
-                          <button
+                          <Button
                             onClick={() => handleTogglePermission(pKey)}
                             disabled={selectedRole === 'ADMIN'}
                             className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
@@ -271,7 +256,7 @@ export default function RoleManagement() {
                                 hasPerm ? 'translate-x-4' : 'translate-x-0'
                               }`}
                             />
-                          </button>
+                          </Button>
                         </TableCell>
                       </TableRow>
                     );

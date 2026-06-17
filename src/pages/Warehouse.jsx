@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
-import { DashboardStatCard, Button, Card, CardContent, CardHeader, CardTitle, Badge, StatusBadge, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Input, SearchFilterBar, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Building2, Plus, MapPin, ChevronRight, Activity, Package, Users, Layers, X, ShieldAlert } from 'lucide-react';
 
 export default function Warehouse() {
@@ -139,9 +139,9 @@ export default function Warehouse() {
                     <p className="text-xs text-gray-400 font-mono mt-0.5">{selectedWh.id}</p>
                   </div>
                 </div>
-                <button className="text-gray-400 hover:text-gray-600 font-semibold text-lg" onClick={() => setSelectedWh(null)}>
+                <Button className="text-gray-400 hover:text-gray-600 font-semibold text-lg" onClick={() => setSelectedWh(null)}>
                   <X className="w-5 h-5" />
-                </button>
+                </Button>
               </div>
 
               <div className="grid grid-cols-2 gap-4 text-xs">
@@ -223,13 +223,13 @@ export default function Warehouse() {
                 <Building2 className="w-5 h-5 text-blue-400" />
                 <h3 className="font-bold text-sm">Add Warehouse Facility</h3>
               </div>
-              <button type="button" className="text-slate-400 hover:text-white font-semibold text-lg" onClick={() => setShowAddModal(false)}>×</button>
+              <Button type="button" className="text-slate-400 hover:text-white font-semibold text-lg" onClick={() => setShowAddModal(false)}>×</Button>
             </div>
             
             <div className="p-6 space-y-4">
               <div className="space-y-1">
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Facility Name</label>
-                <input 
+                <Input 
                   type="text" 
                   value={newWhName}
                   onChange={(e) => setNewWhName(e.target.value)}
@@ -241,7 +241,7 @@ export default function Warehouse() {
 
               <div className="space-y-1">
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Geographic Location</label>
-                <input 
+                <Input 
                   type="text" 
                   value={newWhLoc}
                   onChange={(e) => setNewWhLoc(e.target.value)}
@@ -253,7 +253,7 @@ export default function Warehouse() {
 
               <div className="space-y-1">
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Total Area Size (sq ft)</label>
-                <input 
+                <Input 
                   type="text" 
                   value={newWhArea}
                   onChange={(e) => setNewWhArea(e.target.value)}

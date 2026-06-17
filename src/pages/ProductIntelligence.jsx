@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Button, Badge, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, DashboardStatCard, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { BrainCircuit, Cpu, Scale, HelpCircle, ArrowRight, Eye, Sparkles } from 'lucide-react';
 import { useWarehouse } from '../context/WarehouseContext';
 
@@ -113,7 +113,7 @@ export default function ProductIntelligence() {
                 <BrainCircuit className="w-5 h-5 text-blue-400" />
                 <h3 className="font-bold text-sm">AI Storage Rule Sheet</h3>
               </div>
-              <button className="text-slate-400 hover:text-white font-semibold text-lg" onClick={() => setActiveRuleModal(null)}>×</button>
+              <Button className="text-slate-400 hover:text-white font-semibold text-lg" onClick={() => setActiveRuleModal(null)}>×</Button>
             </div>
 
             <div className="p-6 space-y-4 text-xs">
