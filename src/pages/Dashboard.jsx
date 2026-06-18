@@ -76,7 +76,7 @@ export default function Dashboard() {
       </div>
 
       {/* 8 Executive KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4">
         <DashboardStatCard title="Total Inventory" value={totalInventoryCount} icon={Box} />
         <DashboardStatCard title="Storage Utilization" value={`${storageUtilizationStr}%`} icon={Layers} />
         <DashboardStatCard title="Occupied Bins" value={occupiedBinsCount} icon={LayoutGrid} />

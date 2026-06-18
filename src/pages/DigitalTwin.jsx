@@ -101,33 +101,35 @@ export default function DigitalTwin() {
             </CardContent>
           </Card>
 
-          {/* Details Side Panel */}
+          {/* Details Side Panel (visible only on desktop) */}
           {selectedBin && (
-            <Card className="border-t-4 border-t-blue-600 animate-in fade-in duration-200">
-              <CardHeader className="border-b border-gray-100 pb-4">
-                <CardTitle className="text-sm font-bold uppercase flex items-center gap-2">
-                  <Box className="w-4 h-4 text-blue-600" /> Bin Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 space-y-4 text-xs">
-                <div className="bg-blue-50/50 border border-blue-100 p-3 rounded-lg text-blue-900 font-mono font-bold text-center">
-                  {selectedBin.code}
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-gray-600 font-semibold">
-                  <div>Zone: <span className="text-gray-900">{selectedBin.zone}</span></div>
-                  <div>Shelf Level: <span className="text-gray-900">{selectedBin.shelf}</span></div>
-                  <div>Capacity: <span className="text-gray-900">{selectedBin.currentCapacity} / {selectedBin.maxCapacity}</span></div>
-                  <div>Status: <Badge variant="outline">{selectedBin.status}</Badge></div>
-                </div>
-                
-                <div className="border-t border-gray-100 pt-3 space-y-2">
-                  <h4 className="font-bold text-gray-900 uppercase">Stored Stock</h4>
-                  <div className="font-semibold text-gray-800">{selectedBin.product}</div>
-                  <div className="text-[10px] text-gray-400 font-mono">SKU: {selectedBin.sku}</div>
-                  <div className="font-bold text-gray-900">{selectedBin.qty} units in storage</div>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="hidden lg:block">
+              <Card className="border-t-4 border-t-blue-600 animate-in fade-in duration-200">
+                <CardHeader className="border-b border-gray-100 pb-4">
+                  <CardTitle className="text-sm font-bold uppercase flex items-center gap-2">
+                    <Box className="w-4 h-4 text-blue-600" /> Bin Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 space-y-4 text-xs">
+                  <div className="bg-blue-50/50 border border-blue-100 p-3 rounded-lg text-blue-900 font-mono font-bold text-center">
+                    {selectedBin.code}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-gray-600 font-semibold">
+                    <div>Zone: <span className="text-gray-900">{selectedBin.zone}</span></div>
+                    <div>Shelf Level: <span className="text-gray-900">{selectedBin.shelf}</span></div>
+                    <div>Capacity: <span className="text-gray-900">{selectedBin.currentCapacity} / {selectedBin.maxCapacity}</span></div>
+                    <div>Status: <Badge variant="outline">{selectedBin.status}</Badge></div>
+                  </div>
+                  
+                  <div className="border-t border-gray-100 pt-3 space-y-2">
+                    <h4 className="font-bold text-gray-900 uppercase">Stored Stock</h4>
+                    <div className="font-semibold text-gray-800">{selectedBin.product}</div>
+                    <div className="text-[10px] text-gray-400 font-mono">SKU: {selectedBin.sku}</div>
+                    <div className="font-bold text-gray-900">{selectedBin.qty} units in storage</div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           )}
         </div>
 
@@ -190,7 +192,7 @@ export default function DigitalTwin() {
                           )}
                           
                           {activeLayers.bins && (
-                            <div className="grid grid-cols-2 gap-2 text-center text-[10px]">
+                            <div className="grid grid-cols-2 gap-2 text-center text-xs">
                               {zoneBins.map(b => {
                                 const isSelected = selectedBin?.code === b.code;
                                 const capRatio = b.maxCapacity > 0 ? (b.currentCapacity / b.maxCapacity) : 0;
@@ -214,7 +216,7 @@ export default function DigitalTwin() {
                                   <Button
                                     key={b.code}
                                     onClick={() => handleSelectBin(b)}
-                                    className={`bg-slate-900 border rounded p-2 font-mono font-bold transition-all ${borderClass}`}
+                                    className={`bg-slate-900 border rounded py-3.5 px-3 min-h-[44px] flex items-center justify-center font-mono font-bold text-xs transition-all ${borderClass}`}
                                   >
                                     {b.code.replace('BIN-', '')}
                                   </Button>
@@ -232,6 +234,43 @@ export default function DigitalTwin() {
           </Card>
         </div>
       </div>
+
+      {/* Mobile Details Drawer (visible on < lg viewports) */}
+      {selectedBin && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end lg:hidden animate-in fade-in duration-200">
+          <div className="bg-white rounded-t-2xl w-full p-6 space-y-4 animate-in slide-in-from-bottom duration-250 border-t border-gray-200 text-xs">
+            <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+              <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                <Box className="w-4 h-4 text-blue-600" /> Bin Information
+              </h3>
+              <button 
+                onClick={() => setSelectedBin(null)}
+                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 text-xs font-bold"
+              >
+                Close
+              </button>
+            </div>
+            
+            <div className="bg-blue-50/50 border border-blue-100 p-3 rounded-lg text-blue-900 font-mono font-bold text-center text-sm">
+              {selectedBin.code}
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3 text-gray-600 font-semibold p-1">
+              <div>Zone: <span className="text-slate-900 font-bold">{selectedBin.zone}</span></div>
+              <div>Shelf Level: <span className="text-slate-900 font-bold">{selectedBin.shelf}</span></div>
+              <div>Capacity: <span className="text-slate-900 font-bold">{selectedBin.currentCapacity} / {selectedBin.maxCapacity}</span></div>
+              <div>Status: <Badge variant="outline">{selectedBin.status}</Badge></div>
+            </div>
+            
+            <div className="border-t border-gray-100 pt-3 space-y-2">
+              <h4 className="font-bold text-slate-450 uppercase text-[10px] tracking-wider">Stored Stock</h4>
+              <div className="font-bold text-slate-800 text-sm">{selectedBin.product}</div>
+              <div className="text-[10px] text-gray-400 font-mono">SKU: {selectedBin.sku}</div>
+              <div className="font-bold text-slate-900">{selectedBin.qty} units in storage</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

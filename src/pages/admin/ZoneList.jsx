@@ -296,6 +296,14 @@ export default function ZoneList() {
                 </div>
               )}
 
+              {/* Associated Inventory — static informational block (from UI design) */}
+              <div className="p-3 bg-white border border-gray-100 rounded-xl">
+                <div className="text-gray-400 font-bold uppercase tracking-wider mb-1">Associated Inventory Items</div>
+                <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+                  Real-time stock cycles and picking congestion safety margins are actively monitored under this zone coordinates outline.
+                </p>
+              </div>
+
               {/* Warehouse reference */}
               <div className="p-3 bg-slate-50 border border-gray-100 rounded-xl">
                 <div className="text-gray-400 font-bold uppercase tracking-wider mb-1">Parent Warehouse</div>

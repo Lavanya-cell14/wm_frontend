@@ -1,5 +1,5 @@
 import React from 'react';
-import Card, { CardContent } from '../ui/Card';
+import { Card, CardContent } from 'shared-ui';
 
 export default function StatCard({ title, value, icon: Icon, trend, trendLabel }) {
   const isPositive = trend && trend > 0;

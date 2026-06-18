@@ -1,5 +1,5 @@
 import React from 'react';
-import Card, { CardContent, CardHeader, CardTitle } from '../ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from 'shared-ui';
 import { CheckCircle2, Clock, Circle } from 'lucide-react';
 
 export default function TrackingStatus({ steps = [], currentStepIndex = 0 }) {

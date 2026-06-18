@@ -279,14 +279,25 @@ export default function WarehouseScene({
       });
     });
 
-    // 9. Click Handler Raycaster
+    // 9. Click Handler Raycaster with drag prevention
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
+    let pointerStartX = 0;
+    let pointerStartY = 0;
 
-    const handleCanvasClick = (event) => {
+    const handlePointerDown = (event) => {
+      pointerStartX = event.clientX;
+      pointerStartY = event.clientY;
+    };
+
+    const handlePointerUp = (event) => {
       if (!onBinClick) return;
 
-      // Calculate mouse position in normalized device coordinates relative to mount container
+      // Avoid triggering click during camera orbit/pan drag operations
+      const deltaX = Math.abs(event.clientX - pointerStartX);
+      const deltaY = Math.abs(event.clientY - pointerStartY);
+      if (deltaX > 6 || deltaY > 6) return;
+
       const rect = renderer.domElement.getBoundingClientRect();
       mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -301,7 +312,8 @@ export default function WarehouseScene({
       }
     };
 
-    renderer.domElement.addEventListener('pointerdown', handleCanvasClick);
+    renderer.domElement.addEventListener('pointerdown', handlePointerDown);
+    renderer.domElement.addEventListener('pointerup', handlePointerUp);
 
     // 10. Animation Loop
     let clock = new THREE.Clock();
@@ -342,7 +354,8 @@ export default function WarehouseScene({
       cancelAnimationFrame(animFrameId);
       resizeObserver.disconnect();
       if (renderer.domElement && mountRef.current) {
-        renderer.domElement.removeEventListener('pointerdown', handleCanvasClick);
+        renderer.domElement.removeEventListener('pointerdown', handlePointerDown);
+        renderer.domElement.removeEventListener('pointerup', handlePointerUp);
         mountRef.current.removeChild(renderer.domElement);
       }
       // Dispose materials & geometries

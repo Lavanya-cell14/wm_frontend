@@ -27,7 +27,7 @@ export default function Sidebar({ onMobileClose, isCollapsed = false, onToggleCo
             {onMobileClose && (
               <Button 
                 onClick={onMobileClose}
-                className="ml-auto p-1.5 bg-black/15 hover:bg-black/25 rounded-lg transition-colors lg:hidden"
+                className="ml-auto p-2 bg-black/15 hover:bg-black/25 rounded-xl transition-colors lg:hidden flex items-center justify-center min-w-[40px] min-h-[40px]"
               >
                 <ChevronLeft className="text-white w-5 h-5" />
               </Button>

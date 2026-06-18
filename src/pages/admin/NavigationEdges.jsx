@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
-import Modal from '../../components/ui/Modal';
-import Pagination from '../../components/ui/Pagination';
+import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Modal, Pagination } from 'shared-ui';
 import { Activity, Plus, Edit2, Trash2 } from 'lucide-react';
 
 export default function NavigationEdges() {

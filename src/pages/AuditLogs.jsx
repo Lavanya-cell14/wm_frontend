@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, SearchFilterBar, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, SearchFilterBar, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from 'shared-ui';
 import { ShieldCheck, Download, Clock } from 'lucide-react';
-import Pagination from '../components/ui/Pagination';
 
 export default function AuditLogs() {
   const { auditLogs } = useWarehouse();

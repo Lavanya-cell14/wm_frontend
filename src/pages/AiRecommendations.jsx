@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
-import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
-import StatCard from '../components/dashboard/StatCard';
-import Pagination from '../components/ui/Pagination';
-import Modal from '../components/ui/Modal';
+import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, DashboardStatCard as StatCard, Pagination, Modal } from 'shared-ui';
 import { 
   Lightbulb, CheckCircle2, Cpu, Sparkles, 
   Loader2, Eye, RefreshCw, UserCheck, ClipboardList 

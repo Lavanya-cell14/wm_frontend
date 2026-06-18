@@ -16,11 +16,11 @@ import {
   TableHead, 
   TableCell, 
   StatusBadge, 
-  SearchFilterBar, 
-  AlertBanner 
+  AlertBanner,
+  Pagination,
+  Modal,
+  SearchFilterBar
 } from 'shared-ui';
-import Pagination from '../../components/ui/Pagination';
-import Modal from '../../components/ui/Modal';
 import { Box, Wrench, AlertTriangle, Package, ShieldCheck, Eye, Search, Clock } from 'lucide-react';
 
 export default function InventoryList() {

@@ -1,6 +1,5 @@
 import React from 'react';
-import Card, { CardContent } from '../ui/Card';
-import Badge from '../ui/Badge';
+import { Card, CardContent, Badge } from 'shared-ui';
 import { Package, MapPin, Calendar } from 'lucide-react';
 
 export default function ProductCard({ product }) {

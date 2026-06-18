@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
-import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
-import Modal from '../../components/ui/Modal';
-import Pagination from '../../components/ui/Pagination';
+import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Modal, Pagination } from 'shared-ui';
 import { Users, Plus, Mail, CheckCircle2, XCircle, Lock, Edit2, ShieldAlert, KeyRound } from 'lucide-react';
 
 export default function UserManagement() {
