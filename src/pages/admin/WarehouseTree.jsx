@@ -279,7 +279,7 @@ export default function WarehouseTree() {
         </div>
 
         {/* Right Hand: Detail Panel */}
-        <div className="space-y-4">
+        <div className="hidden lg:block space-y-4">
           <Card className="border border-gray-100 shadow-sm bg-gradient-to-b from-white to-slate-50 h-full">
             <CardHeader className="border-b border-gray-100 bg-slate-50/50 pb-4">
               <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
@@ -346,6 +346,67 @@ export default function WarehouseTree() {
           </Card>
         </div>
       </div>
+
+      {/* Mobile Drawer/Modal details panel for viewport < lg */}
+      {selectedNode && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end lg:hidden animate-in fade-in duration-200">
+          <div className="bg-white rounded-t-2xl w-full max-h-[85vh] overflow-y-auto p-6 space-y-6 animate-in slide-in-from-bottom duration-250 border-t border-gray-200">
+            
+            {/* Drawer Header */}
+            <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#0071C1] bg-blue-50 px-2.5 py-1 rounded-full">
+                  {selectedNode.type}
+                </span>
+                <h3 className="text-base font-extrabold text-slate-800 mt-2">{selectedNode.name}</h3>
+              </div>
+              <button 
+                onClick={() => setSelectedNode(null)} 
+                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 text-xs font-bold"
+              >
+                Close
+              </button>
+            </div>
+
+            {/* Drawer Properties list */}
+            <div className="space-y-4">
+              {Object.keys(selectedNode)
+                .filter(key => key !== 'type' && key !== 'name')
+                .map((key) => {
+                  let icon = <MapPin className="w-4 h-4 text-slate-400" />;
+                  if (key.toLowerCase().includes('weight') || key.toLowerCase().includes('capacity')) {
+                    icon = <Weight className="w-4 h-4 text-slate-400" />;
+                  } else if (key.toLowerCase().includes('status')) {
+                    icon = <Activity className="w-4 h-4 text-slate-400" />;
+                  } else if (key.toLowerCase().includes('product')) {
+                    icon = <Box className="w-4 h-4 text-slate-400" />;
+                  }
+
+                  return (
+                    <div key={key} className="flex items-start gap-3 p-3 bg-slate-50 border border-gray-100 rounded-xl">
+                      <div className="p-2 bg-white rounded-lg shrink-0 border border-slate-100">
+                        {icon}
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{key.replace(/([A-Z])/g, ' $1')}</div>
+                        <div className="font-bold text-slate-800 mt-1 capitalize text-sm">{selectedNode[key]}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+
+            {/* Info indicator */}
+            <div className="p-4 rounded-xl bg-blue-50/50 border border-blue-100 text-slate-600 flex gap-2">
+              <UserCheck className="w-5 h-5 text-[#0071C1] shrink-0 mt-0.5" />
+              <p className="text-[11px] leading-relaxed">
+                All physical resources mapping inside this {selectedNode.type.toLowerCase()} are synced in real-time. Settings modifications override active spatial constraints.
+              </p>
+            </div>
+            
+          </div>
+        </div>
+      )}
     </div>
   );
 }

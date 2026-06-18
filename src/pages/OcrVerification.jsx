@@ -20,6 +20,7 @@ export default function OcrVerification() {
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  const [activeTab, setActiveTab] = useState('queue');
 
   // Get initial document ID from location state or fallback to first VERIFICATION_PENDING doc
   useEffect(() => {
@@ -50,6 +51,7 @@ export default function OcrVerification() {
       });
       // Clone items so we can edit locally
       setItems(JSON.parse(JSON.stringify(doc.extractedItems || [])));
+      setActiveTab('editor');
     }
   };
 
@@ -180,11 +182,35 @@ export default function OcrVerification() {
         </div>
       </div>
 
+      {/* Mobile Tab Toggle */}
+      <div className="flex xl:hidden border border-gray-155 rounded-xl p-1 bg-slate-50 gap-1 mb-2">
+        <button
+          onClick={() => setActiveTab('queue')}
+          className={`flex-1 py-2 text-xs font-bold text-center rounded-lg transition-all ${
+            activeTab === 'queue'
+              ? 'bg-[#0071C1] text-white shadow-xs'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-slate-100/50'
+          }`}
+        >
+          Pending Queue ({pendingDocuments.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('editor')}
+          className={`flex-1 py-2 text-xs font-bold text-center rounded-lg transition-all ${
+            activeTab === 'editor'
+              ? 'bg-[#0071C1] text-white shadow-xs'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-slate-100/50'
+          }`}
+        >
+          Verification Editor
+        </button>
+      </div>
+
       {/* Main Panel grid */}
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         
         {/* Left Column: Pending Docs List */}
-        <div className="xl:col-span-1 space-y-4">
+        <div className={`xl:col-span-1 space-y-4 ${activeTab === 'queue' ? 'block' : 'hidden xl:block'}`}>
           <Card className="border border-gray-150 h-full">
             <CardHeader className="border-b border-gray-100 pb-3 bg-slate-50/50">
               <CardTitle className="text-xs uppercase font-bold tracking-wider text-gray-500">Awaiting Verification ({pendingDocuments.length})</CardTitle>
@@ -222,7 +248,7 @@ export default function OcrVerification() {
         </div>
 
         {/* Right 3/4 Column: Verification Editor */}
-        <div className="xl:col-span-3">
+        <div className={`xl:col-span-3 ${activeTab === 'editor' ? 'block' : 'hidden xl:block'}`}>
           {selectedDoc ? (
             <div className="space-y-6">
               

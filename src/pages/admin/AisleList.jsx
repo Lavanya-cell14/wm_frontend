@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from 'shared-ui';
 import { Activity, Plus, AlertTriangle, X } from 'lucide-react';
-import Pagination from '../../components/ui/Pagination';
 
 export default function AisleList() {
   const { zones, racks } = useWarehouse();

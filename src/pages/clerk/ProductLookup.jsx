@@ -15,9 +15,9 @@ import {
   TableRow, 
   TableHead, 
   TableCell, 
-  StatusBadge 
+  StatusBadge,
+  Pagination
 } from 'shared-ui';
-import Pagination from '../../components/ui/Pagination';
 import { Search, MapPin, Scale, Layers, Calendar, RefreshCw, Barcode, HelpCircle, FileText, ArrowDownToLine, Clock } from 'lucide-react';
 
 export default function ProductLookup() {

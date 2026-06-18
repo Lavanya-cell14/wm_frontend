@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
-import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
+import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination, Modal } from 'shared-ui';
 import { AlertTriangle, Clock, User, Eye } from 'lucide-react';
-import Pagination from '../../components/ui/Pagination';
-import Modal from '../../components/ui/Modal';
 
 export default function DamagedStock() {
   const location = useLocation();

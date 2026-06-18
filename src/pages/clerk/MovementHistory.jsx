@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
-import Pagination from '../../components/ui/Pagination';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from 'shared-ui';
 import { Activity, FileDown, Clock, MessageSquare } from 'lucide-react';
 
 export default function MovementHistory() {

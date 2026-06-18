@@ -1,6 +1,5 @@
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/Table';
 import { AlertCircle } from 'lucide-react';
 
 export default function DataTable({

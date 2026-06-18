@@ -15,9 +15,9 @@ import {
   TableHead, 
   TableCell,
   StatCard,
-  SearchFilterBar
+  SearchFilterBar,
+  Pagination
 } from 'shared-ui';
-import Pagination from '../../components/ui/Pagination';
 import { Box, ChevronRight, Filter, Info, Wrench, AlertTriangle, Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 

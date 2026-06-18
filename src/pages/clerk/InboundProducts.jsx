@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
-import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
-import Modal from '../../components/ui/Modal';
-import Pagination from '../../components/ui/Pagination';
+import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Modal, Pagination } from 'shared-ui';
 import { 
   ArrowDownToLine, RefreshCw, Search, Filter, Eye, Sparkles, CheckSquare, 
   MapPin, ClipboardCheck, ArrowUpRight, ArrowRight, ClipboardList, Clock, Info

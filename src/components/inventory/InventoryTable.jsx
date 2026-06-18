@@ -1,6 +1,5 @@
 import React from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/Table';
-import Badge from '../ui/Badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Badge } from 'shared-ui';
 
 export default function InventoryTable({ data = [] }) {
   if (!data || data.length === 0) {

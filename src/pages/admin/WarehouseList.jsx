@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from 'shared-ui';
 import { Building2, Plus, MapPin, ChevronRight, Activity, Layers, X } from 'lucide-react';
-import Pagination from '../../components/ui/Pagination';
 
 export default function WarehouseList() {
   const { warehouses, zones, bins, inventory } = useWarehouse();

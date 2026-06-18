@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
-import Pagination from '../../components/ui/Pagination';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from 'shared-ui';
 import { History, FileText, ChevronRight, Eye, Download } from 'lucide-react';
 
 export default function OcrHistory() {

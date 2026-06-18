@@ -14,11 +14,11 @@ import {
   TableRow, 
   TableHead, 
   TableCell,
+  Modal,
+  Pagination,
   StatCard,
   SearchFilterBar
 } from 'shared-ui';
-import Pagination from '../../components/ui/Pagination';
-import Modal from '../../components/ui/Modal';
 import { Lightbulb, ChevronRight, Eye, Info, Sparkles, Filter } from 'lucide-react';
 
 export default function RecommendationsPage() {
