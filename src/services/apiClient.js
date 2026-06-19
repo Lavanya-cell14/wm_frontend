@@ -12,14 +12,10 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 // ---------------------------------------------------------------------------
 // AUTH LAYER
-// Replace the body of this function when backend auth strategy is finalized.
-// Options (do NOT implement until decision is made):
-//   Bearer token  → { Authorization: `Bearer ${import.meta.env.VITE_API_TOKEN}` }
-//   API key       → { 'X-API-Key': import.meta.env.VITE_API_KEY }
-//   Session cookie → {} (cookie sent automatically by browser — no header needed)
+// Backend authentication is disabled (AllowAny). No headers required.
 // ---------------------------------------------------------------------------
 const getAuthHeaders = () => {
-  return {}; // No-op — auth-neutral until finalized
+  return {};
 };
 
 // ---------------------------------------------------------------------------
@@ -57,11 +53,15 @@ export const apiClient = async (endpoint, options = {}) => {
 
   let response;
   try {
-    response = await fetch(`${BASE_URL}${endpoint}`, {
+    const fullUrl = `${BASE_URL}${endpoint}`;
+    console.warn(`[apiClient] Calling: ${fullUrl}`);
+    response = await fetch(fullUrl, {
       ...options,
       headers,
     });
+    console.warn(`[apiClient] Response Status for ${fullUrl}: ${response.status}`);
   } catch (networkError) {
+    console.error(`[apiClient] Network Error for ${BASE_URL}${endpoint}:`, networkError);
     throw new ApiError(0, 'NETWORK_ERROR', `Cannot reach ${BASE_URL}. Is the backend running?`);
   }
 
@@ -72,6 +72,7 @@ export const apiClient = async (endpoint, options = {}) => {
     } catch (_) {
       // Response body may not be JSON on some error codes
     }
+    console.warn(`[apiClient] Error Response:`, detail);
     throw new ApiError(response.status, response.statusText, detail?.detail || detail);
   }
 

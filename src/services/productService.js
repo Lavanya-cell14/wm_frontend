@@ -1,16 +1,14 @@
+import { apiClient, normalizeResponse } from './apiClient';
+
 /**
- * Master Product Catalog Service
- * 
- * TODO: Integrate with backend product database endpoints.
- * Currently uses central context store.
+ * Product Service — Phase 3A (Read-Only)
  */
 
-export const fetchProductsList = async () => {
-  // TODO: Call API endpoint /warehouse/products
-  return [];
+export const getProducts = async () => {
+  const data = await apiClient('/api/products/');
+  return normalizeResponse(data);
 };
 
-export const fetchProductBySku = async (sku) => {
-  // TODO: Call API endpoint /warehouse/products/:sku
-  return null;
+export const getProductById = async (productId) => {
+  return await apiClient(`/api/products/${productId}/`);
 };

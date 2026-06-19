@@ -7,6 +7,37 @@ import {
   ArrowDownToLine, RefreshCw, Search, Filter, Eye, Sparkles, CheckSquare, 
   MapPin, ClipboardCheck, ArrowUpRight, ArrowRight, ClipboardList, Clock, Info
 } from 'lucide-react';
+import { getInboundShipments, patchInboundShipment } from '../../services/inboundService';
+
+const mapBackendInboundToReceipt = (ship) => {
+  let mappedStatus = 'WAITING_FOR_BIN_ASSIGNMENT';
+  if (ship.status === 'COMPLETED') {
+    mappedStatus = 'STORED';
+  } else if (ship.status === 'IN_PROGRESS' || ship.status === 'IN_TRANSIT') {
+    mappedStatus = 'BIN_SUGGESTED';
+  } else if (ship.status === 'PENDING') {
+    mappedStatus = 'WAITING_FOR_BIN_ASSIGNMENT';
+  }
+  
+  return {
+    id: ship.shipment_code || ship.id,
+    documentId: 'OCR-N/A',
+    documentReference: ship.shipment_code || 'REF-GEN',
+    sku: 'SKU-GENERIC',
+    productName: `Shipment from ${ship.supplier_name}`,
+    category: 'General',
+    quantityReceived: 50,
+    verifiedQuantity: 50,
+    supplier: ship.supplier_name,
+    receivedDate: ship.expected_arrival ? ship.expected_arrival.split('T')[0] : 'N/A',
+    dimensions: 'N/A',
+    weight: 'N/A',
+    status: mappedStatus,
+    binRecommendationStatus: mappedStatus === 'WAITING_FOR_BIN_ASSIGNMENT' ? 'WAITING_FOR_BIN_ASSIGNMENT' : 'RECOMMENDATION_APPROVED',
+    bin: 'BIN-001',
+    _rawBackendId: ship.id
+  };
+};
 
 export default function InboundProducts() {
   const navigate = useNavigate();
@@ -20,6 +51,35 @@ export default function InboundProducts() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
+  const [backendInbounds, setBackendInbounds] = useState([]);
+  const [fallbackUsed, setFallbackUsed] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState(null);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setApiError(null);
+      console.warn("[InboundProducts] Calling API: GET /api/inbound/");
+      const data = await getInboundShipments();
+      const mapped = data.results.map(mapBackendInboundToReceipt);
+      setBackendInbounds(mapped);
+      setFallbackUsed(false);
+      console.warn(`[InboundProducts] API Success. URL: /api/inbound/, Status: 200, Count: ${data.count}, Fallback Used: false`);
+    } catch (err) {
+      const status = err.status || (err.code === 'NETWORK_ERROR' ? 0 : 'unknown');
+      setApiError('Inbound Shipments API unreachable — showing mock fallback data.');
+      setFallbackUsed(true);
+      console.error(`[InboundProducts] API Error. URL: /api/inbound/, Status: ${status}, Detail: ${err.message}. Fallback Used: true (using context/WireMock data)`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
   // Reset page on search/filter mutations
   useEffect(() => {
     setCurrentPage(1);
@@ -30,33 +90,46 @@ export default function InboundProducts() {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  const handleRequestBinSuggestion = (receiptId) => {
-    setInboundReceipts(prev => prev.map(rec => {
-      if (rec.id === receiptId) {
-        return {
-          ...rec,
-          status: 'BIN_SUGGESTED',
-          binRecommendationStatus: 'BIN_SUGGESTED'
-        };
+  const handleRequestBinSuggestion = async (receiptId, rawBackendId) => {
+    if (!fallbackUsed && rawBackendId) {
+      try {
+        console.warn(`[InboundProducts] Calling API: PATCH /api/inbound/${rawBackendId}/`);
+        await patchInboundShipment(rawBackendId, { status: 'IN_PROGRESS' });
+        setBackendInbounds(prev => prev.map(rec => {
+          if (rec.id === receiptId) {
+            return {
+              ...rec,
+              status: 'BIN_SUGGESTED',
+              binRecommendationStatus: 'BIN_SUGGESTED'
+            };
+          }
+          return rec;
+        }));
+        console.warn(`[InboundProducts] API Success. URL: /api/inbound/${rawBackendId}/, Status: 200, Fallback Used: false`);
+        showToast('AI Bin recommendation generated successfully!');
+      } catch (err) {
+        const status = err.status || (err.code === 'NETWORK_ERROR' ? 0 : 'unknown');
+        console.error(`[InboundProducts] API Error. URL: /api/inbound/${rawBackendId}/, Status: ${status}, Detail: ${err.message}.`);
+        showToast('Failed to update status on backend.');
       }
-      return rec;
-    }));
-
-    const receipt = inboundReceipts.find(r => r.id === receiptId);
-    if (receipt) {
-      logAudit(
-        user?.email || 'inventory@warehouseai.com',
-        user?.role || 'RECEIVING_INVENTORY_OFFICER',
-        'BIN_RECOMMENDATION_REQUEST',
-        'Inbound Products',
-        `Requested AI slotting bin recommendation for product ${receipt.productName} (SKU: ${receipt.sku})`
-      );
+    } else {
+      setInboundReceipts(prev => prev.map(rec => {
+        if (rec.id === receiptId) {
+          return {
+            ...rec,
+            status: 'BIN_SUGGESTED',
+            binRecommendationStatus: 'BIN_SUGGESTED'
+          };
+        }
+        return rec;
+      }));
+      showToast('AI Bin recommendation generated successfully (Mock Fallback)!');
     }
-
-    showToast('AI Bin recommendation generated successfully!');
   };
 
-  const filteredReceipts = inboundReceipts.filter(rec => {
+  const displayList = fallbackUsed ? inboundReceipts : backendInbounds;
+
+  const filteredReceipts = displayList.filter(rec => {
     const matchesSearch = 
       rec.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
       rec.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -101,6 +174,12 @@ export default function InboundProducts() {
       {toastMessage && (
         <div className="fixed top-4 right-4 z-50 animate-bounce">
           <AlertBanner type="success" message={toastMessage} />
+        </div>
+      )}
+
+      {fallbackUsed && (
+        <div className="mb-4">
+          <AlertBanner type="warning" message="Inbound Shipments API unreachable — showing mock fallback data." />
         </div>
       )}
 
@@ -218,7 +297,7 @@ export default function InboundProducts() {
                         {rec.status === 'WAITING_FOR_BIN_ASSIGNMENT' && (
                           <Button 
                             size="sm"
-                            onClick={() => handleRequestBinSuggestion(rec.id)}
+                            onClick={() => handleRequestBinSuggestion(rec.id, rec._rawBackendId)}
                             className="bg-[#F5FBFD] border border-blue-200 text-blue-700 hover:bg-blue-50 text-xs py-1 px-2.5 flex items-center gap-1 font-bold shadow-2xs"
                           >
                             <Sparkles className="w-3.5 h-3.5 text-blue-500 animate-pulse" />

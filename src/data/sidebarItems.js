@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Building2, LayoutGrid, Box,
-  ArrowDownToLine, Activity, MonitorPlay, Map,
+  ArrowDownToLine, ArrowUpFromLine, Activity, MonitorPlay, Map,
   Lightbulb, BarChart3, ListChecks, Users, Shield,
   ClipboardList, CheckSquare, Wrench, AlertTriangle,
   Search, Navigation, Package, UploadCloud, Settings, Layers, Bot, FileText
@@ -76,12 +76,30 @@ export const sidebarItems = [
     icon: CheckSquare,
     allowedRoles: ['RECEIVING_INVENTORY_OFFICER'],
   },
+  {
+    name: 'Inbound Queue',
+    path: '/inventory/inbound',
+    icon: ArrowDownToLine,
+    allowedRoles: ['RECEIVING_INVENTORY_OFFICER'],
+  },
+  {
+    name: 'Orders',
+    path: '/inventory/orders',
+    icon: ArrowUpFromLine,
+    allowedRoles: ['RECEIVING_INVENTORY_OFFICER'],
+  },
 
   // ─── WAREHOUSE OPERATOR ───────────────────────────────────────────────────
   {
     name: 'Dashboard',
     path: '/operator/dashboard',
     icon: LayoutDashboard,
+    allowedRoles: ['WAREHOUSE_OPERATOR'],
+  },
+  {
+    name: 'Inbound Tasks',
+    path: '/operator/inbound',
+    icon: ArrowDownToLine,
     allowedRoles: ['WAREHOUSE_OPERATOR'],
   },
   {
@@ -132,12 +150,6 @@ export const sidebarItems = [
     name: 'Users',
     path: '/admin/users',
     icon: Users,
-    allowedRoles: ['ADMIN'],
-  },
-  {
-    name: 'System Monitoring',
-    path: '/admin/monitoring',
-    icon: Activity,
     allowedRoles: ['ADMIN'],
   },
   {

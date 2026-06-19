@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from 'shared-ui';
-import { Activity, Plus, AlertTriangle, X } from 'lucide-react';
+import { Activity, Plus, AlertTriangle, X, Loader2 } from 'lucide-react';
+import { getAisles, getAisleById } from '../../services/warehouseStructureService';
 
 export default function AisleList() {
   const { zones, racks } = useWarehouse();
@@ -10,17 +11,71 @@ export default function AisleList() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
 
-  // Mock Aisles data
-  const [aisles, setAisles] = useState([
+  const [aisles, setAisles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
+
+  // Mock backup data for fallback
+  const [localMockAisles] = useState([
     { id: 'AIS-001', code: 'Aisle 1', zone: 'Zone A', racksCount: 3, status: 'Operational', details: 'Ambient corridor near dispatcher dock' },
     { id: 'AIS-002', code: 'Aisle 2', zone: 'Zone B', racksCount: 4, status: 'Operational', details: 'Electronics corridor near security center' },
     { id: 'AIS-003', code: 'Aisle 3', zone: 'Zone C', racksCount: 3, status: 'Blocked', details: 'Blocked due to AGV maintenance lane closing' },
     { id: 'AIS-004', code: 'Aisle 4', zone: 'Zone D', racksCount: 2, status: 'Operational', details: 'Cold storage loading corridor' }
   ]);
 
+  const normalizeApiAisle = (a) => ({
+    id: a.id || a.aisle_id,
+    code: a.code || a.aisle_code || `Aisle ${a.id?.slice(0, 4)}`,
+    zone: a.zone_name || a.zone || 'Zone A',
+    racksCount: Number(a.racks_count || a.racksCount || 0),
+    status: a.status || (a.is_blocked ? 'Blocked' : 'Operational'),
+    details: a.details || a.description || 'No additional notes',
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        setLoading(true);
+        setApiError(null);
+        // [TEMPORARY LOG FOR VERIFICATION]
+        console.warn("[AisleList] Calling API: /api/zones/aisles/");
+        const { results } = await getAisles();
+        if (!cancelled) {
+          const apiAisles = results.map(normalizeApiAisle);
+          setAisles(apiAisles);
+          // [TEMPORARY LOG FOR VERIFICATION]
+          console.warn(`[AisleList] API Success. URL: /api/zones/aisles/, Status: 200, Count: ${apiAisles.length}, Fallback Used: false`);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          const status = err.status || (err.code === 'NETWORK_ERROR' ? 0 : 'unknown');
+          setApiError('Aisles API unreachable or optional route not implemented — showing cached data.');
+          setAisles(localMockAisles);
+          // [TEMPORARY LOG FOR VERIFICATION]
+          console.warn(`[AisleList] API Error (Expected for Aisles). URL: /api/zones/aisles/, Status: ${status}, Count: ${localMockAisles.length}, Fallback Used: true`, err);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [localMockAisles]);
+
+  const handleViewAisle = async (aisle) => {
+    setSelectedAisle(aisle);
+    try {
+      const detail = await getAisleById(aisle.id);
+      setSelectedAisle(normalizeApiAisle(detail));
+    } catch (err) {
+      console.warn("Could not fetch aisle detail, using list view state:", err);
+    }
+  };
+
   const filtered = aisles.filter(a => 
-    a.code.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    a.zone.toLowerCase().includes(searchQuery.toLowerCase())
+    (a.code || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (a.zone || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -52,6 +107,23 @@ export default function AisleList() {
             onSearchChange={setSearchQuery} 
           />
         </div>
+
+        {/* Loading state */}
+        {loading && (
+          <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border-b border-blue-100 text-xs text-blue-700 font-semibold">
+            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+            Loading aisles from API...
+          </div>
+        )}
+
+        {/* Error / Fallback warning banner */}
+        {!loading && apiError && (
+          <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border-b border-amber-100 text-xs text-amber-800 font-semibold">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            {apiError}
+          </div>
+        )}
+
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -64,7 +136,17 @@ export default function AisleList() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pagedList.length === 0 ? (
+              {loading ? (
+                [1, 2, 3].map((n) => (
+                  <TableRow key={n}>
+                    {[1, 2, 3, 4, 5].map((c) => (
+                      <TableCell key={c}>
+                        <div className="h-3 bg-gray-100 rounded animate-pulse w-3/4" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : pagedList.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8 text-gray-500">No aisles matching criteria.</TableCell>
                 </TableRow>
@@ -91,7 +173,7 @@ export default function AisleList() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1.5">
-                        <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs text-gray-600" onClick={() => setSelectedAisle(a)}>
+                        <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs text-gray-600" onClick={() => handleViewAisle(a)}>
                           View
                         </Button>
                         <Button 

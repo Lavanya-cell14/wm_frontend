@@ -1,7 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
-import { Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Button, Badge, StatusBadge, SearchFilterBar, Pagination, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Modal, Input } from 'shared-ui';
+import { Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Button, Badge, StatusBadge, SearchFilterBar, AlertBanner, Pagination, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Modal, Input } from 'shared-ui';
 import { ArrowUpFromLine, Clock, UserCheck } from 'lucide-react';
+import { getOrders, createOrderApi, dispatchOrderApi } from '../services/orderService';
+
+const mapBackendOrderToOrder = (ship) => {
+  let mappedStatus = 'Pending';
+  let progress = 10;
+  if (ship.status === 'COMPLETED') {
+    mappedStatus = 'Dispatched';
+    progress = 100;
+  } else if (ship.status === 'IN_PROGRESS' || ship.status === 'IN_TRANSIT') {
+    mappedStatus = 'In Progress';
+    progress = 40;
+  }
+  
+  return {
+    id: ship.shipment_code || ship.id,
+    customer: ship.customer_name,
+    dispatchTime: ship.dispatch_time ? new Date(ship.dispatch_time).toLocaleString() : 'N/A',
+    productCount: 15,
+    status: mappedStatus,
+    progress,
+    _rawBackendId: ship.id
+  };
+};
 
 export default function Orders() {
   const { orders, createOrder, dispatchOrder, generateNextId } = useWarehouse();
@@ -15,18 +38,88 @@ export default function Orders() {
   const [customerName, setCustomerName] = useState('');
   const [productCount, setProductCount] = useState('');
 
-  const nextOrderId = generateNextId('ORD-', orders.map(o => o.id));
+  const [backendOrders, setBackendOrders] = useState([]);
+  const [fallbackUsed, setFallbackUsed] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState(null);
 
-  const handleCreateOrder = (e) => {
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setApiError(null);
+      console.warn("[Orders] Calling API: GET /api/orders/");
+      const data = await getOrders();
+      const mapped = data.results.map(mapBackendOrderToOrder);
+      setBackendOrders(mapped);
+      setFallbackUsed(false);
+      console.warn(`[Orders] API Success. URL: /api/orders/, Status: 200, Count: ${data.count}, Fallback Used: false`);
+    } catch (err) {
+      const status = err.status || (err.code === 'NETWORK_ERROR' ? 0 : 'unknown');
+      setApiError('Orders API unreachable — showing mock fallback data.');
+      setFallbackUsed(true);
+      console.error(`[Orders] API Error. URL: /api/orders/, Status: ${status}, Detail: ${err.message}. Fallback Used: true (using context/WireMock data)`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const displayList = fallbackUsed ? orders : backendOrders;
+
+  const nextOrderId = generateNextId('ORD-', displayList.map(o => o.id));
+
+  const handleCreateOrder = async (e) => {
     if (e) e.preventDefault();
     if (!customerName || !productCount) return;
-    createOrder({
-      customer: customerName,
-      productCount: parseInt(productCount)
-    });
+
+    if (!fallbackUsed) {
+      try {
+        const payload = {
+          shipment_code: nextOrderId,
+          customer_name: customerName,
+          dispatch_time: new Date(Date.now() + 24*60*60*1000).toISOString(),
+          status: 'PENDING'
+        };
+        console.warn("[Orders] Calling API: POST /api/orders/");
+        const newOrderRaw = await createOrderApi(payload);
+        const mappedOrder = mapBackendOrderToOrder(newOrderRaw);
+        setBackendOrders(prev => [mappedOrder, ...prev]);
+        console.warn(`[Orders] API Success. URL: /api/orders/, Status: 201, Fallback Used: false`);
+      } catch (err) {
+        const status = err.status || (err.code === 'NETWORK_ERROR' ? 0 : 'unknown');
+        console.error(`[Orders] API Error. URL: /api/orders/, Status: ${status}, Detail: ${err.message}.`);
+      }
+    } else {
+      createOrder({
+        customer: customerName,
+        productCount: parseInt(productCount)
+      });
+    }
+
     setCustomerName('');
     setProductCount('');
     setShowAddModal(false);
+  };
+
+  const handleDispatchOrder = async (orderId, rawBackendId) => {
+    if (!fallbackUsed && rawBackendId) {
+      try {
+        console.warn(`[Orders] Calling API: PATCH /api/orders/${rawBackendId}/`);
+        await dispatchOrderApi(rawBackendId);
+        setBackendOrders(prev => prev.map(order => 
+          order._rawBackendId === rawBackendId ? { ...order, status: 'Dispatched', progress: 100 } : order
+        ));
+        console.warn(`[Orders] API Success. URL: /api/orders/${rawBackendId}/, Status: 200, Fallback Used: false`);
+      } catch (err) {
+        const status = err.status || (err.code === 'NETWORK_ERROR' ? 0 : 'unknown');
+        console.error(`[Orders] API Error. URL: /api/orders/${rawBackendId}/, Status: ${status}, Detail: ${err.message}.`);
+      }
+    } else {
+      dispatchOrder(orderId);
+    }
   };
 
   // Reset pagination to page 1 when search changes
@@ -34,7 +127,7 @@ export default function Orders() {
     setCurrentPage(1);
   }, [searchQuery]);
 
-  const filteredOrders = orders.filter(ord => 
+  const filteredOrders = displayList.filter(ord => 
     ord.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
     ord.customer.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -49,6 +142,12 @@ export default function Orders() {
 
   return (
     <div className="space-y-6 select-none">
+      {fallbackUsed && (
+        <div className="mb-4">
+          <AlertBanner type="warning" message="Outbound Orders API unreachable — showing mock fallback data." />
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
@@ -69,10 +168,10 @@ export default function Orders() {
           <DashboardStatCard title="Fulfillment Rate" value="98.7%" icon={ArrowUpFromLine} />
         </div>
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
-          <DashboardStatCard title="Pending Outbounds" value={orders.filter(o => o.status !== 'Dispatched').length} icon={Clock} />
+          <DashboardStatCard title="Pending Outbounds" value={displayList.filter(o => o.status !== 'Dispatched').length} icon={Clock} />
         </div>
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
-          <DashboardStatCard title="Dispatched Today" value={orders.filter(o => o.status === 'Dispatched').length} icon={UserCheck} />
+          <DashboardStatCard title="Dispatched Today" value={displayList.filter(o => o.status === 'Dispatched').length} icon={UserCheck} />
         </div>
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
           <DashboardStatCard title="Average Dispatch Time" value="25 mins" icon={Clock} />
@@ -135,7 +234,7 @@ export default function Orders() {
                       </TableCell>
                       <TableCell className="text-right">
                         {ord.status !== 'Dispatched' && (
-                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white font-bold" onClick={() => dispatchOrder(ord.id)}>
+                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white font-bold" onClick={() => handleDispatchOrder(ord.id, ord._rawBackendId)}>
                             Dispatch
                           </Button>
                         )}

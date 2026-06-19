@@ -1,9 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
 import { AlertBanner, Badge, Button, Card, CardContent, CardHeader, CardTitle, Pagination, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { ArrowDownToLine, ScanBarcode, Play, CheckSquare, Eye, Clock, Box } from 'lucide-react';
+import { getInboundShipments, patchInboundShipment } from '../../services/inboundService';
+
+const mapBackendInboundToTask = (ship) => {
+  let mappedStatus = 'Pending';
+  if (ship.status === 'COMPLETED') {
+    mappedStatus = 'Completed';
+  } else if (ship.status === 'IN_PROGRESS' || ship.status === 'IN_TRANSIT') {
+    mappedStatus = 'In Progress';
+  }
+  
+  return {
+    id: ship.shipment_code || ship.id,
+    supplier: ship.supplier_name,
+    expectedArrival: ship.expected_arrival ? new Date(ship.expected_arrival).toLocaleString() : 'N/A',
+    product: `Shipment from ${ship.supplier_name}`,
+    sku: 'SKU-GENERIC',
+    quantity: 50,
+    priority: 'Medium',
+    status: mappedStatus,
+    assignedStaff: ship.status === 'IN_PROGRESS' ? 'Warehouse Operator' : 'Unassigned',
+    _rawBackendId: ship.id
+  };
+};
 
 export default function InboundTasks() {
   const navigate = useNavigate();
@@ -14,12 +37,43 @@ export default function InboundTasks() {
   const pageSize = 8;
   const [toastMessage, setToastMessage] = useState('');
 
+  const [backendTasks, setBackendTasks] = useState([]);
+  const [fallbackUsed, setFallbackUsed] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState(null);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setApiError(null);
+      console.warn("[InboundTasks] Calling API: GET /api/inbound/");
+      const data = await getInboundShipments();
+      const mapped = data.results.map(mapBackendInboundToTask);
+      setBackendTasks(mapped);
+      setFallbackUsed(false);
+      console.warn(`[InboundTasks] API Success. URL: /api/inbound/, Status: 200, Count: ${data.count}, Fallback Used: false`);
+    } catch (err) {
+      const status = err.status || (err.code === 'NETWORK_ERROR' ? 0 : 'unknown');
+      setApiError('Inbound Shipments API unreachable — showing mock fallback data.');
+      setFallbackUsed(true);
+      console.error(`[InboundTasks] API Error. URL: /api/inbound/, Status: ${status}, Detail: ${err.message}. Fallback Used: true (using context/WireMock data)`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  const filteredTasks = inboundTasks.filter(task => {
+  const displayList = fallbackUsed ? inboundTasks : backendTasks;
+
+  const filteredTasks = displayList.filter(task => {
     if (activeTab === 'Pending') return task.status === 'Pending';
     if (activeTab === 'In Progress') return task.status === 'In Progress';
     if (activeTab === 'Completed') return task.status === 'Completed';
@@ -35,11 +89,59 @@ export default function InboundTasks() {
 
   const pagedTasks = filteredTasks.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
+  const handleStartTask = async (taskId, rawBackendId) => {
+    if (!fallbackUsed && rawBackendId) {
+      try {
+        console.warn(`[InboundTasks] Calling API: PATCH /api/inbound/${rawBackendId}/`);
+        await patchInboundShipment(rawBackendId, { status: 'IN_PROGRESS' });
+        setBackendTasks(prev => prev.map(task => 
+          task._rawBackendId === rawBackendId ? { ...task, status: 'In Progress', assignedStaff: 'Warehouse Operator' } : task
+        ));
+        console.warn(`[InboundTasks] API Success. URL: /api/inbound/${rawBackendId}/, Status: 200, Fallback Used: false`);
+        showToast(`Receiving verification initiated for shipment ${taskId}.`);
+      } catch (err) {
+        const status = err.status || (err.code === 'NETWORK_ERROR' ? 0 : 'unknown');
+        console.error(`[InboundTasks] API Error. URL: /api/inbound/${rawBackendId}/, Status: ${status}, Detail: ${err.message}.`);
+        showToast('Failed to start task on backend.');
+      }
+    } else {
+      startInboundTask(taskId);
+      showToast(`Receiving verification initiated for shipment ${taskId} (Mock Fallback).`);
+    }
+  };
+
+  const handleCompleteTask = async (taskId, rawBackendId) => {
+    if (!fallbackUsed && rawBackendId) {
+      try {
+        console.warn(`[InboundTasks] Calling API: PATCH /api/inbound/${rawBackendId}/`);
+        await patchInboundShipment(rawBackendId, { status: 'COMPLETED' });
+        setBackendTasks(prev => prev.map(task => 
+          task._rawBackendId === rawBackendId ? { ...task, status: 'Completed' } : task
+        ));
+        console.warn(`[InboundTasks] API Success. URL: /api/inbound/${rawBackendId}/, Status: 200, Fallback Used: false`);
+        showToast(`Verify successful! Shipment ${taskId} logged as fully received.`);
+      } catch (err) {
+        const status = err.status || (err.code === 'NETWORK_ERROR' ? 0 : 'unknown');
+        console.error(`[InboundTasks] API Error. URL: /api/inbound/${rawBackendId}/, Status: ${status}, Detail: ${err.message}.`);
+        showToast('Failed to complete task on backend.');
+      }
+    } else {
+      completeInboundTask(taskId, user);
+      showToast(`Verify successful! Shipment ${taskId} logged as fully received (Mock Fallback).`);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {toastMessage && (
         <div className="fixed top-4 right-4 z-50 animate-bounce">
           <AlertBanner type="success" message={toastMessage} />
+        </div>
+      )}
+
+      {fallbackUsed && (
+        <div className="mb-4">
+          <AlertBanner type="warning" message="Inbound Shipments API unreachable — showing mock fallback data." />
         </div>
       )}
 
@@ -56,7 +158,7 @@ export default function InboundTasks() {
       {/* Tabs Row */}
       <div className="flex border-b border-gray-200">
         {['Pending', 'In Progress', 'Completed'].map((tab) => {
-          const count = inboundTasks.filter(t => t.status === tab).length;
+          const count = displayList.filter(t => t.status === tab).length;
           return (
             <Button
               key={tab}
@@ -131,18 +233,12 @@ export default function InboundTasks() {
                     <TableCell className="text-right">
                       <div className="flex gap-2 justify-end">
                         {task.status === 'Pending' && (
-                          <Button size="sm" className="gap-1.5" onClick={() => {
-                            startInboundTask(task.id);
-                            showToast(`Receiving verification initiated for shipment ${task.id}.`);
-                          }}>
+                          <Button size="sm" className="gap-1.5" onClick={() => handleStartTask(task.id, task._rawBackendId)}>
                             <Play className="w-3.5 h-3.5" /> Start
                           </Button>
                         )}
                         {task.status === 'In Progress' && (
-                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white gap-1.5 font-bold" onClick={() => {
-                            completeInboundTask(task.id, user);
-                            showToast(`Verify successful! Shipment ${task.id} logged as fully received.`);
-                          }}>
+                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white gap-1.5 font-bold" onClick={() => handleCompleteTask(task.id, task._rawBackendId)}>
                             <CheckSquare className="w-3.5 h-3.5" /> Complete
                           </Button>
                         )}

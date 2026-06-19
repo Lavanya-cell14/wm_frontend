@@ -20,6 +20,17 @@ const normalizeContextWarehouse = (wh) => ({
   height: null,
 });
 
+const normalizeApiWarehouse = (wh) => ({
+  id: wh.id,
+  warehouse_name: wh.name,
+  code: wh.id.slice(0, 8).toUpperCase(),
+  address: wh.location,
+  length: null,
+  width: null,
+  height: null,
+  total_area_sqft: wh.total_area_sqft ? Number(wh.total_area_sqft) : null,
+});
+
 export default function WarehouseList() {
   // Keep context for zones/bins cross-references in the drawer.
   // WarehouseContext.jsx is NOT modified — it remains the fallback mock layer.
@@ -44,12 +55,23 @@ export default function WarehouseList() {
       try {
         setLoading(true);
         setApiError(null);
-        const { results } = await getWarehouses();
-        if (!cancelled) setWarehouses(results);
+        // [TEMPORARY LOG FOR VERIFICATION]
+        console.warn("[WarehouseList] Calling API: /api/warehouses/");
+        const { results, count } = await getWarehouses();
+        if (!cancelled) {
+          const apiWarehouses = results.map(normalizeApiWarehouse);
+          setWarehouses(apiWarehouses);
+          // [TEMPORARY LOG FOR VERIFICATION]
+          console.warn(`[WarehouseList] API Success. URL: /api/warehouses/, Status: 200, Count: ${apiWarehouses.length}, Fallback Used: false`);
+        }
       } catch (err) {
         if (!cancelled) {
+          const status = err.status || (err.code === 'NETWORK_ERROR' ? 0 : 'unknown');
           setApiError('Warehouses API unreachable — showing cached data.');
-          setWarehouses(contextWarehouses.map(normalizeContextWarehouse));
+          const fallbackData = contextWarehouses.map(normalizeContextWarehouse);
+          setWarehouses(fallbackData);
+          // [TEMPORARY LOG FOR VERIFICATION]
+          console.warn(`[WarehouseList] API Error. URL: /api/warehouses/, Status: ${status}, Count: ${fallbackData.length}, Fallback Used: true`, err);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -164,7 +186,9 @@ export default function WarehouseList() {
                     <TableCell className="font-mono text-xs text-slate-600">
                       {wh.length != null && wh.width != null
                         ? `${wh.length}m × ${wh.width}m × ${wh.height}m`
-                        : '—'}
+                        : wh.total_area_sqft != null
+                          ? `${wh.total_area_sqft.toLocaleString()} sqft`
+                          : '—'}
                     </TableCell>
                     <TableCell className="font-mono text-xs font-semibold text-slate-700">
                       {bins.length} Bins
@@ -247,7 +271,9 @@ export default function WarehouseList() {
                   <div className="font-bold text-slate-800 text-sm">
                     {selectedWh.length != null && selectedWh.width != null
                       ? `${selectedWh.length}m × ${selectedWh.width}m`
-                      : '—'}
+                      : selectedWh.total_area_sqft != null
+                        ? `${selectedWh.total_area_sqft.toLocaleString()} sqft`
+                        : '—'}
                   </div>
                 </div>
                 <div className="bg-slate-50 border border-gray-100 p-3 rounded-xl">

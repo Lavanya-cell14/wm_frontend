@@ -68,10 +68,10 @@ export default function Dashboard() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
           <Building2 className="w-7 h-7 text-[#0071C1]" />
-          Executive Monitoring Dashboard
+          Executive Operations Dashboard
         </h1>
         <p className="text-gray-500 text-sm mt-1">
-          Monitor inventory, occupancy, storage progress, analytics, digital twin updates, and AI warehouse insights.
+          Track inventory, occupancy, storage progress, analytics, digital twin updates, and AI warehouse insights.
         </p>
       </div>
 
@@ -246,12 +246,12 @@ export default function Dashboard() {
 
       </div>
 
-      {/* Section 3: Storage Task Monitoring (Read-only table) */}
+      {/* Section 3: Storage Task Progress (Read-only table) */}
       <Card className="border border-gray-150 shadow-xs mt-6">
         <CardHeader className="bg-slate-50/40 border-b border-gray-100 pb-3">
           <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
             <Activity className="w-5 h-5 text-emerald-600" />
-            Storage Task Monitoring (Read-only)
+            Storage Task Progress (Read-only)
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">

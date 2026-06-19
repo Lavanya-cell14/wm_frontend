@@ -1,16 +1,97 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, SearchFilterBar, StatCard, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from 'shared-ui';
-import { Package, Plus, ChevronRight, Filter, Info, Eye } from 'lucide-react';
+import { Package, Plus, ChevronRight, Filter, Info, Eye, AlertTriangle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getProducts } from '../../services/productService';
+import { getInventory } from '../../services/inventoryService';
+
+// [TEMPORARY LOOKUP - REMOVE WHEN CATEGORY API IS FINALIZED]
+const CATEGORY_LOOKUP = {
+  '408dd788-9c1b-464c-94a4-866727fddbb8': 'Wireless Devices',
+  'dc5340ad-fdb0-415d-8d94-75eff6a9610f': 'Power Chargers & Adapters',
+  '1bd76b1d-75b0-4b61-ad85-0c16e7def7a3': 'Earbuds & Audio',
+  '0c3d3fab-fbab-4306-8b60-e2e7676fdd3e': 'Fasteners & Hardware',
+  'bfacdace-cde8-482b-8795-52ffd4edba92': 'Scanner Accessories',
+};
+
+const normalizeApiProduct = (p, invRecords = []) => {
+  const inv = invRecords.find(i => i.product === p.id);
+  return {
+    sku: p.sku,
+    name: p.product_name,
+    category: CATEGORY_LOOKUP[p.category] || 'General',
+    weight: p.weight ? `${Number(p.weight)} kg` : 'N/A',
+    dimensions: 'N/A', // Derived Spec UI value
+    reorderLevel: 10,  // Derived Spec UI value
+    quantity: inv ? inv.total_quantity : 0,
+    reserved: inv ? inv.reserved_quantity : 0,
+    damaged: inv ? inv.damaged_quantity : 0,
+  };
+};
+
+const normalizeContextProduct = (item) => ({
+  sku: item.sku,
+  name: item.name,
+  category: item.category,
+  weight: item.weight,
+  dimensions: item.dimensions,
+  reorderLevel: item.reorderLevel,
+  quantity: item.quantity,
+  reserved: item.reserved,
+  damaged: item.damaged,
+});
 
 export default function ProductsPage() {
   const navigate = useNavigate();
-  const { inventory = [] } = useWarehouse();
+  const { inventory: contextInventory = [] } = useWarehouse();
+  const [productsList, setProductsList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        setLoading(true);
+        setApiError(null);
+        // [TEMPORARY LOG FOR VERIFICATION]
+        console.warn("[ProductsPage] Calling APIs: /api/products/, /api/inventory/");
+        const [productsRes, inventoryRes] = await Promise.all([
+          getProducts(),
+          getInventory()
+        ]);
+        if (!cancelled) {
+          const apiProducts = productsRes.results.map(p => 
+            normalizeApiProduct(p, inventoryRes.results)
+          );
+          setProductsList(apiProducts);
+          // [TEMPORARY LOG FOR VERIFICATION]
+          console.warn(`[ProductsPage] API Success. URL: /api/products/, Status: 200, Count: ${apiProducts.length}, Fallback Used: false`);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          const status = err.status || (err.code === 'NETWORK_ERROR' ? 0 : 'unknown');
+          setApiError('Products Registry API unreachable — showing cached data.');
+          const fallbackData = contextInventory.map(normalizeContextProduct);
+          setProductsList(fallbackData);
+          // [TEMPORARY LOG FOR VERIFICATION]
+          console.warn(`[ProductsPage] API Error. URL: /api/products/, Status: ${status}, Count: ${fallbackData.length}, Fallback Used: true`, err);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [contextInventory]);
+
+  const inventory = productsList;
 
   // Extract unique categories
   const categoriesList = Array.from(new Set(inventory.map(p => p.category).filter(Boolean)));
@@ -99,6 +180,22 @@ export default function ProductsPage() {
 
       {/* Products Table */}
       <Card className="border border-gray-100 shadow-sm overflow-hidden">
+        {/* Loading state */}
+        {loading && (
+          <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border-b border-blue-100 text-xs text-blue-700 font-semibold">
+            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+            Loading products from API...
+          </div>
+        )}
+
+        {/* Error / fallback state */}
+        {!loading && apiError && (
+          <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border-b border-amber-100 text-xs text-amber-800 font-semibold">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            {apiError}
+          </div>
+        )}
+
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -114,7 +211,18 @@ export default function ProductsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedProducts.length === 0 ? (
+              {loading ? (
+                // Skeleton rows while loading
+                [1, 2, 3].map((n) => (
+                  <TableRow key={n}>
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((c) => (
+                      <TableCell key={c}>
+                        <div className="h-3 bg-gray-100 rounded animate-pulse w-3/4" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : paginatedProducts.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-12 text-gray-500 font-semibold text-xs">
                     No products matching search parameters.

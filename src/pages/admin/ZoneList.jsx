@@ -3,7 +3,7 @@ import { useWarehouse } from '../../context/WarehouseContext';
 import { Badge, Button, Card, CardContent, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Layers, Plus, X, AlertTriangle, Loader2 } from 'lucide-react';
 import Pagination from '../../components/ui/Pagination';
-import { getZones } from '../../services/warehouseStructureService';
+import { getZones, getZoneBoundaries, getWarehouses } from '../../services/warehouseStructureService';
 
 // ---------------------------------------------------------------------------
 // Normalize context zones to match API field shape.
@@ -27,6 +27,22 @@ const normalizeContextZone = (z) => ({
   _status: z.status,
 });
 
+const normalizeApiZone = (z) => ({
+  id: z.id,
+  zone_name: z.zone_name,
+  zone_type: z.zone_type,
+  warehouse: z.warehouse,
+  zone_group: z.zone_group || null,
+  x: z.x != null ? Number(z.x) : null,
+  y: z.y != null ? Number(z.y) : null,
+  z: z.z != null ? Number(z.z) : null,
+  width: z.width != null ? Number(z.width) : null,
+  height: z.height != null ? Number(z.height) : null,
+  depth: z.depth != null ? Number(z.depth) : null,
+  _capacityPercent: z.predictive_occupancy != null ? Math.round(Number(z.predictive_occupancy) * 100) : 0,
+  _status: 'Active',
+});
+
 // Truncate UUIDs for compact display
 const shortId = (id) => {
   if (!id || id.length < 8) return id || '—';
@@ -38,6 +54,8 @@ export default function ZoneList() {
   const { zones: contextZones } = useWarehouse();
 
   const [zones, setZones] = useState([]);
+  const [boundaries, setBoundaries] = useState([]);
+  const [warehousesList, setWarehousesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
 
@@ -47,7 +65,7 @@ export default function ZoneList() {
   const pageSize = 5;
 
   // ---------------------------------------------------------------------------
-  // Fetch zones from real API.
+  // Fetch zones and boundaries from real API.
   // On failure: show error banner and fall back to context mock zones.
   // ---------------------------------------------------------------------------
   useEffect(() => {
@@ -56,12 +74,31 @@ export default function ZoneList() {
       try {
         setLoading(true);
         setApiError(null);
-        const { results } = await getZones();
-        if (!cancelled) setZones(results);
+        // [TEMPORARY LOG FOR VERIFICATION]
+        console.warn("[ZoneList] Calling APIs: /api/zones/, /api/zones/boundaries/, /api/warehouses/");
+        const [zonesRes, boundariesRes, warehousesRes] = await Promise.all([
+          getZones(),
+          getZoneBoundaries(),
+          getWarehouses()
+        ]);
+        if (!cancelled) {
+          const apiZones = zonesRes.results.map(normalizeApiZone);
+          setZones(apiZones);
+          setBoundaries(boundariesRes.results);
+          setWarehousesList(warehousesRes.results);
+          // [TEMPORARY LOG FOR VERIFICATION]
+          console.warn(`[ZoneList] API Success. URL: /api/zones/, Status: 200, Count: ${apiZones.length}, Fallback Used: false`);
+        }
       } catch (err) {
         if (!cancelled) {
+          const status = err.status || (err.code === 'NETWORK_ERROR' ? 0 : 'unknown');
           setApiError('Zones API unreachable — showing cached data.');
-          setZones(contextZones.map(normalizeContextZone));
+          const fallbackZones = contextZones.map(normalizeContextZone);
+          setZones(fallbackZones);
+          setBoundaries([]);
+          setWarehousesList([]);
+          // [TEMPORARY LOG FOR VERIFICATION]
+          console.warn(`[ZoneList] API Error. URL: /api/zones/, Status: ${status}, Count: ${fallbackZones.length}, Fallback Used: true`, err);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -304,11 +341,37 @@ export default function ZoneList() {
                 </p>
               </div>
 
+              {/* Zone Boundary polygon points from API */}
+              {(() => {
+                const matchedBoundary = selectedZone
+                  ? boundaries.find((b) => b.zone === selectedZone.id)
+                  : null;
+                if (!matchedBoundary) return null;
+                return (
+                  <div className="p-3 bg-white border border-gray-100 rounded-xl space-y-2">
+                    <div className="text-gray-400 font-bold uppercase tracking-wider mb-1 text-[10px]">
+                      Visual Boundary Coordinates
+                    </div>
+                    {Array.isArray(matchedBoundary.polygon_points) && matchedBoundary.polygon_points.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-1.5 font-mono text-[10px]">
+                        {matchedBoundary.polygon_points.map((pt, idx) => (
+                          <div key={idx} className="bg-slate-50 p-1.5 rounded text-center border border-gray-100">
+                            Pt {idx + 1}: ({Number(pt.x).toFixed(1)}, {Number(pt.y).toFixed(1)})
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 italic text-[11px]">No polygon points defined.</p>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* Warehouse reference */}
               <div className="p-3 bg-slate-50 border border-gray-100 rounded-xl">
                 <div className="text-gray-400 font-bold uppercase tracking-wider mb-1">Parent Warehouse</div>
                 <div className="font-bold text-slate-800 text-sm font-mono truncate" title={selectedZone.warehouse}>
-                  {selectedZone.warehouse || '—'}
+                  {warehousesList.find(w => w.id === selectedZone.warehouse)?.name || selectedZone.warehouse || '—'}
                 </div>
               </div>
 

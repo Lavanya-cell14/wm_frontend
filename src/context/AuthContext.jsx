@@ -65,13 +65,12 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const login = async () => true;
   const logout = () => {
     window.location.href = '/';
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: true }}>
+    <AuthContext.Provider value={{ user, logout, isAuthenticated: true }}>
       {children}
     </AuthContext.Provider>
   );
@@ -86,7 +85,6 @@ export function useAuth() {
         email: 'user@warehouseai.com',
         role: 'WAREHOUSE_MANAGER'
       },
-      login: async () => true,
       logout: () => {},
       isAuthenticated: true
     };

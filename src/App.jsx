@@ -48,6 +48,7 @@ import ProductsPage from './pages/clerk/ProductsPage';
 import InventoryPage from './pages/clerk/InventoryPage';
 import RecommendationsPage from './pages/clerk/RecommendationsPage';
 import AllocationsPage from './pages/clerk/AllocationsPage';
+import Orders from './pages/Orders';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -63,7 +64,6 @@ import AisleList from './pages/admin/AisleList';
 import RackList from './pages/admin/RackList';
 import ShelfList from './pages/admin/ShelfList';
 import BinList from './pages/admin/BinList';
-import SystemMonitoring from './pages/admin/SystemMonitoring';
 import Reports from './pages/admin/Reports';
 import NavigationNodes from './pages/admin/NavigationNodes';
 import NavigationEdges from './pages/admin/NavigationEdges';
@@ -138,6 +138,7 @@ function App() {
             <Route path="/inventory/inventory" element={<InventoryPage />} />
             <Route path="/inventory/recommendations" element={<RecommendationsPage />} />
             <Route path="/inventory/allocations" element={<AllocationsPage />} />
+            <Route path="/inventory/orders" element={<Orders />} />
             
             {/* Fallback/compatibility routes */}
             <Route path="/ocr-upload" element={<OcrUpload />} />
@@ -168,7 +169,6 @@ function App() {
             <Route path="/admin/users" element={<UserManagement />} />
             <Route path="/admin/roles" element={<RoleManagement />} />
             <Route path="/admin/settings" element={<WarehouseSettings />} />
-            <Route path="/admin/monitoring" element={<SystemMonitoring />} />
             <Route path="/admin/reports" element={<Reports />} />
             <Route path="/admin/audit" element={<AuditLogs />} />
             <Route path="/admin/health" element={<SystemHealth />} />

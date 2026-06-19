@@ -1,15 +1,27 @@
+import { apiClient, normalizeResponse } from './apiClient';
+
 /**
- * Inventory & Stock Adjustments API Service
- * 
- * TODO: Integrate with backend stock endpoints.
+ * Inventory Service — Phase 3A
  */
 
-export const adjustStockApi = async (sku, qtyDelta, reason) => {
-  // TODO: Call POST /warehouse/inventory/adjust
-  return { success: true };
+export const getInventory = async () => {
+  const data = await apiClient('/api/inventory/');
+  return normalizeResponse(data);
 };
 
-export const reportDamageApi = async (sku, qty, reason) => {
-  // TODO: Call POST /warehouse/inventory/damage
-  return { success: true };
+export const getInventoryById = async (inventoryId) => {
+  return await apiClient(`/api/inventory/${inventoryId}/`);
+};
+
+export const updateInventory = async (inventoryId, patchData) => {
+  const data = await apiClient(`/api/inventory/${inventoryId}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(patchData),
+  });
+  return data;
+};
+
+export const getStorageAllocations = async () => {
+  const data = await apiClient('/api/movements/allocations/');
+  return normalizeResponse(data);
 };

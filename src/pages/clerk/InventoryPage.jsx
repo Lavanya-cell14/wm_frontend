@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { 
   Card, 
@@ -18,16 +18,107 @@ import {
   SearchFilterBar,
   Pagination
 } from 'shared-ui';
-import { Box, ChevronRight, Filter, Info, Wrench, AlertTriangle, Package } from 'lucide-react';
+import { Box, ChevronRight, Filter, Info, Wrench, AlertTriangle, Package, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getProducts } from '../../services/productService';
+import { getInventory, getStorageAllocations } from '../../services/inventoryService';
+import { getBins } from '../../services/warehouseStructureService';
+
+// [TEMPORARY LOOKUP - REMOVE WHEN CATEGORY API IS FINALIZED]
+const CATEGORY_LOOKUP = {
+  '408dd788-9c1b-464c-94a4-866727fddbb8': 'Wireless Devices',
+  'dc5340ad-fdb0-415d-8d94-75eff6a9610f': 'Power Chargers & Adapters',
+  '1bd76b1d-75b0-4b61-ad85-0c16e7def7a3': 'Earbuds & Audio',
+  '0c3d3fab-fbab-4306-8b60-e2e7676fdd3e': 'Fasteners & Hardware',
+  'bfacdace-cde8-482b-8795-52ffd4edba92': 'Scanner Accessories',
+};
+
+const normalizeContextInventory = (item) => ({
+  sku: item.sku,
+  name: item.name,
+  category: item.category,
+  bin: item.bin,
+  quantity: item.quantity,
+  reserved: item.reserved,
+  damaged: item.damaged,
+  reorderLevel: item.reorderLevel,
+});
 
 export default function InventoryPage() {
   const navigate = useNavigate();
-  const { inventory = [] } = useWarehouse();
+  const { inventory: contextInventory = [] } = useWarehouse();
+  const [inventoryList, setInventoryList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [stockFilter, setStockFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        setLoading(true);
+        setApiError(null);
+        // [TEMPORARY LOG FOR VERIFICATION]
+        console.warn("[InventoryPage] Calling APIs: /api/inventory/, /api/products/, /api/movements/allocations/, /api/bins/");
+        const [invRes, productsRes, allocationsRes, binsRes] = await Promise.all([
+          getInventory(),
+          getProducts(),
+          getStorageAllocations(),
+          getBins()
+        ]);
+        if (!cancelled) {
+          const mappedInventory = invRes.results.map(inv => {
+            const product = productsRes.results.find(p => p.id === inv.product);
+            const sku = product ? product.sku : '—';
+            const name = product ? product.product_name : `Product ${inv.product}`;
+            const category = product ? (CATEGORY_LOOKUP[product.category] || 'General') : 'General';
+            
+            // Resolve bin assignment
+            const alloc = allocationsRes.results.find(a => a.product === inv.product);
+            let binCode = 'BIN-001';
+            if (alloc) {
+              const binObj = binsRes.results.find(b => b.id === alloc.bin);
+              if (binObj) {
+                binCode = binObj.bin_code;
+              }
+            }
+            return {
+              sku,
+              name,
+              category,
+              bin: binCode,
+              quantity: inv.total_quantity,
+              reserved: inv.reserved_quantity,
+              damaged: inv.damaged_quantity,
+              reorderLevel: 10, // Derived Spec UI value
+            };
+          });
+          setInventoryList(mappedInventory);
+          // [TEMPORARY LOG FOR VERIFICATION]
+          console.warn(`[InventoryPage] API Success. URL: /api/inventory/, Status: 200, Count: ${mappedInventory.length}, Fallback Used: false`);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          const status = err.status || (err.code === 'NETWORK_ERROR' ? 0 : 'unknown');
+          setApiError('Inventory Balances API unreachable — showing cached data.');
+          const fallbackData = contextInventory.map(normalizeContextInventory);
+          setInventoryList(fallbackData);
+          // [TEMPORARY LOG FOR VERIFICATION]
+          console.warn(`[InventoryPage] API Error. URL: /api/inventory/, Status: ${status}, Count: ${fallbackData.length}, Fallback Used: true`, err);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [contextInventory]);
+
+  const inventory = inventoryList;
 
   // Calculate global inventory counts
   const totalStockCount = inventory.reduce((sum, item) => sum + (item.quantity || 0), 0);
@@ -137,6 +228,22 @@ export default function InventoryPage() {
 
       {/* Inventory Table */}
       <Card className="border border-gray-100 shadow-sm overflow-hidden">
+        {/* Loading state */}
+        {loading && (
+          <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border-b border-blue-100 text-xs text-blue-700 font-semibold">
+            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+            Loading inventory balances from API...
+          </div>
+        )}
+
+        {/* Error / fallback state */}
+        {!loading && apiError && (
+          <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border-b border-amber-100 text-xs text-amber-800 font-semibold">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            {apiError}
+          </div>
+        )}
+
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -151,7 +258,18 @@ export default function InventoryPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedInventory.length === 0 ? (
+              {loading ? (
+                // Skeleton rows while loading
+                [1, 2, 3].map((n) => (
+                  <TableRow key={n}>
+                    {[1, 2, 3, 4, 5, 6, 7].map((c) => (
+                      <TableCell key={c}>
+                        <div className="h-3 bg-gray-100 rounded animate-pulse w-3/4" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : paginatedInventory.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-12 text-gray-500 font-semibold text-xs">
                     No inventory balances found.

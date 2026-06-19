@@ -1,18 +1,129 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from 'shared-ui';
-import { Box, Plus, X } from 'lucide-react';
+import { Box, Plus, X, AlertTriangle, Loader2 } from 'lucide-react';
+import { getBins, getBinById, getRacks, getZones } from '../../services/warehouseStructureService';
 
 export default function BinList() {
-  const { bins, inventory } = useWarehouse();
+  const { bins: contextBins, inventory } = useWarehouse();
+
+  const [bins, setBins] = useState([]);
+  const [racks, setRacks] = useState([]);
+  const [zones, setZones] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBin, setSelectedBin] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
 
+  const normalizeApiBin = (b) => {
+    const parts = (b.bin_code || '').split('-');
+    let parsedRackCode = '—';
+    let parsedShelf = b.shelf_number ? `S-${String(b.shelf_number).padStart(2, '0')}` : (b.shelf || 'S-01');
+    if (parts.length >= 5) {
+      parsedRackCode = `${parts[0]}-${parts[1]}-${parts[2]}`; // RACK-A1-01
+      const levelCode = parts[3]; // L1
+      const levelNum = levelCode.replace('L', '');
+      parsedShelf = `Level ${levelNum}`;
+    }
+    return {
+      code: b.bin_code,
+      zone: b.zone_name || 'Zone A',
+      shelf: parsedShelf,
+      maxCapacity: Number(b.max_capacity),
+      currentCapacity: Number(b.current_capacity || 0),
+      status: b.is_occupied ? 'FULL' : 'EMPTY',
+      x: Number(b.x || 12),
+      y: Number(b.y || 5),
+      z: Number(b.z || 1),
+      id: b.id,
+      _rackCode: parsedRackCode,
+    };
+  };
+
+  const normalizeContextBin = (b) => ({
+    code: b.code,
+    zone: b.zone,
+    shelf: b.shelf,
+    maxCapacity: b.maxCapacity,
+    currentCapacity: b.currentCapacity,
+    status: b.status,
+    x: b.x,
+    y: b.y,
+    z: b.z,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        setLoading(true);
+        setApiError(null);
+        // [TEMPORARY LOG FOR VERIFICATION]
+        console.warn("[BinList] Calling APIs: /api/bins/, /api/warehouses/racks/, /api/zones/");
+        const [binsRes, racksRes, zonesRes] = await Promise.all([
+          getBins(),
+          getRacks(),
+          getZones()
+        ]);
+        if (!cancelled) {
+          setRacks(racksRes.results);
+          setZones(zonesRes.results);
+          const apiBins = binsRes.results.map(b => {
+            const normalized = normalizeApiBin(b);
+            let resolvedRack = normalized._rackCode || '—';
+            let resolvedZone = 'Zone A';
+            if (normalized._rackCode) {
+              const rackObj = racksRes.results.find(r => r.rack_code === normalized._rackCode);
+              if (rackObj) {
+                const zoneObj = zonesRes.results.find(z => z.id === rackObj.zone);
+                if (zoneObj) {
+                  resolvedZone = zoneObj.zone_name;
+                }
+              }
+            }
+            normalized.zone = resolvedZone;
+            normalized._resolvedRack = resolvedRack;
+            return normalized;
+          });
+          setBins(apiBins);
+          // [TEMPORARY LOG FOR VERIFICATION]
+          console.warn(`[BinList] API Success. URL: /api/bins/, Status: 200, Count: ${apiBins.length}, Fallback Used: false`);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          const status = err.status || (err.code === 'NETWORK_ERROR' ? 0 : 'unknown');
+          setApiError('Bins API unreachable — showing cached data.');
+          const fallbackBins = contextBins.map(normalizeContextBin);
+          setBins(fallbackBins);
+          setRacks([]);
+          setZones([]);
+          // [TEMPORARY LOG FOR VERIFICATION]
+          console.warn(`[BinList] API Error. URL: /api/bins/, Status: ${status}, Count: ${fallbackBins.length}, Fallback Used: true`, err);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [contextBins]);
+
+  const handleViewBin = async (bin) => {
+    setSelectedBin(bin);
+    try {
+      const detail = await getBinById(bin.id || bin.code);
+      setSelectedBin(normalizeApiBin(detail));
+    } catch (err) {
+      console.warn("Could not fetch bin detail, using list view state:", err);
+    }
+  };
+
   const filtered = bins.filter(b => 
-    b.code.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    b.zone.toLowerCase().includes(searchQuery.toLowerCase())
+    (b.code || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (b.zone || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -44,6 +155,23 @@ export default function BinList() {
             onSearchChange={setSearchQuery} 
           />
         </div>
+
+        {/* Loading state */}
+        {loading && (
+          <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border-b border-blue-100 text-xs text-blue-700 font-semibold">
+            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+            Loading bins from API...
+          </div>
+        )}
+
+        {/* Error / Fallback warning banner */}
+        {!loading && apiError && (
+          <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border-b border-amber-100 text-xs text-amber-800 font-semibold">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            {apiError}
+          </div>
+        )}
+
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -58,7 +186,17 @@ export default function BinList() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pagedList.length === 0 ? (
+              {loading ? (
+                [1, 2, 3].map((n) => (
+                  <TableRow key={n}>
+                    {[1, 2, 3, 4, 5, 6, 7].map((c) => (
+                      <TableCell key={c}>
+                        <div className="h-3 bg-gray-100 rounded animate-pulse w-3/4" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : pagedList.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-gray-500">No bins matching criteria.</TableCell>
                 </TableRow>
@@ -76,7 +214,7 @@ export default function BinList() {
                       <TableCell className="font-bold text-blue-700 font-mono text-sm">{b.code}</TableCell>
                       <TableCell className="text-xs font-semibold text-slate-600 font-mono">{b.shelf}</TableCell>
                       <TableCell className="text-xs font-semibold text-slate-600 font-mono">
-                        {b.zone === 'Zone B' ? 'RACK-002' : b.zone === 'Zone C' ? 'RACK-004' : 'RACK-001'}
+                        {b._resolvedRack || (b.zone === 'Zone B' ? 'RACK-002' : b.zone === 'Zone C' ? 'RACK-004' : 'RACK-001')}
                       </TableCell>
                       <TableCell className="text-xs font-semibold text-slate-600">{b.zone}</TableCell>
                       <TableCell>
@@ -89,7 +227,7 @@ export default function BinList() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1.5">
-                          <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs text-gray-600" onClick={() => setSelectedBin(b)}>
+                          <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs text-gray-600" onClick={() => handleViewBin(b)}>
                             View
                           </Button>
                           <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs text-blue-600" onClick={() => alert('Edit Bin status endpoint pending.')}>
@@ -108,6 +246,7 @@ export default function BinList() {
               currentPage={currentPage}
               totalPages={totalPages}
               totalItems={filtered.length}
+
               pageSize={pageSize}
               onPageChange={setCurrentPage}
             />

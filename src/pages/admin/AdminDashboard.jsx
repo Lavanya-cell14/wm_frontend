@@ -234,43 +234,6 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          {/* 3. System Monitoring Summary */}
-          <Card className="border border-gray-100 shadow-sm overflow-hidden">
-            <CardHeader className="bg-slate-50 border-b border-gray-100 pb-4">
-              <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
-                <Network className="w-5 h-5 text-[#0071C1]" />
-                System Monitoring Summary
-              </CardTitle>
-              <CardDescription>Status parameters of platform execution components.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Service Component</TableHead>
-                    <TableHead>Core Type</TableHead>
-                    <TableHead>Latency</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {servicesList.map((srv, index) => (
-                    <TableRow key={index} className="hover:bg-slate-50/20 transition-colors">
-                      <TableCell className="font-bold text-slate-800 text-xs">{srv.name}</TableCell>
-                      <TableCell className="text-xs text-slate-500 font-medium">{srv.type}</TableCell>
-                      <TableCell className="font-mono text-xs text-slate-600 font-semibold">{srv.latency}</TableCell>
-                      <TableCell>
-                        <Badge variant="success" className="text-[9px] font-bold">
-                          {srv.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
         </div>
 
         {/* Right Column (Activities, Quick Actions) */}
@@ -335,18 +298,6 @@ export default function AdminDashboard() {
                 <span className="flex items-center gap-2 text-gray-800">
                   <Users className="w-4 h-4 text-[#0071C1]" />
                   Add/Provision User
-                </span>
-                <ArrowRight className="w-4 h-4 text-gray-400" />
-              </Button>
-
-              <Button 
-                variant="outline"
-                className="w-full text-xs justify-between font-bold"
-                onClick={() => navigate('/admin/monitoring')}
-              >
-                <span className="flex items-center gap-2 text-gray-800">
-                  <Activity className="w-4 h-4 text-teal-600" />
-                  View System Monitoring
                 </span>
                 <ArrowRight className="w-4 h-4 text-gray-400" />
               </Button>
