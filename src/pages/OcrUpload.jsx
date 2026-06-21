@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../context/WarehouseContext';
 import { useAuth } from '../context/AuthContext';
-import { processOcrDocument } from '../services/ocrService';
+import { processOcrDocument, uploadOcrDocumentDjangoApi } from '../services/ocrService';
 import { AlertBanner, Badge, Button, Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Input, StatusBadge } from 'shared-ui';
 import { 
   FileText, UploadCloud, Trash2, ShieldAlert, Sparkles, 
@@ -246,6 +246,13 @@ export default function OcrUpload() {
     try {
       if (!activeDoc.fileObject) {
         throw new Error('No local file object associated with this document.');
+      }
+      
+      try {
+        console.warn("[OCR Upload] Saving file to Django BE via /api/ocr/upload/");
+        await uploadOcrDocumentDjangoApi(activeDoc.fileObject);
+      } catch (djangoErr) {
+        console.warn("[OCR Upload] Django upload save failed, continuing extraction:", djangoErr);
       }
       
       const res = await processOcrDocument(activeDoc.fileObject);

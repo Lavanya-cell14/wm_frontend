@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
 import { AlertBanner, Badge, Button, Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Input, Modal, Pagination, SearchFilterBar, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
-import { ArrowDownToLine, Clock, UserCheck, User, Loader2 } from 'lucide-react';
+import { ArrowDownToLine, Clock, UserCheck, User, Loader2, Upload } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { getInboundShipments, createInboundShipmentApi, patchInboundShipment } from '../services/inboundService';
 
 export default function Inbound() {
+  const navigate = useNavigate();
   const { inboundTasks: contextTasks, createInboundShipment, assignInboundStaff, inventory, generateNextId } = useWarehouse();
   
   const [tasks, setTasks] = useState(contextTasks);
@@ -300,11 +302,24 @@ export default function Inbound() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        {ship.status !== 'Completed' && (
-                          <Button variant="outline" size="sm" className="text-xs text-gray-600 border-gray-200 hover:bg-gray-50" onClick={() => handleOpenAssign(ship)}>
-                            Assign Staff
-                          </Button>
-                        )}
+                        <div className="flex justify-end gap-1.5">
+                          {((ship.status || '').toLowerCase() === 'pending' || (ship.status || '').toLowerCase() === 'inbound') && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-xs text-blue-600 border-blue-200 hover:bg-blue-50 flex items-center gap-1"
+                              onClick={() => navigate('/inventory/ocr-upload', { state: { shipmentId: ship.id } })}
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                              Upload Manifest
+                            </Button>
+                          )}
+                          {ship.status !== 'Completed' && (
+                            <Button variant="outline" size="sm" className="text-xs text-gray-600 border-gray-200 hover:bg-gray-50" onClick={() => handleOpenAssign(ship)}>
+                              Assign Staff
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

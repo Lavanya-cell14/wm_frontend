@@ -1,28 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
-import { Badge, Button, Card, CardContent, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
-import { Layers, Plus, X, AlertTriangle, Loader2 } from 'lucide-react';
+import { Badge, Button, Card, CardContent, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Modal, Input } from 'shared-ui';
+import { Layers, Plus, X, AlertTriangle, Loader2, Edit, Trash2 } from 'lucide-react';
 import Pagination from '../../components/ui/Pagination';
-import { getZones, getZoneBoundaries, getWarehouses } from '../../services/warehouseStructureService';
+import { 
+  getZones, 
+  getZoneBoundaries, 
+  getWarehouses, 
+  getZoneGroups, 
+  createZoneApi, 
+  updateZoneApi, 
+  deleteZoneApi 
+} from '../../services/warehouseStructureService';
 
-// ---------------------------------------------------------------------------
-// Normalize context zones to match API field shape.
-// Used as fallback when the API call fails.
-// API shape: { id, warehouse, zone_group, zone_name, zone_type, x, y, z, width, height, depth }
-// ---------------------------------------------------------------------------
 const normalizeContextZone = (z) => ({
   id: z.id,
   zone_name: z.name,
   zone_type: z.type,
   warehouse: z.warehouse,
-  zone_group: null,       // not available in context mock
+  zone_group: null,
   x: z.x,
   y: z.y,
   z: z.z,
   width: z.width,
   height: z.height,
   depth: z.depth,
-  // Context-only extras kept for graceful display in fallback mode
   _capacityPercent: z.capacityPercent,
   _status: z.status,
 });
@@ -43,72 +45,202 @@ const normalizeApiZone = (z) => ({
   _status: 'N/A',
 });
 
-// Truncate UUIDs for compact display
 const shortId = (id) => {
   if (!id || id.length < 8) return id || '—';
   return `${id.slice(0, 8)}…`;
 };
 
 export default function ZoneList() {
-  // Keep context for fallback only — WarehouseContext.jsx is NOT modified.
   const { zones: contextZones } = useWarehouse();
 
   const [zones, setZones] = useState([]);
   const [boundaries, setBoundaries] = useState([]);
   const [warehousesList, setWarehousesList] = useState([]);
+  const [zoneGroupsList, setZoneGroupsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
+  const [fallbackUsed, setFallbackUsed] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedZone, setSelectedZone] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 5;
+  const pageSize = 6;
 
-  // ---------------------------------------------------------------------------
-  // Fetch zones and boundaries from real API.
-  // On failure: show error banner and fall back to context mock zones.
-  // ---------------------------------------------------------------------------
+  // Modals & form state
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+
+  // Form Fields
+  const [zName, setZName] = useState('');
+  const [zType, setZType] = useState('Ambient');
+  const [zWarehouse, setZWarehouse] = useState('');
+  const [zGroup, setZGroup] = useState('');
+  const [zX, setZX] = useState('');
+  const [zY, setZY] = useState('');
+  const [zZ, setZZ] = useState('');
+  const [zWidth, setZWidth] = useState('');
+  const [zHeight, setZHeight] = useState('');
+  const [zDepth, setZDepth] = useState('');
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      setApiError(null);
+      const [zonesRes, boundariesRes, warehousesRes, zoneGroupsRes] = await Promise.all([
+        getZones(),
+        getZoneBoundaries(),
+        getWarehouses(),
+        getZoneGroups()
+      ]);
+      const apiZonesList = zonesRes.results.map(normalizeApiZone);
+      setZones(apiZonesList.length > 0 ? apiZonesList : contextZones.map(normalizeContextZone));
+      setBoundaries(boundariesRes.results || []);
+      setWarehousesList(warehousesRes.results || []);
+      setZoneGroupsList(zoneGroupsRes.results || []);
+      setFallbackUsed(apiZonesList.length === 0);
+    } catch (err) {
+      console.error(err);
+      setApiError('Zones API unreachable — showing cached data.');
+      setZones(contextZones.map(normalizeContextZone));
+      setBoundaries([]);
+      setWarehousesList([]);
+      setZoneGroupsList([]);
+      setFallbackUsed(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        setLoading(true);
-        setApiError(null);
-        // [TEMPORARY LOG FOR VERIFICATION]
-        console.warn("[ZoneList] Calling APIs: /api/zones/, /api/zones/boundaries/, /api/warehouses/");
-        const [zonesRes, boundariesRes, warehousesRes] = await Promise.all([
-          getZones(),
-          getZoneBoundaries(),
-          getWarehouses()
-        ]);
-        if (!cancelled) {
-          const apiZones = zonesRes.results.map(normalizeApiZone);
-          setZones(apiZones);
-          setBoundaries(boundariesRes.results);
-          setWarehousesList(warehousesRes.results);
-          // [TEMPORARY LOG FOR VERIFICATION]
-          console.warn(`[ZoneList] API Success. URL: /api/zones/, Status: 200, Count: ${apiZones.length}, Fallback Used: false`);
-          console.warn(`[ZoneList] Backend derived zones count: ${apiZones.length}, mock-derived count: 0, fallback used: false`);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          const status = err.status || (err.code === 'NETWORK_ERROR' ? 0 : 'unknown');
-          setApiError('Zones API unreachable — showing cached data.');
-          const fallbackZones = contextZones.map(normalizeContextZone);
-          setZones(fallbackZones);
-          setBoundaries([]);
-          setWarehousesList([]);
-          // [TEMPORARY LOG FOR VERIFICATION]
-          console.warn(`[ZoneList] API Error. URL: /api/zones/, Status: ${status}, Count: ${fallbackZones.length}, Fallback Used: true`, err);
-          console.warn(`[ZoneList] Fallback used. Backend derived zones count: 0, mock-derived count: ${contextZones.length}, fallback used: true`);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
     load();
-    return () => { cancelled = true; };
-  }, [contextZones]);
+  }, []);
+
+  const openAdd = () => {
+    setZName('');
+    setZType('Ambient');
+    setZWarehouse(warehousesList[0]?.id || '');
+    setZGroup(zoneGroupsList[0]?.id || '');
+    setZX('0');
+    setZY('0');
+    setZZ('0');
+    setZWidth('10');
+    setZHeight('5');
+    setZDepth('10');
+    setShowAddModal(true);
+  };
+
+  const openEdit = (zone) => {
+    setSelectedItem(zone);
+    setZName(zone.zone_name || '');
+    setZType(zone.zone_type || 'Ambient');
+    setZWarehouse(zone.warehouse || '');
+    setZGroup(zone.zone_group || '');
+    setZX(zone.x != null ? String(zone.x) : '');
+    setZY(zone.y != null ? String(zone.y) : '');
+    setZZ(zone.z != null ? String(zone.z) : '');
+    setZWidth(zone.width != null ? String(zone.width) : '');
+    setZHeight(zone.height != null ? String(zone.height) : '');
+    setZDepth(zone.depth != null ? String(zone.depth) : '');
+    setShowEditModal(true);
+  };
+
+  const openDelete = (zone) => {
+    setSelectedItem(zone);
+    setShowDeleteModal(true);
+  };
+
+  const handleCreate = async () => {
+    try {
+      const payload = {
+        zone_name: zName,
+        zone_type: zType,
+        warehouse: zWarehouse || null,
+        zone_group: zGroup || null,
+        x: zX ? Number(zX) : 0,
+        y: zY ? Number(zY) : 0,
+        z: zZ ? Number(zZ) : 0,
+        width: zWidth ? Number(zWidth) : 0,
+        height: zHeight ? Number(zHeight) : 0,
+        depth: zDepth ? Number(zDepth) : 0,
+      };
+      await createZoneApi(payload);
+    } catch (err) {
+      console.warn("API Create Zone failed, falling back locally:", err);
+      const mockNew = {
+        id: `zone-${Date.now()}`,
+        zone_name: zName,
+        zone_type: zType,
+        warehouse: zWarehouse,
+        zone_group: zGroup || null,
+        x: Number(zX) || 0,
+        y: Number(zY) || 0,
+        z: Number(zZ) || 0,
+        width: Number(zWidth) || 0,
+        height: Number(zHeight) || 0,
+        depth: Number(zDepth) || 0,
+        _capacityPercent: 0,
+        _status: 'Active'
+      };
+      setZones([...zones, mockNew]);
+    } finally {
+      setShowAddModal(false);
+      if (!fallbackUsed) load();
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!selectedItem) return;
+    try {
+      const payload = {
+        zone_name: zName,
+        zone_type: zType,
+        warehouse: zWarehouse || null,
+        zone_group: zGroup || null,
+        x: zX ? Number(zX) : 0,
+        y: zY ? Number(zY) : 0,
+        z: zZ ? Number(zZ) : 0,
+        width: zWidth ? Number(zWidth) : 0,
+        height: zHeight ? Number(zHeight) : 0,
+        depth: zDepth ? Number(zDepth) : 0,
+      };
+      await updateZoneApi(selectedItem.id, payload);
+    } catch (err) {
+      console.warn("API Update Zone failed, falling back locally:", err);
+      setZones(zones.map(z => z.id === selectedItem.id ? {
+        ...z,
+        zone_name: zName,
+        zone_type: zType,
+        warehouse: zWarehouse,
+        zone_group: zGroup || null,
+        x: Number(zX) || 0,
+        y: Number(zY) || 0,
+        z: Number(zZ) || 0,
+        width: Number(zWidth) || 0,
+        height: Number(zHeight) || 0,
+        depth: Number(zDepth) || 0
+      } : z));
+    } finally {
+      setShowEditModal(false);
+      setSelectedItem(null);
+      if (!fallbackUsed) load();
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedItem) return;
+    try {
+      await deleteZoneApi(selectedItem.id);
+    } catch (err) {
+      console.warn("API Delete Zone failed, falling back locally:", err);
+      setZones(zones.filter(z => z.id !== selectedItem.id));
+    } finally {
+      setShowDeleteModal(false);
+      setSelectedItem(null);
+      if (!fallbackUsed) load();
+    }
+  };
 
   const filtered = zones.filter((z) =>
     (z.zone_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -120,7 +252,7 @@ export default function ZoneList() {
 
   return (
     <div className="space-y-6">
-
+      
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -132,7 +264,10 @@ export default function ZoneList() {
             Configure layout storage zones, visual boundaries and temperature constraints.
           </p>
         </div>
-        <Button className="gap-2" onClick={() => alert('Add Zone — write API not yet integrated.')}>
+        <Button 
+          className="bg-[#0071C1] hover:bg-[#005c9e] text-white gap-2 font-bold px-4 py-2"
+          onClick={openAdd}
+        >
           <Plus className="w-4 h-4" />
           Add Zone
         </Button>
@@ -148,7 +283,6 @@ export default function ZoneList() {
           />
         </div>
 
-        {/* Loading state */}
         {loading && (
           <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border-b border-blue-100 text-xs text-blue-700 font-semibold">
             <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
@@ -156,7 +290,6 @@ export default function ZoneList() {
           </div>
         )}
 
-        {/* Error / fallback state */}
         {!loading && apiError && (
           <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border-b border-amber-100 text-xs text-amber-800 font-semibold">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
@@ -177,17 +310,7 @@ export default function ZoneList() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
-                [1, 2, 3].map((n) => (
-                  <TableRow key={n}>
-                    {[1, 2, 3, 4, 5, 6].map((c) => (
-                      <TableCell key={c}>
-                        <div className="h-3 bg-gray-100 rounded animate-pulse w-3/4" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : pagedList.length === 0 ? (
+              {pagedList.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-gray-500 text-sm">
                     No zones found.
@@ -230,9 +353,17 @@ export default function ZoneList() {
                           variant="outline"
                           size="sm"
                           className="h-7 px-2.5 text-xs text-blue-600"
-                          onClick={() => alert('Edit Zone — write API not yet integrated.')}
+                          onClick={() => openEdit(z)}
                         >
-                          Edit
+                          <Edit className="w-3 h-3 mr-1" /> Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2.5 text-xs text-red-600"
+                          onClick={() => openDelete(z)}
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" /> Delete
                         </Button>
                       </div>
                     </TableCell>
@@ -258,9 +389,7 @@ export default function ZoneList() {
       {selectedZone && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/50 p-4">
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-md w-full overflow-y-auto p-6 flex flex-col justify-between animate-in slide-in-from-right duration-250">
-            <div className="space-y-6 text-xs">
-
-              {/* Drawer Header */}
+            <div className="space-y-6 text-xs font-semibold">
               <div className="flex justify-between items-start border-b border-gray-100 pb-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-blue-100 rounded-xl text-[#0071C1]">
@@ -271,15 +400,11 @@ export default function ZoneList() {
                     <p className="text-[10px] text-gray-400 font-mono mt-0.5">{selectedZone.id}</p>
                   </div>
                 </div>
-                <Button
-                  className="text-gray-400 hover:text-gray-600 font-bold"
-                  onClick={() => setSelectedZone(null)}
-                >
+                <Button className="text-gray-400 hover:text-gray-600 font-bold" onClick={() => setSelectedZone(null)}>
                   <X className="w-5 h-5" />
                 </Button>
               </div>
 
-              {/* Zone Type + Group */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-slate-50 border border-gray-100 p-3 rounded-xl">
                   <div className="text-gray-400 font-bold uppercase tracking-wider mb-1">Zone Type</div>
@@ -293,11 +418,8 @@ export default function ZoneList() {
                 </div>
               </div>
 
-              {/* Coordinates */}
               <div className="p-3 bg-white border border-gray-100 rounded-xl space-y-2">
-                <div className="text-gray-400 font-bold uppercase tracking-wider mb-1">
-                  3D Position Offsets
-                </div>
+                <div className="text-gray-400 font-bold uppercase tracking-wider mb-1">3D Position Offsets</div>
                 <div className="grid grid-cols-3 gap-2 font-mono text-center text-[10px]">
                   <div className="bg-slate-50 p-1.5 rounded">X: {selectedZone.x ?? '—'}</div>
                   <div className="bg-slate-50 p-1.5 rounded">Y: {selectedZone.y ?? '—'}</div>
@@ -305,11 +427,8 @@ export default function ZoneList() {
                 </div>
               </div>
 
-              {/* Dimensions */}
               <div className="p-3 bg-white border border-gray-100 rounded-xl space-y-2">
-                <div className="text-gray-400 font-bold uppercase tracking-wider mb-1">
-                  Physical Dimensions
-                </div>
+                <div className="text-gray-400 font-bold uppercase tracking-wider mb-1">Physical Dimensions</div>
                 <div className="grid grid-cols-3 gap-2 font-mono text-center text-[10px]">
                   <div className="bg-slate-50 p-1.5 rounded">W: {selectedZone.width != null ? `${selectedZone.width}m` : '—'}</div>
                   <div className="bg-slate-50 p-1.5 rounded">H: {selectedZone.height != null ? `${selectedZone.height}m` : '—'}</div>
@@ -317,7 +436,6 @@ export default function ZoneList() {
                 </div>
               </div>
 
-              {/* Fallback-only extras (shown when context data is used) */}
               {selectedZone._capacityPercent != null && (
                 <div className="p-3 bg-white border border-gray-100 rounded-xl">
                   <div className="text-gray-400 font-bold uppercase tracking-wider mb-2">Space Utilisation</div>
@@ -334,14 +452,6 @@ export default function ZoneList() {
                   </div>
                 </div>
               )}
-
-              {/* Associated Inventory — static informational block (from UI design) */}
-              <div className="p-3 bg-white border border-gray-100 rounded-xl">
-                <div className="text-gray-400 font-bold uppercase tracking-wider mb-1">Associated Inventory Items</div>
-                <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
-                  Real-time stock cycles and picking congestion safety margins are actively monitored under this zone coordinates outline.
-                </p>
-              </div>
 
               {/* Zone Boundary polygon points from API */}
               {(() => {
@@ -369,14 +479,12 @@ export default function ZoneList() {
                 );
               })()}
 
-              {/* Warehouse reference */}
               <div className="p-3 bg-slate-50 border border-gray-100 rounded-xl">
                 <div className="text-gray-400 font-bold uppercase tracking-wider mb-1">Parent Warehouse</div>
                 <div className="font-bold text-slate-800 text-sm font-mono truncate" title={selectedZone.warehouse}>
-                  {warehousesList.find(w => w.id === selectedZone.warehouse)?.name || selectedZone.warehouse || '—'}
+                  {warehousesList.find(w => w.id === selectedZone.warehouse)?.warehouse_name || selectedZone.warehouse || '—'}
                 </div>
               </div>
-
             </div>
 
             <Button
@@ -389,6 +497,211 @@ export default function ZoneList() {
           </div>
         </div>
       )}
+
+      {/* ADD MODAL */}
+      {showAddModal && (
+        <Modal
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          title="Create New Storage Zone"
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setShowAddModal(false)}>Cancel</Button>
+              <Button onClick={handleCreate} className="bg-blue-600 text-white hover:bg-blue-700 font-bold">Create</Button>
+            </>
+          }
+        >
+          <div className="space-y-3 text-xs font-semibold">
+            <div>
+              <label className="block text-gray-700 mb-1">Zone Name *</label>
+              <Input value={zName} onChange={(e) => setZName(e.target.value)} placeholder="e.g. Zone F Chilled" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-gray-700 mb-1">Zone Type</label>
+                <select 
+                  value={zType} 
+                  onChange={(e) => setZType(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg p-2.5 bg-white font-medium text-xs text-gray-700"
+                >
+                  <option value="Ambient">Ambient</option>
+                  <option value="Chilled">Chilled</option>
+                  <option value="Frozen">Frozen</option>
+                  <option value="Hazmat">Hazmat</option>
+                  <option value="High-Value">High-Value</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-1">Parent Warehouse *</label>
+                <select 
+                  value={zWarehouse} 
+                  onChange={(e) => setZWarehouse(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg p-2.5 bg-white font-medium text-xs text-gray-700"
+                >
+                  {warehousesList.map(w => (
+                    <option key={w.id} value={w.id}>{w.warehouse_name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-gray-700 mb-1">Zone Group</label>
+              <select 
+                value={zGroup} 
+                onChange={(e) => setZGroup(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg p-2.5 bg-white font-medium text-xs text-gray-700"
+              >
+                <option value="">No Group</option>
+                {zoneGroupsList.map(zg => (
+                  <option key={zg.id} value={zg.id}>{zg.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="block text-gray-700 mb-1">X Offset</label>
+                <Input type="number" value={zX} onChange={(e) => setZX(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-1">Y Offset</label>
+                <Input type="number" value={zY} onChange={(e) => setZY(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-1">Z Offset</label>
+                <Input type="number" value={zZ} onChange={(e) => setZZ(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="block text-gray-700 mb-1">Width (m)</label>
+                <Input type="number" value={zWidth} onChange={(e) => setZWidth(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-1">Height (m)</label>
+                <Input type="number" value={zHeight} onChange={(e) => setZHeight(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-1">Depth (m)</label>
+                <Input type="number" value={zDepth} onChange={(e) => setZDepth(e.target.value)} />
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* EDIT MODAL */}
+      {showEditModal && (
+        <Modal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          title="Edit Zone Details"
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
+              <Button onClick={handleUpdate} className="bg-blue-600 text-white hover:bg-blue-700 font-bold">Save Changes</Button>
+            </>
+          }
+        >
+          <div className="space-y-3 text-xs font-semibold">
+            <div>
+              <label className="block text-gray-700 mb-1">Zone Name *</label>
+              <Input value={zName} onChange={(e) => setZName(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-gray-700 mb-1">Zone Type</label>
+                <select 
+                  value={zType} 
+                  onChange={(e) => setZType(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg p-2.5 bg-white font-medium text-xs text-gray-700"
+                >
+                  <option value="Ambient">Ambient</option>
+                  <option value="Chilled">Chilled</option>
+                  <option value="Frozen">Frozen</option>
+                  <option value="Hazmat">Hazmat</option>
+                  <option value="High-Value">High-Value</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-1">Parent Warehouse *</label>
+                <select 
+                  value={zWarehouse} 
+                  onChange={(e) => setZWarehouse(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg p-2.5 bg-white font-medium text-xs text-gray-700"
+                >
+                  {warehousesList.map(w => (
+                    <option key={w.id} value={w.id}>{w.name || w.warehouse_name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-gray-700 mb-1">Zone Group</label>
+              <select 
+                value={zGroup} 
+                onChange={(e) => setZGroup(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg p-2.5 bg-white font-medium text-xs text-gray-700"
+              >
+                <option value="">No Group</option>
+                {zoneGroupsList.map(zg => (
+                  <option key={zg.id} value={zg.id}>{zg.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="block text-gray-700 mb-1">X Offset</label>
+                <Input type="number" value={zX} onChange={(e) => setZX(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-1">Y Offset</label>
+                <Input type="number" value={zY} onChange={(e) => setZY(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-1">Z Offset</label>
+                <Input type="number" value={zZ} onChange={(e) => setZZ(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="block text-gray-700 mb-1">Width (m)</label>
+                <Input type="number" value={zWidth} onChange={(e) => setZWidth(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-1">Height (m)</label>
+                <Input type="number" value={zHeight} onChange={(e) => setZHeight(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-1">Depth (m)</label>
+                <Input type="number" value={zDepth} onChange={(e) => setZDepth(e.target.value)} />
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* DELETE CONFIRM MODAL */}
+      {showDeleteModal && (
+        <Modal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          title="Delete Zone"
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
+              <Button onClick={handleDelete} className="bg-red-600 text-white hover:bg-red-700 font-bold">Delete</Button>
+            </>
+          }
+        >
+          <div className="text-xs font-semibold py-4 text-slate-700 flex items-center gap-3">
+            <AlertTriangle className="w-10 h-10 text-red-500 shrink-0" />
+            <p>
+              Are you sure you want to delete storage zone <strong>{selectedItem?.zone_name}</strong>? This will clear all structural references cascading to slots.
+            </p>
+          </div>
+        </Modal>
+      )}
+
     </div>
   );
 }

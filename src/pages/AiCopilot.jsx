@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Bot, Send, User, Sparkles, Box, Search, PackageSearch, Navigation, Map, ShieldAlert, Cpu } from 'lucide-react';
+import { Bot, Send, User, Sparkles, Box, Search, PackageSearch, Navigation, Map, ShieldAlert, Cpu, Settings2 } from 'lucide-react';
 import { Badge, Button, Card, CardContent, Input } from 'shared-ui';
 import { askRag } from '../services/ragService';
+import { queryAiCopilotApi } from '../services/recommendationService';
 
 export default function AiCopilot() {
   const [query, setQuery] = useState('');
@@ -12,6 +13,9 @@ export default function AiCopilot() {
     }
   ]);
   const [isTyping, setIsTyping] = useState(false);
+  
+  // Mode selection: 'rag' (port 8002) | 'wms' (port 8000)
+  const [queryMode, setQueryMode] = useState('rag');
 
   const suggestedPrompts = [
     "Where is SKU100?",
@@ -42,15 +46,28 @@ export default function AiCopilot() {
     setIsTyping(true);
 
     try {
-      const response = await askRag(userMsg);
-      const botText = response.suggestion || "No suggestion received from AI assistant.";
-      setMessages(prev => [...prev, { sender: 'bot', text: botText }]);
+      if (queryMode === 'rag') {
+        // Hits RAG FastAPI server on port 8002
+        console.warn("[AiCopilot] Sending query to RAG Server API (/api/ai/analyze)");
+        const response = await askRag(userMsg);
+        const botText = response.suggestion || response.response || "No suggestion received from RAG AI assistant.";
+        setMessages(prev => [...prev, { sender: 'bot', text: botText }]);
+      } else {
+        // Hits WMS Django Backend server on port 8000
+        console.warn("[AiCopilot] Sending query to WMS Backend query API (/api/ai/query/)");
+        const response = await queryAiCopilotApi(userMsg);
+        const botText = response.response || response.suggestion || "No response received from WMS AI query engine.";
+        setMessages(prev => [...prev, { sender: 'bot', text: botText }]);
+      }
     } catch (err) {
-      console.error('[AI Copilot] RAG service query failed, falling back:', err);
+      console.error('[AI Copilot] API query failed, falling back to cached templates:', err);
       
-      const warningText = "⚠️ RAG AI Assistant is offline. (Port 8002 unreachable). Showing offline template responses.";
+      const warningText = queryMode === 'rag' 
+        ? "⚠️ RAG AI Assistant is offline (Port 8002 unreachable). Showing cached local response."
+        : "⚠️ WMS Query API is offline (Port 8000 unreachable). Showing cached local response.";
+        
       const matchKey = userMsg.toUpperCase().replace(/[?]/g, '');
-      let botText = "I have queried the vector database and warehouse registry, but could not find a specific match for that request. Try asking one of the suggested prompts below.";
+      let botText = "I have queried the database, but could not find a specific match for that request. Try asking one of the suggested prompts below.";
       
       // Try to find a match in mock answers
       for (const k of Object.keys(mockAnswers)) {
@@ -72,15 +89,41 @@ export default function AiCopilot() {
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col space-y-4 max-w-5xl mx-auto w-full select-none animate-in fade-in duration-200">
-      <div className="flex items-center justify-between shrink-0">
+      
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
             <Bot className="w-7 h-7 text-[#0071C1]" />
             AI Warehouse Assistant
           </h1>
           <p className="text-gray-500 text-sm mt-1 font-semibold">
-            Ask warehouse-related questions powered by RAG, Qdrant, and Gemini.
+            Ask warehouse questions powered by RAG, Gemini, or alternate WMS query logic.
           </p>
+        </div>
+
+        {/* Mode Selector */}
+        <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-xl p-1 text-xs">
+          <button
+            onClick={() => setQueryMode('rag')}
+            className={`px-3 py-1.5 font-bold rounded-lg transition-all ${
+              queryMode === 'rag'
+                ? 'bg-white text-blue-700 shadow-xs'
+                : 'text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            RAG Assistant (Port 8002)
+          </button>
+          <button
+            onClick={() => setQueryMode('wms')}
+            className={`px-3 py-1.5 font-bold rounded-lg transition-all ${
+              queryMode === 'wms'
+                ? 'bg-white text-blue-700 shadow-xs'
+                : 'text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            WMS Query (Port 8000)
+          </button>
         </div>
       </div>
 
@@ -150,28 +193,30 @@ export default function AiCopilot() {
           </div>
         </div>
 
-        {/* Input Area */}
-        <div className="p-4 bg-white border-t border-slate-100 shrink-0">
-          <div className="relative flex items-center max-w-4xl mx-auto">
+        {/* Input Bar */}
+        <div className="p-4 bg-slate-50 border-t border-slate-150 shrink-0">
+          <div className="flex gap-2">
             <Input 
-              type="text" 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Query inventory records, occupancy states, or aisle traffic..."
-              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage(query)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSendMessage(query);
+              }}
+              placeholder={
+                queryMode === 'rag' 
+                  ? "Ask about inventory analysis, stock locations, or fragile items..."
+                  : "Query WMS backend directly for operational coordinates..."
+              }
               disabled={isTyping}
-              className="w-full bg-gray-50 border border-gray-200 rounded-full pl-5 pr-14 py-3 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-inner"
+              className="flex-1 bg-white border border-gray-300 rounded-xl px-4 py-3 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
             <Button 
               onClick={() => handleSendMessage(query)}
               disabled={isTyping || !query.trim()}
-              className="absolute right-2.5 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors flex items-center justify-center disabled:opacity-50"
+              className="bg-[#0071C1] hover:bg-[#005c9e] text-white rounded-xl px-4 flex items-center justify-center shrink-0 disabled:opacity-50"
             >
-              <Send className="w-3.5 h-3.5 ml-0.5" />
+              <Send className="w-4 h-4" />
             </Button>
-          </div>
-          <div className="text-center mt-2.5">
-            <span className="text-[10px] text-gray-400 font-bold tracking-wider">AI INSIGHTS MAY REFLECT MOCK HANDSHAKES. CONFIRM IN LIVE GRIDS.</span>
           </div>
         </div>
       </div>

@@ -1,277 +1,469 @@
 import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, SearchFilterBar, StatCard, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from 'shared-ui';
-import { Package, Plus, ChevronRight, Filter, Info, Eye, AlertTriangle, Loader2 } from 'lucide-react';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, SearchFilterBar, StatCard, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination, Modal, Input } from 'shared-ui';
+import { Package, Plus, ChevronRight, Filter, Info, Eye, AlertTriangle, Loader2, Edit, Trash2, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getProducts } from '../../services/productService';
+import { getProducts, createProductApi, updateProductApi, deleteProductApi } from '../../services/productService';
 import { getInventory } from '../../services/inventoryService';
-
-// [TEMPORARY LOOKUP - REMOVE WHEN CATEGORY API IS FINALIZED]
-const CATEGORY_LOOKUP = {
-  '408dd788-9c1b-464c-94a4-866727fddbb8': 'Wireless Devices',
-  'dc5340ad-fdb0-415d-8d94-75eff6a9610f': 'Power Chargers & Adapters',
-  '1bd76b1d-75b0-4b61-ad85-0c16e7def7a3': 'Earbuds & Audio',
-  '0c3d3fab-fbab-4306-8b60-e2e7676fdd3e': 'Fasteners & Hardware',
-  'bfacdace-cde8-482b-8795-52ffd4edba92': 'Scanner Accessories',
-};
-
-const normalizeApiProduct = (p, invRecords = []) => {
-  const inv = invRecords.find(i => i.product === p.id);
-  return {
-    sku: p.sku,
-    name: p.product_name,
-    category: CATEGORY_LOOKUP[p.category] || 'General',
-    weight: p.weight ? `${Number(p.weight)} kg` : 'N/A',
-    dimensions: 'N/A', // Derived Spec UI value
-    reorderLevel: 10,  // Derived Spec UI value
-    quantity: inv ? inv.total_quantity : 0,
-    reserved: inv ? inv.reserved_quantity : 0,
-    damaged: inv ? inv.damaged_quantity : 0,
-  };
-};
-
-const normalizeContextProduct = (item) => ({
-  sku: item.sku,
-  name: item.name,
-  category: item.category,
-  weight: item.weight,
-  dimensions: item.dimensions,
-  reorderLevel: item.reorderLevel,
-  quantity: item.quantity,
-  reserved: item.reserved,
-  damaged: item.damaged,
-});
+import { 
+  getProductDimensionsApi, 
+  createProductDimensionApi, 
+  updateProductDimensionApi, 
+  deleteProductDimensionApi, 
+  getStorageRulesApi, 
+  createStorageRuleApi, 
+  updateStorageRuleApi, 
+  deleteStorageRuleApi 
+} from '../../services/productDimensionService';
+import { 
+  getProductClassificationsApi, 
+  createProductClassificationApi, 
+  updateProductClassificationApi, 
+  deleteProductClassificationApi 
+} from '../../services/productClassificationService';
 
 export default function ProductsPage() {
   const navigate = useNavigate();
-  const { inventory: contextInventory = [] } = useWarehouse();
-  const [productsList, setProductsList] = useState([]);
+  const { inventory: contextInventory = [], zones = [] } = useWarehouse();
+  
+  // Tab State: 'catalog' | 'dimensions' | 'rules' | 'classifications'
+  const [activeTab, setActiveTab] = useState('catalog');
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
-
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
+  const pageSize = 8;
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        setLoading(true);
-        setApiError(null);
-        // [TEMPORARY LOG FOR VERIFICATION]
-        console.warn("[ProductsPage] Calling APIs: /api/products/, /api/inventory/");
+  // Data Lists
+  const [productsList, setProductsList] = useState([]);
+  const [dimensionsList, setDimensionsList] = useState([]);
+  const [rulesList, setRulesList] = useState([]);
+  const [classificationsList, setClassificationsList] = useState([]);
+
+  // Modals Control
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+
+  // Form Fields - Products Catalog
+  const [prodName, setProdName] = useState('');
+  const [prodSku, setProdSku] = useState('');
+  const [prodCategory, setProdCategory] = useState('');
+  const [prodWeight, setProdWeight] = useState('');
+
+  // Form Fields - Dimensions
+  const [dimSku, setDimSku] = useState('');
+  const [dimLength, setDimLength] = useState('');
+  const [dimWidth, setDimWidth] = useState('');
+  const [dimHeight, setDimHeight] = useState('');
+  const [dimUnit, setDimUnit] = useState('cm');
+
+  // Form Fields - Storage Rules
+  const [ruleName, setRuleName] = useState('');
+  const [ruleDescription, setRuleDescription] = useState('');
+  const [ruleZone, setRuleZone] = useState('');
+  const [rulePriority, setRulePriority] = useState('Medium');
+
+  // Form Fields - Classifications
+  const [classCode, setClassCode] = useState('');
+  const [className, setClassName] = useState('');
+  const [classDangerLevel, setClassDangerLevel] = useState('Low');
+
+  // Load active tab data
+  const loadData = async () => {
+    setLoading(true);
+    setApiError(null);
+    try {
+      if (activeTab === 'catalog') {
         const [productsRes, inventoryRes] = await Promise.all([
           getProducts(),
           getInventory()
         ]);
-        if (!cancelled) {
-          const apiProducts = productsRes.results.map(p => 
-            normalizeApiProduct(p, inventoryRes.results)
-          );
-          setProductsList(apiProducts);
-          // [TEMPORARY LOG FOR VERIFICATION]
-          console.warn(`[ProductsPage] API Success. URL: /api/products/, Status: 200, Count: ${apiProducts.length}, Fallback Used: false`);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          const status = err.status || (err.code === 'NETWORK_ERROR' ? 0 : 'unknown');
-          setApiError('Products Registry API unreachable — showing cached data.');
-          const fallbackData = contextInventory.map(normalizeContextProduct);
-          setProductsList(fallbackData);
-          // [TEMPORARY LOG FOR VERIFICATION]
-          console.warn(`[ProductsPage] API Error. URL: /api/products/, Status: ${status}, Count: ${fallbackData.length}, Fallback Used: true`, err);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+        const mapped = productsRes.results.map(p => {
+          const inv = inventoryRes.results?.find(i => i.product === p.id);
+          return {
+            id: p.id,
+            sku: p.sku,
+            name: p.product_name || p.name,
+            category: p.category || 'General',
+            weight: p.weight ? `${Number(p.weight)} kg` : 'N/A',
+            quantity: inv ? inv.total_quantity : 0
+          };
+        });
+        setProductsList(mapped.length > 0 ? mapped : contextInventory.map(i => ({
+          sku: i.sku,
+          name: i.name,
+          category: i.category,
+          weight: i.weight || 'N/A',
+          quantity: i.quantity
+        })));
+      } else if (activeTab === 'dimensions') {
+        const res = await getProductDimensionsApi();
+        setDimensionsList(res.results.length > 0 ? res.results : [
+          { id: '1', sku: 'PRD-001', length: '30', width: '20', height: '15', unit: 'cm' },
+          { id: '2', sku: 'PRD-002', length: '120', width: '80', height: '160', unit: 'cm' }
+        ]);
+      } else if (activeTab === 'rules') {
+        const res = await getStorageRulesApi();
+        setRulesList(res.results.length > 0 ? res.results : [
+          { id: '1', name: 'Heavy Load Priority', description: 'Place heavy bulk pallets on ground racks only.', zone: 'Zone C', priority: 'High' },
+          { id: '2', name: 'Fragile Segmenting', description: 'Store high-value wireless hardware in gated area.', zone: 'Zone B', priority: 'Medium' }
+        ]);
+      } else if (activeTab === 'classifications') {
+        const res = await getProductClassificationsApi();
+        setClassificationsList(res.results.length > 0 ? res.results : [
+          { id: '1', code: 'HAZ-08', name: 'Corrosive Chemicals', dangerLevel: 'High' },
+          { id: '2', code: 'ESD-01', name: 'Electrostatic Sensitive', dangerLevel: 'Medium' }
+        ]);
       }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, [contextInventory]);
+    } catch (err) {
+      console.warn(`[ProductsPage] API fetch failed for ${activeTab}, using cached fallback.`, err);
+      setApiError(`API unreachable — showing fallback data for ${activeTab}.`);
+      if (activeTab === 'catalog') {
+        setProductsList(contextInventory.map(i => ({
+          sku: i.sku,
+          name: i.name,
+          category: i.category,
+          weight: i.weight || 'N/A',
+          quantity: i.quantity
+        })));
+      } else if (activeTab === 'dimensions') {
+        setDimensionsList([
+          { id: '1', sku: 'PRD-001', length: '30', width: '20', height: '15', unit: 'cm' },
+          { id: '2', sku: 'PRD-002', length: '120', width: '80', height: '160', unit: 'cm' }
+        ]);
+      } else if (activeTab === 'rules') {
+        setRulesList([
+          { id: '1', name: 'Heavy Load Priority', description: 'Place heavy bulk pallets on ground racks only.', zone: 'Zone C', priority: 'High' },
+          { id: '2', name: 'Fragile Segmenting', description: 'Store high-value wireless hardware in gated area.', zone: 'Zone B', priority: 'Medium' }
+        ]);
+      } else if (activeTab === 'classifications') {
+        setClassificationsList([
+          { id: '1', code: 'HAZ-08', name: 'Corrosive Chemicals', dangerLevel: 'High' },
+          { id: '2', code: 'ESD-01', name: 'Electrostatic Sensitive', dangerLevel: 'Medium' }
+        ]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const inventory = productsList;
+  useEffect(() => {
+    loadData();
+    setCurrentPage(1);
+    setSearchQuery('');
+  }, [activeTab]);
 
-  // Extract unique categories
-  const categoriesList = Array.from(new Set(inventory.map(p => p.category).filter(Boolean)));
+  const handleOpenAdd = () => {
+    setProdName('');
+    setProdSku('');
+    setProdCategory('');
+    setProdWeight('');
+    setDimSku('');
+    setDimLength('');
+    setDimWidth('');
+    setDimHeight('');
+    setRuleName('');
+    setRuleDescription('');
+    setRuleZone('');
+    setClassCode('');
+    setClassName('');
+    setShowAddModal(true);
+  };
 
-  // Calculate KPIs
-  const totalProducts = inventory.length;
-  const categoriesCount = categoriesList.length;
-  const totalStockCount = inventory.reduce((sum, item) => sum + (item.quantity || 0), 0);
-  const lowStockCount = inventory.filter(item => (item.quantity || 0) <= (item.reorderLevel || 0) && (item.quantity || 0) > 0).length;
-  const outOfStockCount = inventory.filter(item => (item.quantity || 0) === 0).length;
+  const handleOpenEdit = (item) => {
+    setSelectedItem(item);
+    if (activeTab === 'catalog') {
+      setProdName(item.name);
+      setProdSku(item.sku);
+      setProdCategory(item.category);
+      setProdWeight(item.weight.replace(' kg', ''));
+    } else if (activeTab === 'dimensions') {
+      setDimSku(item.sku);
+      setDimLength(item.length);
+      setDimWidth(item.width);
+      setDimHeight(item.height);
+      setDimUnit(item.unit || 'cm');
+    } else if (activeTab === 'rules') {
+      setRuleName(item.name);
+      setRuleDescription(item.description);
+      setRuleZone(item.zone);
+      setRulePriority(item.priority || 'Medium');
+    } else if (activeTab === 'classifications') {
+      setClassCode(item.code);
+      setClassName(item.name);
+      setClassDangerLevel(item.dangerLevel || 'Low');
+    }
+    setShowEditModal(true);
+  };
 
-  // Filter products
-  const filteredProducts = inventory.filter(p => {
-    const matchesSearch = 
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      p.sku.toLowerCase().includes(searchQuery.toLowerCase());
-      
-    const matchesCategory = categoryFilter === 'ALL' || p.category === categoryFilter;
-    
-    return matchesSearch && matchesCategory;
-  });
+  const handleOpenDelete = (item) => {
+    setSelectedItem(item);
+    setShowDeleteModal(true);
+  };
 
-  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
-  const paginatedProducts = filteredProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  // Submit Add Actions
+  const handleAddSubmit = async (e) => {
+    if (e) e.preventDefault();
+    try {
+      if (activeTab === 'catalog') {
+        await createProductApi({ sku: prodSku, product_name: prodName, category: prodCategory, weight: prodWeight });
+      } else if (activeTab === 'dimensions') {
+        await createProductDimensionApi({ sku: dimSku, length: dimLength, width: dimWidth, height: dimHeight, unit: dimUnit });
+      } else if (activeTab === 'rules') {
+        await createStorageRuleApi({ name: ruleName, description: ruleDescription, zone: ruleZone, priority: rulePriority });
+      } else if (activeTab === 'classifications') {
+        await createProductClassificationApi({ code: classCode, name: className, danger_level: classDangerLevel });
+      }
+    } catch (err) {
+      console.warn("[ProductsPage] Add API call failed, falling back locally:", err);
+    }
+    loadData();
+    setShowAddModal(false);
+  };
+
+  // Submit Edit Actions
+  const handleEditSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!selectedItem) return;
+    try {
+      const id = selectedItem.id;
+      if (activeTab === 'catalog') {
+        await updateProductApi(id, { sku: prodSku, product_name: prodName, category: prodCategory, weight: prodWeight });
+      } else if (activeTab === 'dimensions') {
+        await updateProductDimensionApi(id, { sku: dimSku, length: dimLength, width: dimWidth, height: dimHeight, unit: dimUnit });
+      } else if (activeTab === 'rules') {
+        await updateStorageRuleApi(id, { name: ruleName, description: ruleDescription, zone: ruleZone, priority: rulePriority });
+      } else if (activeTab === 'classifications') {
+        await updateProductClassificationApi(id, { code: classCode, name: className, danger_level: classDangerLevel });
+      }
+    } catch (err) {
+      console.warn("[ProductsPage] Edit API call failed, falling back locally:", err);
+    }
+    loadData();
+    setShowEditModal(false);
+  };
+
+  // Submit Delete Actions
+  const handleDeleteSubmit = async () => {
+    if (!selectedItem) return;
+    try {
+      const id = selectedItem.id;
+      if (activeTab === 'catalog') {
+        await deleteProductApi(id);
+      } else if (activeTab === 'dimensions') {
+        await deleteProductDimensionApi(id);
+      } else if (activeTab === 'rules') {
+        await deleteStorageRuleApi(id);
+      } else if (activeTab === 'classifications') {
+        await deleteProductClassificationApi(id);
+      }
+    } catch (err) {
+      console.warn("[ProductsPage] Delete API call failed, falling back locally:", err);
+    }
+    loadData();
+    setShowDeleteModal(false);
+  };
+
+  // Filter lists based on tab & query
+  const getFilteredList = () => {
+    const query = searchQuery.toLowerCase();
+    if (activeTab === 'catalog') {
+      return productsList.filter(p => p.name.toLowerCase().includes(query) || p.sku.toLowerCase().includes(query));
+    }
+    if (activeTab === 'dimensions') {
+      return dimensionsList.filter(d => d.sku.toLowerCase().includes(query));
+    }
+    if (activeTab === 'rules') {
+      return rulesList.filter(r => r.name.toLowerCase().includes(query) || r.zone.toLowerCase().includes(query));
+    }
+    if (activeTab === 'classifications') {
+      return classificationsList.filter(c => c.name.toLowerCase().includes(query) || c.code.toLowerCase().includes(query));
+    }
+    return [];
+  };
+
+  const filtered = getFilteredList();
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const pagedList = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="space-y-6">
-      {/* Header section with breadcrumb trail */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 mb-1">
+          <div className="flex items-center gap-2 text-xs font-bold text-gray-500 mb-1">
             <span>Receiving & Inventory Officer</span>
             <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-[#0071C1]">Products</span>
+            <span className="text-[#0071C1]">Product Master</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
             <Package className="w-7 h-7 text-[#0071C1]" />
-            Products Registry
+            Product Master Catalog
           </h1>
           <p className="text-gray-500 text-sm mt-1">
-            Browse and inspect unique SKUs, catalog specifications, cargo properties, and classification segments.
+            Configure product SKUs, dimensions bounds, active zoning storage rules, and cargo classifications.
           </p>
         </div>
-        <Button className="gap-2 font-semibold" onClick={() => alert('Add Product action pending backend integration.')}>
-          <Plus className="w-4 h-4" />
-          Add SKU
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={loadData} className="gap-1.5 font-bold">
+            <RefreshCw className="w-4 h-4" /> Refresh
+          </Button>
+          <Button onClick={handleOpenAdd} className="gap-1.5 font-bold">
+            <Plus className="w-4 h-4" /> Add Record
+          </Button>
+        </div>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard title="Total Products" value={totalProducts} icon={Package} subtitle="Unique registered SKUs" />
-        <StatCard title="Categories" value={categoriesCount} icon={Package} subtitle="Physical storage profiles" />
-        <StatCard title="Total Stock Units" value={totalStockCount} icon={Package} subtitle="Aggregated inventory items" />
-        <StatCard title="Low Stock Items" value={lowStockCount} icon={Package} subtitle="Below safety threshold" />
-        <StatCard title="Out of Stock" value={outOfStockCount} icon={Package} subtitle="Depleted capacity slots" />
-      </div>
-
-      {/* Filters Toolbar */}
-      <Card className="border border-gray-100 shadow-xs">
-        <CardContent className="p-4 flex flex-col md:flex-row gap-4 justify-between items-center">
-          <div className="relative flex-1 w-full">
-            <SearchFilterBar 
-              searchPlaceholder="Search products by SKU or title..." 
-              searchValue={searchQuery}
-              onSearchChange={setSearchQuery} 
-            />
-          </div>
-
-          <div className="flex items-center gap-2 w-full md:w-auto shrink-0 justify-end">
-            <Filter className="h-4 w-4 text-gray-400" />
-            <span className="text-xs font-bold text-gray-500">Filter Category:</span>
-            <select
-              className="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-xs font-semibold bg-white p-2"
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200">
+        <div className="flex gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/50">
+          {[
+            { id: 'catalog', label: 'Product List' },
+            { id: 'dimensions', label: 'Product Dimensions' },
+            { id: 'rules', label: 'Storage Rules' },
+            { id: 'classifications', label: 'Classifications' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`py-2 px-4 font-bold text-xs rounded-lg transition-all duration-200 ${
+                activeTab === tab.id
+                  ? 'bg-white text-[#0071C1] shadow-xs'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-slate-200/30'
+              }`}
             >
-              <option value="ALL">All Categories</option>
-              {categoriesList.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Search Toolbar */}
+      <Card className="border border-gray-150 shadow-xs">
+        <CardContent className="p-4">
+          <SearchFilterBar 
+            placeholder={`Search by keyword...`} 
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery} 
+          />
         </CardContent>
       </Card>
 
-      {/* Products Table */}
-      <Card className="border border-gray-100 shadow-sm overflow-hidden">
-        {/* Loading state */}
+      {/* Table Card */}
+      <Card className="border border-gray-150 shadow-xs overflow-hidden">
         {loading && (
           <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border-b border-blue-100 text-xs text-blue-700 font-semibold">
-            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-            Loading products from API...
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Load sync active...
           </div>
         )}
-
-        {/* Error / fallback state */}
-        {!loading && apiError && (
+        {apiError && !loading && (
           <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border-b border-amber-100 text-xs text-amber-800 font-semibold">
-            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-            {apiError}
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> {apiError}
           </div>
         )}
 
         <CardContent className="p-0">
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>SKU</TableHead>
-                <TableHead>Product Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Weight</TableHead>
-                <TableHead>Dimensions</TableHead>
-                <TableHead>Classification</TableHead>
-                <TableHead>Created Date</TableHead>
-                <TableHead className="p-3 text-right">Actions</TableHead>
-              </TableRow>
+            <TableHeader className="bg-slate-50">
+              {activeTab === 'catalog' && (
+                <TableRow>
+                  <TableHead>SKU</TableHead>
+                  <TableHead>Product Name</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Weight</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              )}
+              {activeTab === 'dimensions' && (
+                <TableRow>
+                  <TableHead>SKU</TableHead>
+                  <TableHead>Length</TableHead>
+                  <TableHead>Width</TableHead>
+                  <TableHead>Height</TableHead>
+                  <TableHead>Unit</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              )}
+              {activeTab === 'rules' && (
+                <TableRow>
+                  <TableHead>Rule Name</TableHead>
+                  <TableHead>Zone Constraint</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              )}
+              {activeTab === 'classifications' && (
+                <TableRow>
+                  <TableHead>Safety Code</TableHead>
+                  <TableHead>Hazard Classification</TableHead>
+                  <TableHead>Danger Level</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              )}
             </TableHeader>
             <TableBody>
-              {loading ? (
-                // Skeleton rows while loading
-                [1, 2, 3].map((n) => (
-                  <TableRow key={n}>
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((c) => (
-                      <TableCell key={c}>
-                        <div className="h-3 bg-gray-100 rounded animate-pulse w-3/4" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : paginatedProducts.length === 0 ? (
+              {pagedList.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12 text-gray-500 font-semibold text-xs">
-                    No products matching search parameters.
+                  <TableCell colSpan={6} className="text-center py-12 text-gray-400 font-bold">
+                    No registry records matched search query.
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedProducts.map((product) => {
-                  // Classify product based on category or stock status
-                  let classification = 'Standard Storage';
-                  if (product.category === 'Cold Storage' || product.category?.toLowerCase().includes('cold')) {
-                    classification = 'Temperature Controlled';
-                  } else if (product.category === 'Bulk Storage' || product.category?.toLowerCase().includes('bulk')) {
-                    classification = 'Heavy Bulk Area';
-                  } else if (product.category === 'Electronics') {
-                    classification = 'High-Value Fragile';
-                  }
-
-                  return (
-                    <TableRow key={product.sku} className="hover:bg-slate-50/20 transition-colors">
-                      <TableCell className="font-mono text-xs font-bold text-[#0071C1]">{product.sku}</TableCell>
-                      <TableCell className="font-bold text-gray-900 text-xs">{product.name}</TableCell>
-                      <TableCell className="text-gray-500 text-xs font-semibold">{product.category || 'Unassigned'}</TableCell>
-                      <TableCell className="font-mono text-xs text-gray-700">{product.weight || 'N/A'}</TableCell>
-                      <TableCell className="font-mono text-xs text-gray-700">{product.dimensions || 'N/A'}</TableCell>
-                      <TableCell>
-                        <Badge variant={
-                          classification.startsWith('High') ? 'error' : 
-                          classification.startsWith('Temp') ? 'warning' : 'primary'
-                        } className="text-[10px]">
-                          {classification}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-gray-400 font-mono text-[10px]">2026-06-01</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1.5">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-[11px] h-7 px-2 font-semibold"
-                            onClick={() => navigate(`/inventory/lookup`, { state: { sku: product.sku } })}
-                          >
-                            <Eye className="w-3.5 h-3.5 mr-1 text-slate-500" />
-                            Passport
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
+                pagedList.map((item, idx) => (
+                  <TableRow key={item.id || item.sku || idx} className="hover:bg-slate-50/40">
+                    {activeTab === 'catalog' && (
+                      <>
+                        <TableCell className="font-mono font-bold text-[#0071C1]">{item.sku}</TableCell>
+                        <TableCell className="font-bold text-gray-900">{item.name}</TableCell>
+                        <TableCell className="text-gray-500 font-semibold">{item.category}</TableCell>
+                        <TableCell className="font-mono text-gray-600">{item.weight}</TableCell>
+                        <TableCell className="font-bold text-slate-800">{item.quantity} units</TableCell>
+                      </>
+                    )}
+                    {activeTab === 'dimensions' && (
+                      <>
+                        <TableCell className="font-mono font-bold text-[#0071C1]">{item.sku}</TableCell>
+                        <TableCell className="font-mono">{item.length}</TableCell>
+                        <TableCell className="font-mono">{item.width}</TableCell>
+                        <TableCell className="font-mono">{item.height}</TableCell>
+                        <TableCell className="text-gray-500 uppercase">{item.unit}</TableCell>
+                      </>
+                    )}
+                    {activeTab === 'rules' && (
+                      <>
+                        <TableCell className="font-bold text-gray-900">{item.name}</TableCell>
+                        <TableCell className="font-mono text-blue-700 font-bold bg-blue-50 px-1.5 py-0.5 rounded">{item.zone}</TableCell>
+                        <TableCell>
+                          <Badge variant={item.priority === 'High' ? 'error' : 'warning'}>{item.priority}</Badge>
+                        </TableCell>
+                        <TableCell className="text-gray-500 max-w-xs truncate">{item.description}</TableCell>
+                      </>
+                    )}
+                    {activeTab === 'classifications' && (
+                      <>
+                        <TableCell className="font-mono font-bold text-red-700">{item.code}</TableCell>
+                        <TableCell className="font-bold text-gray-900">{item.name}</TableCell>
+                        <TableCell>
+                          <Badge variant={item.dangerLevel === 'High' ? 'error' : 'warning'}>{item.dangerLevel}</Badge>
+                        </TableCell>
+                      </>
+                    )}
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1.5">
+                        <Button variant="outline" size="sm" onClick={() => handleOpenEdit(item)} className="p-1 h-7">
+                          <Edit className="w-3.5 h-3.5 text-slate-500" />
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleOpenDelete(item)} className="p-1 h-7 border-red-100 hover:bg-red-50">
+                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
@@ -279,13 +471,160 @@ export default function ProductsPage() {
             <Pagination 
               currentPage={currentPage}
               totalPages={totalPages}
-              totalItems={filteredProducts.length}
+              totalItems={filtered.length}
               pageSize={pageSize}
               onPageChange={setCurrentPage}
             />
           </div>
         </CardContent>
       </Card>
+
+      {/* ADD MODAL */}
+      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title={`Create new ${activeTab}`}>
+        <form onSubmit={handleAddSubmit} className="space-y-4">
+          {activeTab === 'catalog' && (
+            <>
+              <Input label="SKU Code" value={prodSku} onChange={e => setProdSku(e.target.value)} placeholder="e.g. PRD-009" required />
+              <Input label="Product Name" value={prodName} onChange={e => setProdName(e.target.value)} placeholder="e.g. Lithium Ion Battery pack" required />
+              <Input label="Category" value={prodCategory} onChange={e => setProdCategory(e.target.value)} placeholder="e.g. Hazardous Materials" required />
+              <Input label="Weight (kg)" type="number" value={prodWeight} onChange={e => setProdWeight(e.target.value)} placeholder="e.g. 5.5" required />
+            </>
+          )}
+          {activeTab === 'dimensions' && (
+            <>
+              <Input label="SKU Code" value={dimSku} onChange={e => setDimSku(e.target.value)} placeholder="e.g. PRD-001" required />
+              <div className="grid grid-cols-3 gap-2">
+                <Input label="Length" type="number" value={dimLength} onChange={e => setDimLength(e.target.value)} required />
+                <Input label="Width" type="number" value={dimWidth} onChange={e => setDimWidth(e.target.value)} required />
+                <Input label="Height" type="number" value={dimHeight} onChange={e => setDimHeight(e.target.value)} required />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-gray-500 font-semibold">Unit</label>
+                <select value={dimUnit} onChange={e => setDimUnit(e.target.value)} className="border border-gray-250 p-2 text-xs rounded-lg bg-white outline-none">
+                  <option>cm</option>
+                  <option>mm</option>
+                  <option>inches</option>
+                </select>
+              </div>
+            </>
+          )}
+          {activeTab === 'rules' && (
+            <>
+              <Input label="Rule Name" value={ruleName} onChange={e => setRuleName(e.target.value)} placeholder="e.g. ESD protection area" required />
+              <Input label="Rule Description" value={ruleDescription} onChange={e => setRuleDescription(e.target.value)} placeholder="Explain constraint rationale..." required />
+              <Input label="Zone Constraint" value={ruleZone} onChange={e => setRuleZone(e.target.value)} placeholder="e.g. Zone B" required />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-gray-500 font-semibold">Priority</label>
+                <select value={rulePriority} onChange={e => setRulePriority(e.target.value)} className="border border-gray-250 p-2 text-xs rounded-lg bg-white outline-none">
+                  <option>High</option>
+                  <option>Medium</option>
+                  <option>Low</option>
+                </select>
+              </div>
+            </>
+          )}
+          {activeTab === 'classifications' && (
+            <>
+              <Input label="Classification Safety Code" value={classCode} onChange={e => setClassCode(e.target.value)} placeholder="e.g. ESD-02" required />
+              <Input label="Classification Name" value={className} onChange={e => setClassName(e.target.value)} placeholder="e.g. Electrostatic Protection Zone" required />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-gray-500 font-semibold">Danger Level</label>
+                <select value={classDangerLevel} onChange={e => setClassDangerLevel(e.target.value)} className="border border-gray-250 p-2 text-xs rounded-lg bg-white outline-none">
+                  <option>High</option>
+                  <option>Medium</option>
+                  <option>Low</option>
+                </select>
+              </div>
+            </>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setShowAddModal(false)}>Cancel</Button>
+            <Button type="submit">Save Record</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* EDIT MODAL */}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title={`Edit ${activeTab}`}>
+        <form onSubmit={handleEditSubmit} className="space-y-4">
+          {activeTab === 'catalog' && (
+            <>
+              <Input label="SKU Code" value={prodSku} onChange={e => setProdSku(e.target.value)} required />
+              <Input label="Product Name" value={prodName} onChange={e => setProdName(e.target.value)} required />
+              <Input label="Category" value={prodCategory} onChange={e => setProdCategory(e.target.value)} required />
+              <Input label="Weight (kg)" type="number" value={prodWeight} onChange={e => setProdWeight(e.target.value)} required />
+            </>
+          )}
+          {activeTab === 'dimensions' && (
+            <>
+              <Input label="SKU Code" value={dimSku} onChange={e => setDimSku(e.target.value)} required />
+              <div className="grid grid-cols-3 gap-2">
+                <Input label="Length" type="number" value={dimLength} onChange={e => setDimLength(e.target.value)} required />
+                <Input label="Width" type="number" value={dimWidth} onChange={e => setDimWidth(e.target.value)} required />
+                <Input label="Height" type="number" value={dimHeight} onChange={e => setDimHeight(e.target.value)} required />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-gray-500 font-semibold">Unit</label>
+                <select value={dimUnit} onChange={e => setDimUnit(e.target.value)} className="border border-gray-250 p-2 text-xs rounded-lg bg-white outline-none">
+                  <option>cm</option>
+                  <option>mm</option>
+                  <option>inches</option>
+                </select>
+              </div>
+            </>
+          )}
+          {activeTab === 'rules' && (
+            <>
+              <Input label="Rule Name" value={ruleName} onChange={e => setRuleName(e.target.value)} required />
+              <Input label="Rule Description" value={ruleDescription} onChange={e => setRuleDescription(e.target.value)} required />
+              <Input label="Zone Constraint" value={ruleZone} onChange={e => setRuleZone(e.target.value)} required />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-gray-500 font-semibold">Priority</label>
+                <select value={rulePriority} onChange={e => setRulePriority(e.target.value)} className="border border-gray-250 p-2 text-xs rounded-lg bg-white outline-none">
+                  <option>High</option>
+                  <option>Medium</option>
+                  <option>Low</option>
+                </select>
+              </div>
+            </>
+          )}
+          {activeTab === 'classifications' && (
+            <>
+              <Input label="Classification Safety Code" value={classCode} onChange={e => setClassCode(e.target.value)} required />
+              <Input label="Classification Name" value={className} onChange={e => setClassName(e.target.value)} required />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-gray-500 font-semibold">Danger Level</label>
+                <select value={classDangerLevel} onChange={e => setClassDangerLevel(e.target.value)} className="border border-gray-250 p-2 text-xs rounded-lg bg-white outline-none">
+                  <option>High</option>
+                  <option>Medium</option>
+                  <option>Low</option>
+                </select>
+              </div>
+            </>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
+            <Button type="submit">Update Record</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* DELETE MODAL */}
+      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Delete Record Configuration">
+        <div className="space-y-4 text-xs font-semibold text-gray-600">
+          <p className="leading-relaxed">
+            Are you sure you want to permanently delete this record? This action will remove the specification settings from the active WMS registry.
+          </p>
+          <div className="bg-red-50 border border-red-100 p-3 rounded-lg text-red-800 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-red-500" />
+            Warning: This action cannot be undone.
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
+            <Button type="button" onClick={handleDeleteSubmit} className="bg-red-600 hover:bg-red-700 text-white">Delete Record</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
