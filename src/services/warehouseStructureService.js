@@ -274,4 +274,117 @@ export const deleteWarehousePath = async (id) => {
   });
 };
 
+// ---------------------------------------------------------------------------
+// MUTATIONS
+// ---------------------------------------------------------------------------
+
+export const createWarehouseApi = async (payload) => {
+  return await apiClient('/api/warehouses/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const updateWarehouseApi = async (id, payload) => {
+  return await apiClient(`/api/warehouses/${id}/`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const patchWarehouseApi = async (id, payload) => {
+  return await apiClient(`/api/warehouses/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const deleteWarehouseApi = async (id) => {
+  return await apiClient(`/api/warehouses/${id}/`, {
+    method: 'DELETE',
+  });
+};
+
+export const createRackApi = async (payload) => {
+  return await apiClient('/api/warehouses/racks/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const updateRackApi = async (id, payload) => {
+  return await apiClient(`/api/warehouses/racks/${id}/`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const patchRackApi = async (id, payload) => {
+  return await apiClient(`/api/warehouses/racks/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const deleteRackApi = async (id) => {
+  return await apiClient(`/api/warehouses/racks/${id}/`, {
+    method: 'DELETE',
+  });
+};
+
+export const createZoneApi = async (payload) => {
+  return await apiClient('/api/zones/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const updateZoneApi = async (id, payload) => {
+  return await apiClient(`/api/zones/${id}/`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const patchZoneApi = async (id, payload) => {
+  return await apiClient(`/api/zones/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const deleteZoneApi = async (id) => {
+  return await apiClient(`/api/zones/${id}/`, {
+    method: 'DELETE',
+  });
+};
+
+export const createBinApi = async (payload) => {
+  return await apiClient('/api/bins/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const updateBinApi = async (id, payload) => {
+  return await apiClient(`/api/bins/${id}/`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const patchBinApi = async (id, payload) => {
+  return await apiClient(`/api/bins/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const deleteBinApi = async (id) => {
+  return await apiClient(`/api/bins/${id}/`, {
+    method: 'DELETE',
+  });
+};
+
+
 

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
 import { AlertBanner, Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Map, Layers, Navigation, Box, HelpCircle, ShieldAlert, Sparkles, LayoutGrid, MonitorPlay } from 'lucide-react';
 import WarehouseScene from '../three/WarehouseScene';
+import { getTwinSummaryApi, getTwinOccupancyApi } from '../services/digitalTwinService';
 
 export default function DigitalTwin() {
   const { zones, bins, inventory } = useWarehouse();
@@ -16,6 +17,34 @@ export default function DigitalTwin() {
   });
   const [selectedBin, setSelectedBin] = useState(null);
   const [viewMode, setViewMode] = useState('3d'); // '3d' or '2d'
+  const [telemetry, setTelemetry] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const fetchTwinData = async () => {
+      setLoading(true);
+      try {
+        console.warn("[DigitalTwin] Fetching live twin summary from GET /api/twin/summary");
+        const summary = await getTwinSummaryApi();
+        if (active && summary) {
+          setTelemetry(summary);
+        }
+        
+        console.warn("[DigitalTwin] Fetching live twin occupancy from GET /api/twin/occupancy");
+        const occupancy = await getTwinOccupancyApi();
+        if (active && occupancy) {
+          console.log("[DigitalTwin] Twin occupancy loaded:", occupancy);
+        }
+      } catch (err) {
+        console.warn("[DigitalTwin] Failed to fetch digital twin telemetry, using fallbacks:", err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    fetchTwinData();
+    return () => { active = false; };
+  }, []);
 
   const toggleLayer = (layer) => {
     setActiveLayers(prev => ({ ...prev, [layer]: !prev[layer] }));
@@ -40,6 +69,7 @@ export default function DigitalTwin() {
 
   return (
     <div className="space-y-6">
+
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
@@ -48,6 +78,41 @@ export default function DigitalTwin() {
         </h1>
         <p className="text-gray-500 text-sm mt-1">Simulate warehouse layout grids, track capacity heatmaps, and coordinate visual picking path routes.</p>
       </div>
+
+      {/* Telemetry Summary Banner if live */}
+      {telemetry && (
+        <Card className="border border-blue-100 bg-blue-50/20 shadow-xs">
+          <CardContent className="p-4 flex flex-wrap gap-6 justify-between items-center text-xs">
+            <div className="flex items-center gap-2.5">
+              <MonitorPlay className="w-5 h-5 text-blue-600 animate-pulse" />
+              <div>
+                <div className="font-bold text-slate-800">Live Twin Telemetry Active</div>
+                <div className="text-slate-500 mt-0.5">Physical layout constraints synced from Django layout manager</div>
+              </div>
+            </div>
+            <div className="flex gap-6">
+              {telemetry.utilizationRate !== undefined && (
+                <div>
+                  <span className="text-slate-400 font-bold block uppercase text-[10px]">Utilization</span>
+                  <span className="font-bold text-slate-800 text-sm">{telemetry.utilizationRate}%</span>
+                </div>
+              )}
+              {telemetry.occupiedBins !== undefined && (
+                <div>
+                  <span className="text-slate-400 font-bold block uppercase text-[10px]">Occupied Bins</span>
+                  <span className="font-bold text-slate-800 text-sm">{telemetry.occupiedBins} / {telemetry.totalBins}</span>
+                </div>
+              )}
+              {telemetry.activePaths !== undefined && (
+                <div>
+                  <span className="text-slate-400 font-bold block uppercase text-[10px]">AGV Paths</span>
+                  <span className="font-bold text-slate-800 text-sm">{telemetry.activePaths} active</span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         

@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Pagination, SearchFilterBar, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Navigation, Clock, Activity, ShieldAlert, ArrowRight, UserCheck, AlertTriangle } from 'lucide-react';
+import { getRoutesApi, getRouteCongestionApi } from '../services/routeService';
 
 export default function RoutesOptimization() {
-  const { routes } = useWarehouse();
+  const { routes: contextRoutes } = useWarehouse();
+  const [activeRoutes, setActiveRoutes] = useState(contextRoutes);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRoute, setSelectedRoute] = useState(null);
   
@@ -12,25 +15,65 @@ export default function RoutesOptimization() {
   const [currentPage, setCurrentPage] = useState(1);
 
   // Congestion metrics
-  const congestions = [
+  const [liveCongestions, setLiveCongestions] = useState([
     { aisle: 'Aisle A2', level: 'High', load: '85%', color: 'red' },
-    { aisle: 'Bisle B1', level: 'Medium', load: '55%', color: 'amber' },
-    { aisle: 'Cisle C4', level: 'Low', load: '20%', color: 'green' }
-  ];
+    { aisle: 'Aisle B1', level: 'Medium', load: '55%', color: 'amber' },
+    { aisle: 'Aisle C4', level: 'Low', load: '20%', color: 'green' }
+  ]);
+
+  useEffect(() => {
+    let active = true;
+    const fetchRoutesData = async () => {
+      setLoading(true);
+      try {
+        console.warn("[Routes] Fetching live routes from GET /api/routes/");
+        const routeData = await getRoutesApi();
+        if (active && routeData && routeData.results) {
+          setActiveRoutes(routeData.results.length > 0 ? routeData.results : contextRoutes);
+        }
+        
+        console.warn("[Routes] Fetching live congestion from GET /api/routes/congestion/");
+        const congestionData = await getRouteCongestionApi();
+        if (active && congestionData) {
+          const rawList = Array.isArray(congestionData) ? congestionData :
+                          (congestionData.results && Array.isArray(congestionData.results)) ? congestionData.results : null;
+          if (rawList && rawList.length > 0) {
+            const mapped = rawList.map(c => ({
+              aisle: c.aisle || c.lane || 'Aisle',
+              level: c.level || c.status || 'Low',
+              load: c.load || (c.percentage ? `${c.percentage}%` : '10%'),
+              color: (c.level || c.color || '').toLowerCase() === 'high' || (c.load && parseInt(c.load) > 70) ? 'red' :
+                     (c.level || c.color || '').toLowerCase() === 'medium' || (c.load && parseInt(c.load) > 40) ? 'amber' : 'green'
+            }));
+            setLiveCongestions(mapped);
+          }
+        }
+      } catch (err) {
+        console.warn("[Routes] Failed to fetch live routes/congestion, using fallback:", err);
+        if (active) {
+          setActiveRoutes(contextRoutes);
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    fetchRoutesData();
+    return () => { active = false; };
+  }, [contextRoutes]);
 
   // Reset pagination to page 1 when search changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
 
-  const filteredRoutes = routes.filter(r => 
-    r.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    r.operator.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredRoutes = activeRoutes.filter(r => 
+    (r.id || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (r.operator || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Pagination parameters
   const itemsPerPage = 8;
-  const totalPages = Math.ceil(filteredRoutes.length / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(filteredRoutes.length / itemsPerPage));
   const paginatedRoutes = filteredRoutes.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
@@ -38,6 +81,7 @@ export default function RoutesOptimization() {
 
   return (
     <div className="space-y-6">
+
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
@@ -49,10 +93,10 @@ export default function RoutesOptimization() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <DashboardStatCard title="Active Routes" value={routes.filter(r => r.status === 'Active').length} icon={Navigation} />
-        <DashboardStatCard title="Completed Today" value={routes.filter(r => r.status === 'Completed').length} icon={UserCheck} />
+        <DashboardStatCard title="Active Routes" value={activeRoutes.filter(r => (r.status || '').toLowerCase() === 'active').length} icon={Navigation} />
+        <DashboardStatCard title="Completed Today" value={activeRoutes.filter(r => (r.status || '').toLowerCase() === 'completed').length} icon={UserCheck} />
         <DashboardStatCard title="Avg Travel Time" value="5.6 mins" icon={Clock} />
-        <DashboardStatCard title="Congested Lanes" value="1 Lane" icon={ShieldAlert} />
+        <DashboardStatCard title="Congested Lanes" value={`${liveCongestions.filter(c => c.level === 'High').length} Lanes`} icon={ShieldAlert} />
       </div>
 
       {/* Aisle congestion widget */}
@@ -98,7 +142,7 @@ export default function RoutesOptimization() {
                       <TableCell className="text-gray-500 text-xs font-semibold">{r.time}</TableCell>
                       <TableCell className="text-gray-600 text-sm font-semibold">{r.operator}</TableCell>
                       <TableCell>
-                        <StatusBadge status={r.status === 'Active' ? 'warning' : 'success'} />
+                        <StatusBadge status={(r.status || '').toLowerCase() === 'active' ? 'warning' : 'success'} />
                       </TableCell>
                       <TableCell className="text-right">
                         <Button variant="outline" size="sm" className="text-xs text-gray-600" onClick={() => setSelectedRoute(r)}>
@@ -130,7 +174,8 @@ export default function RoutesOptimization() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-4">
-              {congestions.map((c) => (
+              {liveCongestions.map((c) => (
+
                 <div key={c.aisle} className="space-y-1.5 text-xs">
                   <div className="flex justify-between font-semibold">
                     <span className="text-gray-900">{c.aisle}</span>

@@ -28,3 +28,19 @@ export const patchInboundShipment = async (id, payload) => {
   });
   return data;
 };
+
+export const updateInboundShipmentApi = async (id, payload) => {
+  const data = await apiClient(`/api/inbound/${id}/`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+  return data;
+};
+
+export const deleteInboundShipmentApi = async (id) => {
+  const data = await apiClient(`/api/inbound/${id}/`, {
+    method: 'DELETE',
+  });
+  return data;
+};
+

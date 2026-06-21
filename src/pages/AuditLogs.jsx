@@ -2,21 +2,44 @@ import React, { useState } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, SearchFilterBar, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from 'shared-ui';
 import { ShieldCheck, Download, Clock } from 'lucide-react';
+import { getAuditLogsApi } from '../services/auditLogService';
 
 export default function AuditLogs() {
-  const { auditLogs } = useWarehouse();
+  const { auditLogs: fallbackLogs } = useWarehouse();
+  const [logs, setLogs] = useState(fallbackLogs);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterModule, setFilterModule] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
 
-  const filteredLogs = auditLogs.filter(log => {
+  React.useEffect(() => {
+    let active = true;
+    const fetchLogs = async () => {
+      setLoading(true);
+      try {
+        const response = await getAuditLogsApi();
+        if (active && response && response.results) {
+          setLogs(response.results.length > 0 ? response.results : fallbackLogs);
+        }
+      } catch (error) {
+        console.warn("[AuditLogs] Failed to fetch live audit logs, using fallback:", error);
+        if (active) setLogs(fallbackLogs);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    fetchLogs();
+    return () => { active = false; };
+  }, [fallbackLogs]);
+
+  const filteredLogs = logs.filter(log => {
     const matchesSearch = searchQuery === '' || 
-      log.user.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      log.details.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.action.toLowerCase().includes(searchQuery.toLowerCase());
+      (log.user || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (log.details || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (log.action || '').toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesModule = filterModule === 'All' || log.module.toLowerCase() === filterModule.toLowerCase();
+    const matchesModule = filterModule === 'All' || (log.module || '').toLowerCase() === filterModule.toLowerCase();
 
     return matchesSearch && matchesModule;
   });
@@ -29,7 +52,8 @@ export default function AuditLogs() {
 
   const pagedLogs = filteredLogs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  const modules = ['All', ...new Set(auditLogs.map(l => l.module))];
+  const modules = ['All', ...new Set(logs.map(l => l.module).filter(Boolean))];
+
 
   return (
     <div className="space-y-6">

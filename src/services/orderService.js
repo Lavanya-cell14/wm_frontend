@@ -28,3 +28,38 @@ export const dispatchOrderApi = async (orderId, patchData = { status: 'COMPLETED
   });
   return data;
 };
+
+export const deleteOrderApi = async (id) => {
+  return await apiClient(`/api/orders/${id}/`, {
+    method: 'DELETE',
+  });
+};
+
+export const generatePicklistApi = async (payload) => {
+  return await apiClient('/api/orders/generate-picklist/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const optimizeOrderRouteApi = async (payload) => {
+  return await apiClient('/api/orders/optimize-route/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const packOrderApi = async (payload) => {
+  return await apiClient('/api/orders/pack/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const dispatchOrderPostApi = async (payload) => {
+  return await apiClient('/api/orders/dispatch/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+

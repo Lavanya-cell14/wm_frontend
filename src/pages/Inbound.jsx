@@ -2,10 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
 import { AlertBanner, Badge, Button, Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Input, Modal, Pagination, SearchFilterBar, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { ArrowDownToLine, Clock, UserCheck, User, Loader2 } from 'lucide-react';
+import { getInboundShipments, createInboundShipmentApi, patchInboundShipment } from '../services/inboundService';
 
 export default function Inbound() {
-  const { inboundTasks, createInboundShipment, assignInboundStaff, inventory, generateNextId, isLoading, error } = useWarehouse();
+  const { inboundTasks: contextTasks, createInboundShipment, assignInboundStaff, inventory, generateNextId } = useWarehouse();
   
+  const [tasks, setTasks] = useState(contextTasks);
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState(null);
+  const [fallbackUsed, setFallbackUsed] = useState(false);
   const [activeTab, setActiveTab] = useState('Pending');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -27,6 +32,32 @@ export default function Inbound() {
   // Form states - Assign
   const [staffName, setStaffName] = useState('Warehouse Staff');
 
+  const loadShipments = async () => {
+    setLoading(true);
+    setApiError(null);
+    try {
+      console.warn("[Inbound] Fetching live expected shipments from GET /api/inbound/");
+      const response = await getInboundShipments();
+      if (response && response.results) {
+        setTasks(response.results.length > 0 ? response.results : contextTasks);
+        setFallbackUsed(response.results.length === 0);
+      } else {
+        setTasks(contextTasks);
+        setFallbackUsed(true);
+      }
+    } catch (err) {
+      console.warn("[Inbound] API error fetching shipments, using local stubs:", err);
+      setTasks(contextTasks);
+      setFallbackUsed(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadShipments();
+  }, [contextTasks]);
+
   const handleOpenAddModal = () => {
     const nextSku = generateNextId('PRD-', inventory.map(item => item.sku));
     setSkuCode(nextSku);
@@ -37,16 +68,26 @@ export default function Inbound() {
     setShowAddModal(true);
   };
 
-  const handleCreateShipment = (e) => {
+  const handleCreateShipment = async (e) => {
     if (e) e.preventDefault();
     if (!supplierName || !productName || !quantity) return;
-    createInboundShipment({
+    
+    const payload = {
       supplier: supplierName,
       product: productName,
       sku: skuCode,
       quantity: parseInt(quantity),
       priority
-    });
+    };
+
+    try {
+      console.warn("[Inbound] Creating inbound shipment via API POST /api/inbound/");
+      await createInboundShipmentApi(payload);
+    } catch (err) {
+      console.warn("[Inbound] API create failed, applying context fallback:", err);
+    }
+
+    createInboundShipment(payload);
     setSupplierName('');
     setProductName('');
     setSkuCode('');
@@ -59,9 +100,20 @@ export default function Inbound() {
     setShowAssignModal(true);
   };
 
-  const handleAssignStaff = (e) => {
+  const handleAssignStaff = async (e) => {
     if (e) e.preventDefault();
     if (!selectedTask || !staffName) return;
+
+    try {
+      console.warn(`[Inbound] Assigning staff via API PATCH /api/inbound/${selectedTask.id}/`);
+      await patchInboundShipment(selectedTask.id, {
+        assigned_staff: staffName,
+        assignedStaff: staffName
+      });
+    } catch (err) {
+      console.warn("[Inbound] API staff assignment failed, applying context fallback:", err);
+    }
+
     assignInboundStaff(selectedTask.id, staffName);
     setShowAssignModal(false);
   };
@@ -71,7 +123,7 @@ export default function Inbound() {
     setCurrentPage(1);
   }, [searchQuery, activeTab]);
 
-  if (isLoading) {
+  if (loading && tasks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
         <Loader2 className="w-10 h-10 text-[#0071C1] animate-spin" />
@@ -80,19 +132,26 @@ export default function Inbound() {
     );
   }
 
-  if (error) {
+  if (apiError && tasks.length === 0) {
     return (
       <div className="p-6">
-        <AlertBanner type="error" message={error} />
+        <AlertBanner type="error" message={apiError} />
       </div>
     );
   }
 
-  const filteredShipments = inboundTasks.filter(ship => {
-    const matchesTab = ship.status === activeTab;
-    const matchesSearch = ship.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          ship.supplier.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          ship.product.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredShipments = tasks.filter(ship => {
+    const s = (ship.status || '').toLowerCase();
+    const targetStatus = activeTab.toLowerCase();
+    
+    let matchesTab = s === targetStatus;
+    if (targetStatus === 'in progress') {
+      matchesTab = s === 'in progress' || s === 'in_progress';
+    }
+
+    const matchesSearch = (ship.id || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (ship.supplier || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (ship.product || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesTab && matchesSearch;
   });
 
@@ -103,6 +162,7 @@ export default function Inbound() {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+
 
   return (
     <div className="space-y-6 select-none">
@@ -123,16 +183,22 @@ export default function Inbound() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
-          <DashboardStatCard title="Total Shipments Logged" value={inboundTasks.length} icon={ArrowDownToLine} />
+          <DashboardStatCard title="Total Shipments Logged" value={tasks.length} icon={ArrowDownToLine} />
         </div>
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
-          <DashboardStatCard title="Pending Shipments" value={inboundTasks.filter(t => t.status === 'Pending').length} icon={Clock} />
+          <DashboardStatCard title="Pending Shipments" value={tasks.filter(t => (t.status || '').toLowerCase() === 'pending').length} icon={Clock} />
         </div>
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
-          <DashboardStatCard title="Receiving Verification" value={inboundTasks.filter(t => t.status === 'In Progress').length} icon={UserCheck} />
+          <DashboardStatCard title="Receiving Verification" value={tasks.filter(t => {
+            const s = (t.status || '').toLowerCase();
+            return s === 'in progress' || s === 'in_progress';
+          }).length} icon={UserCheck} />
         </div>
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
-          <DashboardStatCard title="Fully Received" value={inboundTasks.filter(t => t.status === 'Completed').length} icon={StatusBadge} />
+          <DashboardStatCard title="Fully Received" value={tasks.filter(t => {
+            const s = (t.status || '').toLowerCase();
+            return s === 'completed' || s === 'received';
+          }).length} icon={StatusBadge} />
         </div>
       </div>
 
@@ -140,7 +206,11 @@ export default function Inbound() {
       <div className="flex border-b border-gray-150 pb-4">
         <div className="flex bg-slate-100/80 p-1 rounded-xl gap-1 w-full sm:w-auto border border-slate-200/50">
           {['Pending', 'In Progress', 'Completed'].map((tab) => {
-            const count = inboundTasks.filter(t => t.status === tab).length;
+            const count = tasks.filter(t => {
+              const s = (t.status || '').toLowerCase();
+              if (tab === 'In Progress') return s === 'in progress' || s === 'in_progress';
+              return s === tab.toLowerCase();
+            }).length;
             const isActive = activeTab === tab;
             return (
               <button
@@ -164,6 +234,7 @@ export default function Inbound() {
           })}
         </div>
       </div>
+
 
       {/* Filters */}
       <Card className="border border-gray-150 shadow-xs">
