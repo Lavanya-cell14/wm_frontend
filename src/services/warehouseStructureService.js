@@ -386,5 +386,139 @@ export const deleteBinApi = async (id) => {
   });
 };
 
+// ---------------------------------------------------------------------------
+// SPATIAL ENTITIES CRUD
+// ---------------------------------------------------------------------------
+
+export const getSpatialEntitiesApi = async () => {
+  const data = await apiClient('/api/warehouses/spatial-entities/');
+  return normalizeResponse(data);
+};
+
+export const createSpatialEntityApi = async (payload) => {
+  return await apiClient('/api/warehouses/spatial-entities/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const getSpatialEntityByIdApi = async (id) => {
+  return await apiClient(`/api/warehouses/spatial-entities/${id}/`);
+};
+
+export const updateSpatialEntityApi = async (id, payload) => {
+  return await apiClient(`/api/warehouses/spatial-entities/${id}/`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const patchSpatialEntityApi = async (id, payload) => {
+  return await apiClient(`/api/warehouses/spatial-entities/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const deleteSpatialEntityApi = async (id) => {
+  return await apiClient(`/api/warehouses/spatial-entities/${id}/`, {
+    method: 'DELETE',
+  });
+};
+
+// ---------------------------------------------------------------------------
+// AISLE MUTATIONS
+// ---------------------------------------------------------------------------
+
+export const createAisleApi = async (payload) => {
+  return await apiClient('/api/zones/aisles/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const updateAisleApi = async (id, payload) => {
+  return await apiClient(`/api/zones/aisles/${id}/`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const patchAisleApi = async (id, payload) => {
+  return await apiClient(`/api/zones/aisles/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const deleteAisleApi = async (id) => {
+  return await apiClient(`/api/zones/aisles/${id}/`, {
+    method: 'DELETE',
+  });
+};
+
+// ---------------------------------------------------------------------------
+// ZONE GROUPS MUTATIONS
+// ---------------------------------------------------------------------------
+
+export const createZoneGroupApi = async (payload) => {
+  return await apiClient('/api/zones/zone-groups/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const updateZoneGroupApi = async (id, payload) => {
+  return await apiClient(`/api/zones/zone-groups/${id}/`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const patchZoneGroupApi = async (id, payload) => {
+  return await apiClient(`/api/zones/zone-groups/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const deleteZoneGroupApi = async (id) => {
+  return await apiClient(`/api/zones/zone-groups/${id}/`, {
+    method: 'DELETE',
+  });
+};
+
+// ---------------------------------------------------------------------------
+// ZONE BOUNDARIES MUTATIONS
+// ---------------------------------------------------------------------------
+
+export const createZoneBoundaryApi = async (payload) => {
+  return await apiClient('/api/zones/boundaries/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const updateZoneBoundaryApi = async (id, payload) => {
+  return await apiClient(`/api/zones/boundaries/${id}/`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const patchZoneBoundaryApi = async (id, payload) => {
+  return await apiClient(`/api/zones/boundaries/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+};
+
+export const deleteZoneBoundaryApi = async (id) => {
+  return await apiClient(`/api/zones/boundaries/${id}/`, {
+    method: 'DELETE',
+  });
+};
+
+
 
 

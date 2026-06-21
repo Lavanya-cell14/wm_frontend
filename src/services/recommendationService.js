@@ -113,3 +113,18 @@ export const getAiRecommendationsApi = async () => {
 export const getAiSlottingScoreApi = async () => {
   return await apiClient('/api/ai/slotting-score/');
 };
+
+export const queryAiCopilotApi = async (queryText) => {
+  return await apiClient('/api/ai/query/', {
+    method: 'POST',
+    body: JSON.stringify({ query: queryText }),
+  });
+};
+
+export const recommend3dPlacementApi = async (payload) => {
+  return await apiClient('/api/recommendations/3d-placement/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+

@@ -57,3 +57,8 @@ export const deleteLayoutApi = async (layoutId) => {
     method: 'DELETE',
   });
 };
+
+export const getLayoutGraphApi = async () => {
+  return await apiClient('/api/layout/graph');
+};
+

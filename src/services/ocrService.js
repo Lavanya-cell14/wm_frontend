@@ -93,3 +93,20 @@ export const verifyOcrDocument = async (docId, updatedItems) => {
 export const rejectOcrDocument = async (docId, reason) => {
   return { success: true };
 };
+
+export const uploadOcrDocumentDjangoApi = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${API_BASE_URL}/api/ocr/upload/`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Django OCR upload failed with status: ${response.status}`);
+  }
+
+  return await response.json();
+};
+
