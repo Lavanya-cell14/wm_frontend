@@ -1,13 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Modal, Pagination } from 'shared-ui';
 import { Map, Plus, Edit2, Trash2 } from 'lucide-react';
+import { getWarehousePaths, createWarehousePath, updateWarehousePath, deleteWarehousePath, getNavigationNodes, getWarehouses } from '../../services/warehouseStructureService';
+
+const fallbackPaths = [
+  { id: 'PATH-001', name: 'Receiving to Zone A Corridor', sequence: 'NODE-001 → NODE-002 → NODE-003', distance: 15.3, restrictions: 'All Personnel', status: 'Operational' },
+  { id: 'PATH-002', name: 'AGV Expressway Line 1', sequence: 'NODE-001 → NODE-002 → NODE-004 → NODE-005', distance: 34.5, restrictions: 'AGV Only', status: 'Closed' },
+  { id: 'PATH-003', name: 'Aisle 1 Core Transit Path', sequence: 'NODE-002 → NODE-003 → NODE-005', distance: 33.2, restrictions: 'Operator Only', status: 'Operational' }
+];
 
 export default function WalkingPaths() {
-  const [paths, setPaths] = useState([
-    { id: 'PATH-001', name: 'Receiving to Zone A Corridor', sequence: 'NODE-001 → NODE-002 → NODE-003', distance: 15.3, restrictions: 'All Personnel', status: 'Operational' },
-    { id: 'PATH-002', name: 'AGV Expressway Line 1', sequence: 'NODE-001 → NODE-002 → NODE-004 → NODE-005', distance: 34.5, restrictions: 'AGV Only', status: 'Closed' },
-    { id: 'PATH-003', name: 'Aisle 1 Core Transit Path', sequence: 'NODE-002 → NODE-003 → NODE-005', distance: 33.2, restrictions: 'Operator Only', status: 'Operational' }
-  ]);
+  const [paths, setPaths] = useState([]);
+  const [nodesList, setNodesList] = useState([]);
+  const [warehousesList, setWarehousesList] = useState([]);
+  const [isFallbackActive, setIsFallbackActive] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState('');
@@ -30,7 +37,62 @@ export default function WalkingPaths() {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
+  const normalizeApiPath = (p) => {
+    const startX = Number(p.start_x) || 0;
+    const startY = Number(p.start_y) || 0;
+    const startZ = Number(p.start_z) || 0;
+    const endX = Number(p.end_x) || 0;
+    const endY = Number(p.end_y) || 0;
+    const endZ = Number(p.end_z) || 0;
+    const computedDistance = Math.sqrt((endX - startX) ** 2 + (endY - startY) ** 2 + (endZ - startZ) ** 2);
+    
+    return {
+      id: p.id,
+      name: p.path_name,
+      sequence: `(${startX.toFixed(1)}, ${startY.toFixed(1)}, ${startZ.toFixed(1)}) → (${endX.toFixed(1)}, ${endY.toFixed(1)}, ${endZ.toFixed(1)})`,
+      distance: Number(computedDistance.toFixed(1)),
+      restrictions: 'N/A',
+      status: 'N/A',
+      raw: p
+    };
+  };
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        setLoading(true);
+        console.warn("[WalkingPaths] Calling API: GET /api/warehouses/paths/");
+        const [pathsRes, nodesRes, warehousesRes] = await Promise.all([
+          getWarehousePaths(),
+          getNavigationNodes(),
+          getWarehouses()
+        ]);
+        if (active) {
+          const apiPaths = pathsRes.results.map(normalizeApiPath);
+          setPaths(apiPaths);
+          setNodesList(nodesRes.results);
+          setWarehousesList(warehousesRes.results);
+          setIsFallbackActive(false);
+          console.warn(`[WalkingPaths] API Success. URL: /api/warehouses/paths/, Status: 200, Count: ${apiPaths.length}, Fallback Used: false`);
+        }
+      } catch (err) {
+        if (active) {
+          const status = err.status || (err.code === 'NETWORK_ERROR' ? 0 : 'unknown');
+          console.warn(`[WalkingPaths] API Failure. URL: /api/warehouses/paths/, Status: ${status}, Count: 0, Fallback Used: true`);
+          setIsFallbackActive(true);
+          setPaths(fallbackPaths);
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    load();
+    return () => { active = false; };
+  }, []);
+
   const handleOpenAdd = () => {
+    if (isFallbackActive) return;
     setEditingPath(null);
     setName('');
     setSequence('NODE-001 → NODE-002');
@@ -41,6 +103,7 @@ export default function WalkingPaths() {
   };
 
   const handleOpenEdit = (path) => {
+    if (isFallbackActive) return;
     setEditingPath(path);
     setName(path.name);
     setSequence(path.sequence);
@@ -50,40 +113,94 @@ export default function WalkingPaths() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
+    if (isFallbackActive) return;
     if (window.confirm(`Are you sure you want to delete path ${id}?`)) {
-      setPaths(paths.filter(p => p.id !== id));
-      showToast(`Path ${id} deleted successfully.`);
+      try {
+        await deleteWarehousePath(id);
+        setPaths(paths.filter(p => p.id !== id));
+        showToast(`Path deleted successfully.`);
+      } catch (err) {
+        showToast(`Failed to delete path: ${err.message || 'unknown error'}`);
+      }
     }
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
-    if (!name || !sequence || !distance) return;
+    if (isFallbackActive) return;
+    if (!name || !sequence) return;
 
-    if (editingPath) {
-      setPaths(paths.map(p => p.id === editingPath.id ? {
-        ...p,
-        name,
-        sequence,
-        distance: Number(distance) || 0,
-        restrictions,
-        status
-      } : p));
-      showToast(`Path ${editingPath.id} updated successfully.`);
-    } else {
-      const newId = `PATH-${String(paths.length + 1).padStart(3, '0')}`;
-      setPaths([...paths, {
-        id: newId,
-        name,
-        sequence,
-        distance: Number(distance) || 0,
-        restrictions,
-        status
-      }]);
-      showToast(`Path ${newId} created successfully.`);
+    const warehouseId = warehousesList[0]?.id;
+    if (!warehouseId) {
+      showToast("Cannot save: No warehouse configuration found.");
+      return;
     }
-    setIsModalOpen(false);
+
+    let start_x = 0, start_y = 0, start_z = 0;
+    let end_x = 0, end_y = 0, end_z = 0;
+
+    const tokens = sequence.split(/→|->/);
+    const startToken = tokens[0]?.trim();
+    const endToken = tokens[tokens.length - 1]?.trim();
+
+    const startNode = nodesList.find(n => n.node_name === startToken || n.id === startToken);
+    const endNode = nodesList.find(n => n.node_name === endToken || n.id === endToken);
+
+    if (startNode) {
+      start_x = Number(startNode.x) || 0;
+      start_y = Number(startNode.y) || 0;
+      start_z = Number(startNode.z) || 0;
+    }
+    if (endNode) {
+      end_x = Number(endNode.x) || 0;
+      end_y = Number(endNode.y) || 0;
+      end_z = Number(endNode.z) || 0;
+    }
+
+    if (!startNode || !endNode) {
+      const coordinates = sequence.match(/-?\d+(\.\d+)?/g);
+      if (coordinates && coordinates.length >= 6) {
+        if (!startNode) {
+          start_x = Number(coordinates[0]) || 0;
+          start_y = Number(coordinates[1]) || 0;
+          start_z = Number(coordinates[2]) || 0;
+        }
+        if (!endNode) {
+          end_x = Number(coordinates[3]) || 0;
+          end_y = Number(coordinates[4]) || 0;
+          end_z = Number(coordinates[5]) || 0;
+        }
+      }
+    }
+
+    const payload = {
+      warehouse: warehouseId,
+      path_name: name,
+      start_x,
+      start_y,
+      start_z,
+      end_x,
+      end_y,
+      end_z,
+      width: 2.0,
+      is_two_way: true
+    };
+
+    try {
+      if (editingPath) {
+        const updated = await updateWarehousePath(editingPath.id, payload);
+        setPaths(paths.map(p => p.id === editingPath.id ? normalizeApiPath(updated) : p));
+        showToast(`Path ${name} updated successfully.`);
+      } else {
+        const created = await createWarehousePath(payload);
+        setPaths([...paths, normalizeApiPath(created)]);
+        showToast(`Path ${name} created successfully.`);
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      showToast(`Failed to save path: ${err.message || 'unknown error'}`);
+    }
   };
 
   const filteredPaths = paths.filter(p => 
@@ -95,12 +212,27 @@ export default function WalkingPaths() {
   const totalPages = Math.ceil(filteredPaths.length / pageSize);
   const paginatedPaths = filteredPaths.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-24">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0071C1]" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {toastMessage && (
         <div className="fixed top-4 right-4 z-50 animate-bounce">
           <AlertBanner type="success" message={toastMessage} />
         </div>
+      )}
+
+      {isFallbackActive && (
+        <AlertBanner 
+          type="critical" 
+          message="Backend unavailable — editing disabled in fallback mode." 
+        />
       )}
 
       {/* Header */}
@@ -114,7 +246,11 @@ export default function WalkingPaths() {
             Design full path layouts, assign node routing networks, and apply access restriction filters.
           </p>
         </div>
-        <Button className="gap-2 font-semibold" onClick={handleOpenAdd}>
+        <Button 
+          className="gap-2 font-semibold" 
+          onClick={handleOpenAdd}
+          disabled={isFallbackActive}
+        >
           <Plus className="w-4 h-4" />
           Map Walking Path
         </Button>
@@ -167,7 +303,7 @@ export default function WalkingPaths() {
                     <TableCell className="font-mono text-xs text-slate-600 font-bold">{p.distance} m</TableCell>
                     <TableCell className="text-xs text-slate-500 font-semibold">{p.restrictions}</TableCell>
                     <TableCell>
-                      <Badge variant={p.status === 'Operational' ? 'success' : 'error'}>
+                      <Badge variant={p.status === 'Operational' ? 'success' : p.status === 'Closed' ? 'error' : 'secondary'}>
                         {p.status}
                       </Badge>
                     </TableCell>
@@ -178,6 +314,7 @@ export default function WalkingPaths() {
                           size="sm" 
                           className="text-[10px] h-7 px-2 font-medium"
                           onClick={() => handleOpenEdit(p)}
+                          disabled={isFallbackActive}
                         >
                           <Edit2 className="w-3 h-3 mr-1" />
                           Edit
@@ -187,6 +324,7 @@ export default function WalkingPaths() {
                           size="sm" 
                           className="text-[10px] h-7 px-2 font-medium text-red-600 border-red-100 hover:bg-red-50"
                           onClick={() => handleDelete(p.id)}
+                          disabled={isFallbackActive}
                         >
                           <Trash2 className="w-3 h-3 mr-1" />
                           Delete

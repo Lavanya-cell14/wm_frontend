@@ -13,6 +13,7 @@ export default function RackList() {
   const [zones, setZones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
+  const [fallbackUsed, setFallbackUsed] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRack, setSelectedRack] = useState(null);
@@ -75,8 +76,10 @@ export default function RackList() {
           setRacks(apiRacks);
           setCoordinates(coordsRes.results);
           setZones(zonesRes.results);
+          setFallbackUsed(false);
           // [TEMPORARY LOG FOR VERIFICATION]
           console.warn(`[RackList] API Success. URL: /api/warehouses/racks/, Status: 200, Count: ${apiRacks.length}, Fallback Used: false`);
+          console.warn(`[RackList] Backend derived racks count: ${apiRacks.length}, mock-derived count: 0, fallback used: false`);
         }
       } catch (err) {
         if (!cancelled) {
@@ -86,8 +89,10 @@ export default function RackList() {
           setRacks(fallbackRacks);
           setZones(contextZones.map(normalizeContextZone));
           setCoordinates([]); // Empty coordinate mapping
+          setFallbackUsed(true);
           // [TEMPORARY LOG FOR VERIFICATION]
           console.warn(`[RackList] API Error. URL: /api/warehouses/racks/, Status: ${status}, Count: ${fallbackRacks.length}, Fallback Used: true`, err);
+          console.warn(`[RackList] Fallback used. Backend derived racks count: 0, mock-derived count: ${contextRacks.length}, fallback used: true`);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -194,7 +199,15 @@ export default function RackList() {
                 pagedList.map((r) => {
                   const zone = zones.find(z => z.id === r.zoneId) || { name: 'Zone A', zone_name: 'Zone A' };
                   const zoneName = zone.zone_name || zone.name;
-                  const shelfCount = contextShelves.filter(s => s.rackId === r.id).length || 4;
+                  const shelfCountText = fallbackUsed 
+                    ? `${contextShelves.filter(s => s.rackId === r.id).length || 4} Shelves`
+                    : 'N/A';
+                  const aislePositionText = fallbackUsed
+                    ? (zoneName === 'Zone B' ? 'Aisle 2' : zoneName === 'Zone C' ? 'Aisle 3' : 'Aisle 1')
+                    : 'N/A';
+                  const binCountText = fallbackUsed
+                    ? `${contextBins.length} Bins`
+                    : 'N/A';
                   return (
                     <TableRow key={r.id} className="hover:bg-slate-50/10">
                       <TableCell>
@@ -203,10 +216,10 @@ export default function RackList() {
                       </TableCell>
                       <TableCell className="text-xs font-semibold text-slate-600">{zoneName}</TableCell>
                       <TableCell className="text-xs font-semibold text-slate-600 font-mono">
-                        {zoneName === 'Zone B' ? 'Aisle 2' : zoneName === 'Zone C' ? 'Aisle 3' : 'Aisle 1'}
+                        {aislePositionText}
                       </TableCell>
-                      <TableCell className="font-mono text-xs font-semibold text-slate-700">{shelfCount} Shelves</TableCell>
-                      <TableCell className="font-mono text-xs font-semibold text-slate-700">{contextBins.length} Bins</TableCell>
+                      <TableCell className="font-mono text-xs font-semibold text-slate-700">{shelfCountText}</TableCell>
+                      <TableCell className="font-mono text-xs font-semibold text-slate-700">{binCountText}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1.5">
                           <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs text-gray-600" onClick={() => handleViewRack(r)}>
@@ -269,9 +282,9 @@ export default function RackList() {
               <div className="p-3 bg-white border border-gray-100 rounded-xl">
                 <div className="text-gray-400 font-bold uppercase tracking-wider mb-1">3D Offsets Mapping</div>
                 <div className="grid grid-cols-3 gap-2 font-mono text-[10px] text-center mt-2">
-                  <div className="bg-slate-50 p-1.5 rounded">X: {selectedRack.x != null ? selectedRack.x : 12}</div>
-                  <div className="bg-slate-50 p-1.5 rounded">Y: {selectedRack.y != null ? selectedRack.y : 5}</div>
-                  <div className="bg-slate-50 p-1.5 rounded">Z: {selectedRack.z != null ? selectedRack.z : 0}</div>
+                  <div className="bg-slate-50 p-1.5 rounded">X: {selectedRack.x != null ? selectedRack.x : 'N/A'}</div>
+                  <div className="bg-slate-50 p-1.5 rounded">Y: {selectedRack.y != null ? selectedRack.y : 'N/A'}</div>
+                  <div className="bg-slate-50 p-1.5 rounded">Z: {selectedRack.z != null ? selectedRack.z : 'N/A'}</div>
                 </div>
               </div>
 

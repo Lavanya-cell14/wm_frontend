@@ -166,6 +166,7 @@ function App() {
             <Route path="/admin/nav-nodes" element={<NavigationNodes />} />
             <Route path="/admin/nav-edges" element={<NavigationEdges />} />
             <Route path="/admin/walking-paths" element={<WalkingPaths />} />
+            <Route path="/admin/walking_paths" element={<Navigate to="/admin/walking-paths" replace />} />
             <Route path="/admin/users" element={<UserManagement />} />
             <Route path="/admin/roles" element={<RoleManagement />} />
             <Route path="/admin/settings" element={<WarehouseSettings />} />

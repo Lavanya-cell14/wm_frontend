@@ -1,15 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Modal, Pagination } from 'shared-ui';
-import { Navigation, Plus, Edit2, Trash2, ShieldAlert } from 'lucide-react';
+import { Navigation, Plus, Edit2, Trash2 } from 'lucide-react';
+import { getNavigationNodes, createNavigationNode, updateNavigationNode, deleteNavigationNode, getWarehouses } from '../../services/warehouseStructureService';
+
+const fallbackNodes = [
+  { id: 'NODE-001', label: 'Receiving Dock A', x: 2.5, y: 0.0, z: 0.0, type: 'Dock', status: 'Active' },
+  { id: 'NODE-002', label: 'Aisle 1 Entry corridor', x: 12.0, y: 0.0, z: 1.5, type: 'Intersection', status: 'Active' },
+  { id: 'NODE-003', label: 'Aisle 1 Bin Row A1-4', x: 12.0, y: 2.4, z: 1.5, type: 'Storage Point', status: 'Active' },
+  { id: 'NODE-004', label: 'Aisle 2 Entry corridor', x: 24.0, y: 0.0, z: 1.5, type: 'Intersection', status: 'Blocked' },
+  { id: 'NODE-005', label: 'Shipping Dock B', x: 38.0, y: 0.0, z: 0.0, type: 'Dock', status: 'Active' }
+];
+
+const normalizeApiNode = (node) => ({
+  id: node.id,
+  label: node.node_name,
+  x: Number(node.x) || 0,
+  y: Number(node.y) || 0,
+  z: Number(node.z) || 0,
+  type: node.node_type === 'DOCK' ? 'Dock' : node.node_type === 'INTERSECTION' ? 'Intersection' : 'Storage Point',
+  status: 'N/A',
+  connections: node.connections || []
+});
 
 export default function NavigationNodes() {
-  const [nodes, setNodes] = useState([
-    { id: 'NODE-001', label: 'Receiving Dock A', x: 2.5, y: 0.0, z: 0.0, type: 'Dock', status: 'Active' },
-    { id: 'NODE-002', label: 'Aisle 1 Entry corridor', x: 12.0, y: 0.0, z: 1.5, type: 'Intersection', status: 'Active' },
-    { id: 'NODE-003', label: 'Aisle 1 Bin Row A1-4', x: 12.0, y: 2.4, z: 1.5, type: 'Storage Point', status: 'Active' },
-    { id: 'NODE-004', label: 'Aisle 2 Entry corridor', x: 24.0, y: 0.0, z: 1.5, type: 'Intersection', status: 'Blocked' },
-    { id: 'NODE-005', label: 'Shipping Dock B', x: 38.0, y: 0.0, z: 0.0, type: 'Dock', status: 'Active' }
-  ]);
+  const [nodes, setNodes] = useState([]);
+  const [warehousesList, setWarehousesList] = useState([]);
+  const [isFallbackActive, setIsFallbackActive] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState('');
@@ -33,7 +50,40 @@ export default function NavigationNodes() {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        setLoading(true);
+        console.warn("[NavigationNodes] Calling API: GET /api/warehouses/navigation-nodes/");
+        const [nodesRes, warehousesRes] = await Promise.all([
+          getNavigationNodes(),
+          getWarehouses()
+        ]);
+        if (active) {
+          const apiNodes = nodesRes.results.map(normalizeApiNode);
+          setNodes(apiNodes);
+          setWarehousesList(warehousesRes.results);
+          setIsFallbackActive(false);
+          console.warn(`[NavigationNodes] API Success. URL: /api/warehouses/navigation-nodes/, Status: 200, Count: ${apiNodes.length}, Fallback Used: false`);
+        }
+      } catch (err) {
+        if (active) {
+          const status = err.status || (err.code === 'NETWORK_ERROR' ? 0 : 'unknown');
+          console.warn(`[NavigationNodes] API Failure. URL: /api/warehouses/navigation-nodes/, Status: ${status}, Count: 0, Fallback Used: true`);
+          setIsFallbackActive(true);
+          setNodes(fallbackNodes);
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    load();
+    return () => { active = false; };
+  }, []);
+
   const handleOpenAdd = () => {
+    if (isFallbackActive) return;
     setEditingNode(null);
     setLabel('');
     setX('0.0');
@@ -45,6 +95,7 @@ export default function NavigationNodes() {
   };
 
   const handleOpenEdit = (node) => {
+    if (isFallbackActive) return;
     setEditingNode(node);
     setLabel(node.label);
     setX(String(node.x));
@@ -55,44 +106,61 @@ export default function NavigationNodes() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
+    if (isFallbackActive) return;
     if (window.confirm(`Are you sure you want to delete node ${id}?`)) {
-      setNodes(nodes.filter(n => n.id !== id));
-      showToast(`Node ${id} deleted successfully.`);
+      try {
+        await deleteNavigationNode(id);
+        setNodes(nodes.filter(n => n.id !== id));
+        showToast(`Node deleted successfully.`);
+      } catch (err) {
+        showToast(`Failed to delete node: ${err.message || 'unknown error'}`);
+      }
     }
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
+    if (isFallbackActive) return;
     if (!label) return;
 
-    if (editingNode) {
-      // Edit mode
-      setNodes(nodes.map(n => n.id === editingNode.id ? {
-        ...n,
-        label,
-        x: Number(x) || 0,
-        y: Number(y) || 0,
-        z: Number(z) || 0,
-        type,
-        status
-      } : n));
-      showToast(`Node ${editingNode.id} updated successfully.`);
-    } else {
-      // Add mode
-      const newId = `NODE-${String(nodes.length + 1).padStart(3, '0')}`;
-      setNodes([...nodes, {
-        id: newId,
-        label,
-        x: Number(x) || 0,
-        y: Number(y) || 0,
-        z: Number(z) || 0,
-        type,
-        status
-      }]);
-      showToast(`Node ${newId} created successfully.`);
+    const nodeTypeMap = {
+      'Dock': 'DOCK',
+      'Intersection': 'INTERSECTION',
+      'Storage Point': 'PICK_POINT'
+    };
+    const mappedType = nodeTypeMap[type] || 'PICK_POINT';
+    const warehouseId = warehousesList[0]?.id;
+
+    if (!warehouseId) {
+      showToast("Cannot save: No warehouse configuration found.");
+      return;
     }
-    setIsModalOpen(false);
+
+    const payload = {
+      warehouse: warehouseId,
+      node_name: label,
+      node_type: mappedType,
+      x: Number(x) || 0,
+      y: Number(y) || 0,
+      z: Number(z) || 0,
+      connections: editingNode ? editingNode.connections : []
+    };
+
+    try {
+      if (editingNode) {
+        const updated = await updateNavigationNode(editingNode.id, payload);
+        setNodes(nodes.map(n => n.id === editingNode.id ? normalizeApiNode(updated) : n));
+        showToast(`Node ${label} updated successfully.`);
+      } else {
+        const created = await createNavigationNode(payload);
+        setNodes([...nodes, normalizeApiNode(created)]);
+        showToast(`Node ${label} created successfully.`);
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      showToast(`Failed to save node: ${err.message || 'unknown error'}`);
+    }
   };
 
   const filteredNodes = nodes.filter(n => 
@@ -104,12 +172,28 @@ export default function NavigationNodes() {
   const totalPages = Math.ceil(filteredNodes.length / pageSize);
   const paginatedNodes = filteredNodes.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-24">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0071C1]" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {toastMessage && (
         <div className="fixed top-4 right-4 z-50 animate-bounce">
           <AlertBanner type="success" message={toastMessage} />
         </div>
+      )}
+
+      {isFallbackActive && (
+        <AlertBanner 
+          type="critical" 
+          message="Backend unavailable — editing disabled in fallback mode." 
+        />
       )}
 
       {/* Header */}
@@ -123,7 +207,11 @@ export default function NavigationNodes() {
             Configure discrete floor intersection waypoints, storage lanes, and coordinate reference tags.
           </p>
         </div>
-        <Button className="gap-2 font-semibold" onClick={handleOpenAdd}>
+        <Button 
+          className="gap-2 font-semibold" 
+          onClick={handleOpenAdd}
+          disabled={isFallbackActive}
+        >
           <Plus className="w-4 h-4" />
           Create Node
         </Button>
@@ -176,7 +264,7 @@ export default function NavigationNodes() {
                       ({n.x.toFixed(1)}, {n.y.toFixed(1)}, {n.z.toFixed(1)})
                     </TableCell>
                     <TableCell>
-                      <Badge variant={n.status === 'Active' ? 'success' : 'error'}>
+                      <Badge variant={n.status === 'Active' ? 'success' : n.status === 'Blocked' ? 'error' : 'secondary'}>
                         {n.status}
                       </Badge>
                     </TableCell>
@@ -187,6 +275,7 @@ export default function NavigationNodes() {
                           size="sm" 
                           className="text-[10px] h-7 px-2 font-medium"
                           onClick={() => handleOpenEdit(n)}
+                          disabled={isFallbackActive}
                         >
                           <Edit2 className="w-3 h-3 mr-1" />
                           Edit
@@ -196,6 +285,7 @@ export default function NavigationNodes() {
                           size="sm" 
                           className="text-[10px] h-7 px-2 font-medium text-red-600 border-red-100 hover:bg-red-50"
                           onClick={() => handleDelete(n.id)}
+                          disabled={isFallbackActive}
                         >
                           <Trash2 className="w-3 h-3 mr-1" />
                           Delete
@@ -316,3 +406,4 @@ export default function NavigationNodes() {
     </div>
   );
 }
+

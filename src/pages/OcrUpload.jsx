@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../context/WarehouseContext';
 import { useAuth } from '../context/AuthContext';
+import { processOcrDocument } from '../services/ocrService';
 import { AlertBanner, Badge, Button, Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Input, StatusBadge } from 'shared-ui';
 import { 
   FileText, UploadCloud, Trash2, ShieldAlert, Sparkles, 
@@ -91,6 +92,7 @@ export default function OcrUpload() {
   const [processing, setProcessing] = useState(false);
   const [activeFileId, setActiveFileId] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  const [apiOfflineWarning, setApiOfflineWarning] = useState('');
   
   const fileInputRef = useRef(null);
 
@@ -152,6 +154,7 @@ export default function OcrUpload() {
       const newDoc = {
         id: newId,
         fileName: file.name,
+        fileObject: file, // Keep actual file for API call
         documentType: template.document_type,
         supplierName: template.supplier,
         uploadedAt: new Date().toISOString(),
@@ -225,7 +228,7 @@ export default function OcrUpload() {
     showToast('Cleared all selected documents.', 'info');
   };
 
-  const handleProcess = () => {
+  const handleProcess = async () => {
     const activeDoc = ocrDocuments.find(d => d.id === activeFileId);
     if (!activeDoc) {
       showToast('No document selected.', 'warning');
@@ -238,23 +241,87 @@ export default function OcrUpload() {
     }
 
     setProcessing(true);
-    
-    // Simulate OCR processing steps
     setOcrDocuments(prev => prev.map(d => d.id === activeFileId ? { ...d, status: 'OCR_PROCESSING' } : d));
 
-    setTimeout(() => {
-      setOcrDocuments(prev => prev.map(d => d.id === activeFileId ? { ...d, status: 'VERIFICATION_PENDING' } : d));
+    try {
+      if (!activeDoc.fileObject) {
+        throw new Error('No local file object associated with this document.');
+      }
+      
+      const res = await processOcrDocument(activeDoc.fileObject);
+      
+      const extractedData = res.extracted_data || {};
+      const products = extractedData.products || [];
+      const partyInfo = extractedData.party_info || {};
+
+      const mappedItems = products.map((item, idx) => ({
+        id: `EXT-${Date.now()}-${idx}`,
+        sku: item.sku || '',
+        productName: item.product_name || '',
+        category: item.category || 'Electronics',
+        quantity: Number(item.quantity || 0),
+        uom: item.uom || 'BOX',
+        length: item.dimensions?.length || '',
+        width: item.dimensions?.width || '',
+        height: item.dimensions?.height || '',
+        weight: item.weight?.value || item.weight || '',
+        batchNumber: item.batch_number || `BAT-${Math.floor(1000 + Math.random() * 9000)}`,
+        expiryDate: item.expiry_date || '2028-12-31',
+        confidenceScore: res.confidence_score ? Math.round(res.confidence_score * 100) : 95,
+        validationStatus: item.sku ? 'Valid' : 'Warning'
+      }));
+
+      const updatedDocId = res.document_id || activeFileId;
+      const confidence = res.confidence_score ? Math.round(res.confidence_score * 100) : 95;
+      
+      setOcrDocuments(prev => prev.map(d => 
+        d.id === activeFileId 
+          ? {
+              ...d,
+              id: updatedDocId,
+              status: 'VERIFICATION_PENDING',
+              confidenceScore: confidence,
+              extractedItems: mappedItems,
+              supplierName: partyInfo.supplier_name || d.supplierName,
+              documentType: res.document_type || d.documentType,
+              warnings: 0,
+              warningsList: []
+            } 
+          : d
+      ));
+      
+      if (updatedDocId !== activeFileId) {
+        setActiveFileId(updatedDocId);
+      }
+
       setProcessing(false);
       showToast('OCR analysis completed successfully! Ready for verification.');
-      
+
       logAudit(
         user?.email || 'inventory@warehouseai.com',
         user?.role || 'RECEIVING_INVENTORY_OFFICER',
         'OCR_DOCUMENT_PROCESS',
         'Inbound OCR',
-        `Processed document ${activeDoc.fileName} using Warehouse Neural OCR Engine.`
+        `Processed document ${activeDoc.fileName} using WMS Neural OCR Engine.`
       );
-    }, 2000);
+    } catch (err) {
+      console.error('[OCR Upload] API Error falling back to mock:', err);
+      
+      showToast('OCR Extraction Service offline. Using UI safety mock fallback.', 'danger');
+      setApiOfflineWarning('OCR Service is currently offline. Please start the OCR server on port 8001, or check your configuration.');
+
+      setTimeout(() => {
+        setOcrDocuments(prev => prev.map(d => d.id === activeFileId ? { ...d, status: 'VERIFICATION_PENDING' } : d));
+        setProcessing(false);
+        logAudit(
+          user?.email || 'inventory@warehouseai.com',
+          user?.role || 'RECEIVING_INVENTORY_OFFICER',
+          'OCR_DOCUMENT_PROCESS',
+          'Inbound OCR (Mock Fallback)',
+          `Processed document ${activeDoc.fileName} using UI safety mock fallback.`
+        );
+      }, 1000);
+    }
   };
 
   const handleFillDemoFile = (templateName) => {
@@ -313,6 +380,14 @@ export default function OcrUpload() {
             message={toast.message} 
           />
         </div>
+      )}
+
+      {apiOfflineWarning && (
+        <AlertBanner 
+          type="warning" 
+          title="Service Connection Warning" 
+          message={apiOfflineWarning} 
+        />
       )}
 
       {/* Header */}

@@ -40,7 +40,7 @@ const normalizeApiZone = (z) => ({
   height: z.height != null ? Number(z.height) : null,
   depth: z.depth != null ? Number(z.depth) : null,
   _capacityPercent: z.predictive_occupancy != null ? Math.round(Number(z.predictive_occupancy) * 100) : 0,
-  _status: 'Active',
+  _status: 'N/A',
 });
 
 // Truncate UUIDs for compact display
@@ -88,6 +88,7 @@ export default function ZoneList() {
           setWarehousesList(warehousesRes.results);
           // [TEMPORARY LOG FOR VERIFICATION]
           console.warn(`[ZoneList] API Success. URL: /api/zones/, Status: 200, Count: ${apiZones.length}, Fallback Used: false`);
+          console.warn(`[ZoneList] Backend derived zones count: ${apiZones.length}, mock-derived count: 0, fallback used: false`);
         }
       } catch (err) {
         if (!cancelled) {
@@ -99,6 +100,7 @@ export default function ZoneList() {
           setWarehousesList([]);
           // [TEMPORARY LOG FOR VERIFICATION]
           console.warn(`[ZoneList] API Error. URL: /api/zones/, Status: ${status}, Count: ${fallbackZones.length}, Fallback Used: true`, err);
+          console.warn(`[ZoneList] Fallback used. Backend derived zones count: 0, mock-derived count: ${contextZones.length}, fallback used: true`);
         }
       } finally {
         if (!cancelled) setLoading(false);

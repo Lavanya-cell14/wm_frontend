@@ -53,40 +53,31 @@ export default function Analytics() {
       </div>
 
       {/* Tabs Menu */}
-      <div className="flex border-b border-gray-200">
-        <Button
-          onClick={() => setActiveTab('inventory')}
-          className={`py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
-            activeTab === 'inventory' 
-              ? 'border-blue-600 text-blue-600' 
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          }`}
-        >
-          <Box className="w-4 h-4" />
-          Inventory Analytics
-        </Button>
-        <Button
-          onClick={() => setActiveTab('occupancy')}
-          className={`py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
-            activeTab === 'occupancy' 
-              ? 'border-blue-600 text-blue-600' 
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          }`}
-        >
-          <Layers className="w-4 h-4" />
-          Occupancy Analytics
-        </Button>
-        <Button
-          onClick={() => setActiveTab('operational')}
-          className={`py-3 px-6 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
-            activeTab === 'operational' 
-              ? 'border-blue-600 text-blue-600' 
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          }`}
-        >
-          <TrendingUp className="w-4 h-4" />
-          Operational Analytics
-        </Button>
+      <div className="flex border-b border-gray-150 pb-4">
+        <div className="flex bg-slate-100/80 p-1 rounded-xl gap-1 w-full sm:w-auto border border-slate-200/50">
+          {[
+            { id: 'inventory', label: 'Inventory Analytics', icon: Box },
+            { id: 'occupancy', label: 'Occupancy Analytics', icon: Layers },
+            { id: 'operational', label: 'Operational Analytics', icon: TrendingUp },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 sm:flex-initial py-2 px-5 font-bold text-xs rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${
+                  isActive
+                    ? 'bg-white text-[#0071C1] shadow-xs border border-slate-200/20'
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-slate-200/40'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Tab Contents */}

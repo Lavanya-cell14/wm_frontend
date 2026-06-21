@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Bot, Send, User, Sparkles, Box, Search, PackageSearch, Navigation, Map, ShieldAlert, Cpu } from 'lucide-react';
 import { Badge, Button, Card, CardContent, Input } from 'shared-ui';
+import { askRag } from '../services/ragService';
 
 export default function AiCopilot() {
   const [query, setQuery] = useState('');
@@ -32,7 +33,7 @@ export default function AiCopilot() {
     "SHOW PRODUCTS STORED TODAY": "Items checked in and stored today:\n- Dell Laptop (15 units stored in BIN-003 by Warehouse Operator)\n- MacBook Pro (5 units stored in BIN-002 by Warehouse Operator)"
   };
 
-  const handleSendMessage = (textToSend) => {
+  const handleSendMessage = async (textToSend) => {
     if (!textToSend.trim()) return;
 
     const userMsg = textToSend.trim();
@@ -40,7 +41,14 @@ export default function AiCopilot() {
     setQuery('');
     setIsTyping(true);
 
-    setTimeout(() => {
+    try {
+      const response = await askRag(userMsg);
+      const botText = response.suggestion || "No suggestion received from AI assistant.";
+      setMessages(prev => [...prev, { sender: 'bot', text: botText }]);
+    } catch (err) {
+      console.error('[AI Copilot] RAG service query failed, falling back:', err);
+      
+      const warningText = "⚠️ RAG AI Assistant is offline. (Port 8002 unreachable). Showing offline template responses.";
       const matchKey = userMsg.toUpperCase().replace(/[?]/g, '');
       let botText = "I have queried the vector database and warehouse registry, but could not find a specific match for that request. Try asking one of the suggested prompts below.";
       
@@ -52,9 +60,14 @@ export default function AiCopilot() {
         }
       }
 
-      setMessages(prev => [...prev, { sender: 'bot', text: botText }]);
+      setMessages(prev => [
+        ...prev, 
+        { sender: 'bot', text: warningText, isSystemWarning: true },
+        { sender: 'bot', text: botText }
+      ]);
+    } finally {
       setIsTyping(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -76,6 +89,16 @@ export default function AiCopilot() {
         <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/30">
           {messages.map((msg, idx) => {
             const isBot = msg.sender === 'bot';
+            if (msg.isSystemWarning) {
+              return (
+                <div key={idx} className="flex justify-center my-2">
+                  <div className="bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-xs max-w-xl">
+                    <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span>{msg.text}</span>
+                  </div>
+                </div>
+              );
+            }
             return (
               <div key={idx} className={`flex gap-3.5 ${isBot ? '' : 'flex-row-reverse'}`}>
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-xs mt-1 ${

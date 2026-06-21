@@ -25,3 +25,32 @@ export const getStorageAllocations = async () => {
   const data = await apiClient('/api/movements/allocations/');
   return normalizeResponse(data);
 };
+
+export const relocateInventory = async (payload) => {
+  const data = await apiClient('/api/inventory/relocate/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return data;
+};
+
+export const adjustInventory = async (payload) => {
+  const data = await apiClient('/api/inventory/adjust/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return data;
+};
+
+export const auditInventory = async (payload) => {
+  const data = await apiClient('/api/inventory/audit/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return data;
+};
+
+export const getMovementById = async (movementId) => {
+  return await apiClient(`/api/movements/${movementId}/`);
+};
+

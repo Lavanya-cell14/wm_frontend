@@ -3,7 +3,7 @@ import { useWarehouse } from '../../context/WarehouseContext';
 import { Badge, Button, Card, CardContent, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Building2, Plus, MapPin, X, AlertTriangle, Loader2 } from 'lucide-react';
 import Pagination from '../../components/ui/Pagination';
-import { getWarehouses } from '../../services/warehouseStructureService';
+import { getWarehouses, getZones, getBins } from '../../services/warehouseStructureService';
 
 // ---------------------------------------------------------------------------
 // Normalize context warehouse to match API field shape.
@@ -31,12 +31,32 @@ const normalizeApiWarehouse = (wh) => ({
   total_area_sqft: wh.total_area_sqft ? Number(wh.total_area_sqft) : null,
 });
 
+const normalizeContextZone = (z) => ({
+  id: z.id,
+  name: z.name,
+  type: z.type,
+  warehouseId: null,
+  warehouseName: z.warehouse,
+  capacityPercent: z.capacityPercent,
+});
+
+const normalizeApiZone = (z) => ({
+  id: z.id,
+  name: z.zone_name,
+  type: z.zone_type,
+  warehouseId: z.warehouse,
+  warehouseName: null,
+  capacityPercent: z.predictive_occupancy != null ? Math.round(Number(z.predictive_occupancy) * 100) : 0,
+});
+
 export default function WarehouseList() {
   // Keep context for zones/bins cross-references in the drawer.
   // WarehouseContext.jsx is NOT modified — it remains the fallback mock layer.
-  const { warehouses: contextWarehouses, zones, bins } = useWarehouse();
+  const { warehouses: contextWarehouses, zones: contextZones, bins: contextBins } = useWarehouse();
 
   const [warehouses, setWarehouses] = useState([]);
+  const [apiZones, setApiZones] = useState([]);
+  const [fallbackUsed, setFallbackUsed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
 
@@ -56,13 +76,22 @@ export default function WarehouseList() {
         setLoading(true);
         setApiError(null);
         // [TEMPORARY LOG FOR VERIFICATION]
-        console.warn("[WarehouseList] Calling API: /api/warehouses/");
-        const { results, count } = await getWarehouses();
+        console.warn("[WarehouseList] Calling APIs: /api/warehouses/, /api/zones/, /api/bins/");
+        const [warehousesRes, zonesRes, binsRes] = await Promise.all([
+          getWarehouses(),
+          getZones(),
+          getBins()
+        ]);
         if (!cancelled) {
-          const apiWarehouses = results.map(normalizeApiWarehouse);
+          const apiWarehouses = warehousesRes.results.map(normalizeApiWarehouse);
           setWarehouses(apiWarehouses);
+          const formattedZones = zonesRes.results.map(normalizeApiZone);
+          setApiZones(formattedZones);
+          setFallbackUsed(false);
           // [TEMPORARY LOG FOR VERIFICATION]
           console.warn(`[WarehouseList] API Success. URL: /api/warehouses/, Status: 200, Count: ${apiWarehouses.length}, Fallback Used: false`);
+          console.warn(`[WarehouseList] Backend derived zones count: ${formattedZones.length}, mock-derived count: 0, fallback used: false`);
+          console.warn(`[WarehouseList] Backend derived bins count: ${binsRes.results.length}, mock-derived count: 0, fallback used: false`);
         }
       } catch (err) {
         if (!cancelled) {
@@ -70,8 +99,13 @@ export default function WarehouseList() {
           setApiError('Warehouses API unreachable — showing cached data.');
           const fallbackData = contextWarehouses.map(normalizeContextWarehouse);
           setWarehouses(fallbackData);
+          const formattedZones = contextZones.map(normalizeContextZone);
+          setApiZones(formattedZones);
+          setFallbackUsed(true);
           // [TEMPORARY LOG FOR VERIFICATION]
           console.warn(`[WarehouseList] API Error. URL: /api/warehouses/, Status: ${status}, Count: ${fallbackData.length}, Fallback Used: true`, err);
+          console.warn(`[WarehouseList] Fallback used. Backend derived zones count: 0, mock-derived count: ${contextZones.length}, fallback used: true`);
+          console.warn(`[WarehouseList] Fallback used. Backend derived bins count: 0, mock-derived count: ${contextBins.length}, fallback used: true`);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -79,7 +113,7 @@ export default function WarehouseList() {
     };
     load();
     return () => { cancelled = true; };
-  }, [contextWarehouses]);
+  }, [contextWarehouses, contextZones, contextBins]);
 
   const filtered = warehouses.filter((wh) =>
     (wh.warehouse_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -191,7 +225,7 @@ export default function WarehouseList() {
                           : '—'}
                     </TableCell>
                     <TableCell className="font-mono text-xs font-semibold text-slate-700">
-                      {bins.length} Bins
+                      {fallbackUsed ? `${contextBins.length} Bins` : 'N/A'}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1.5">
@@ -290,31 +324,36 @@ export default function WarehouseList() {
                 <Badge variant="success" className="uppercase font-bold tracking-wider">Active</Badge>
               </div>
 
-              {/* Zone Layout — from context, matched by warehouse_name */}
-              <div className="space-y-3">
-                <h4 className="font-extrabold text-gray-900 uppercase tracking-widest text-[10px]">
-                  Zone Layout Allocation
-                </h4>
-                <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden bg-white">
-                  {zones.filter((z) => z.warehouse === selectedWh.warehouse_name).length === 0 ? (
-                    <div className="p-4 text-xs text-gray-400 text-center">
-                      Zone cross-reference will be available after zones integration completes.
-                    </div>
-                  ) : (
-                    zones
-                      .filter((z) => z.warehouse === selectedWh.warehouse_name)
-                      .map((zone) => (
-                        <div key={zone.id} className="p-3 flex justify-between items-center hover:bg-slate-50/50">
-                          <div>
-                            <span className="font-bold text-slate-700">{zone.name}</span>
-                            <span className="text-gray-400 ml-1.5 text-[10px]">({zone.type})</span>
-                          </div>
-                          <Badge variant="outline">{zone.capacityPercent}% Space Used</Badge>
+              {/* Zone Layout — backend-derived or context fallback */}
+              {(() => {
+                const filteredZones = fallbackUsed 
+                  ? apiZones.filter((z) => z.warehouseName === selectedWh.warehouse_name)
+                  : apiZones.filter((z) => z.warehouseId === selectedWh.id);
+                return (
+                  <div className="space-y-3">
+                    <h4 className="font-extrabold text-gray-900 uppercase tracking-widest text-[10px]">
+                      Zone Layout Allocation
+                    </h4>
+                    <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden bg-white">
+                      {filteredZones.length === 0 ? (
+                        <div className="p-4 text-xs text-gray-400 text-center">
+                          No zones configured for this facility.
                         </div>
-                      ))
-                  )}
-                </div>
-              </div>
+                      ) : (
+                        filteredZones.map((zone) => (
+                          <div key={zone.id} className="p-3 flex justify-between items-center hover:bg-slate-50/50">
+                            <div>
+                              <span className="font-bold text-slate-700">{zone.name}</span>
+                              <span className="text-gray-400 ml-1.5 text-[10px]">({zone.type})</span>
+                            </div>
+                            <Badge variant="outline">{zone.capacityPercent}% Space Used</Badge>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
             </div>
 

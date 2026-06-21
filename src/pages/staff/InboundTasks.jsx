@@ -156,28 +156,32 @@ export default function InboundTasks() {
       </div>
 
       {/* Tabs Row */}
-      <div className="flex border-b border-gray-200">
-        {['Pending', 'In Progress', 'Completed'].map((tab) => {
-          const count = displayList.filter(t => t.status === tab).length;
-          return (
-            <Button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`py-3.5 px-6 font-bold text-sm border-b-2 transition-all flex items-center gap-2 ${
-                activeTab === tab 
-                  ? 'border-[#0071C1] text-[#0071C1]' 
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              {tab}
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                activeTab === tab ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'
-              }`}>
-                {count}
-              </span>
-            </Button>
-          );
-        })}
+      <div className="flex border-b border-gray-150 pb-4">
+        <div className="flex bg-slate-100/80 p-1 rounded-xl gap-1 w-full sm:w-auto border border-slate-200/50">
+          {['Pending', 'In Progress', 'Completed'].map((tab) => {
+            const count = displayList.filter(t => t.status === tab).length;
+            const isActive = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex-1 sm:flex-initial py-2 px-5 font-bold text-xs rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${
+                  isActive
+                    ? 'bg-white text-[#0071C1] shadow-xs border border-slate-200/20'
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-slate-200/40'
+                }`}
+              >
+                {tab}
+                <Badge
+                  variant={isActive ? 'primary' : 'secondary'}
+                  className="ml-1 font-bold text-[10px] px-2 py-0.5 rounded-full"
+                >
+                  {count}
+                </Badge>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Content area */}

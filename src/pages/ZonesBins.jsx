@@ -295,20 +295,25 @@ export default function ZonesBins() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200">
-        {['Zones', 'Racks', 'Shelves', 'Bins', 'Capacity View'].map((tab) => (
-          <Button
-            key={tab}
-            onClick={() => { setActiveTab(tab); setSearchQuery(''); }}
-            className={`py-3.5 px-6 font-bold text-sm border-b-2 transition-all flex items-center gap-2 ${
-              activeTab === tab 
-                ? 'border-[#0071C1] text-[#0071C1]' 
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {tab}
-          </Button>
-        ))}
+      <div className="flex border-b border-gray-150 pb-4">
+        <div className="flex bg-slate-100/80 p-1 rounded-xl gap-1 w-full sm:w-auto border border-slate-200/50 overflow-x-auto hide-scrollbar">
+          {['Zones', 'Racks', 'Shelves', 'Bins', 'Capacity View'].map((tab) => {
+            const isActive = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => { setActiveTab(tab); setSearchQuery(''); }}
+                className={`flex-1 sm:flex-initial py-2 px-5 font-bold text-xs rounded-lg transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap ${
+                  isActive
+                    ? 'bg-white text-[#0071C1] shadow-xs border border-slate-200/20'
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-slate-200/40'
+                }`}
+              >
+                {tab}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* SEARCH / FILTERS */}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
+import { adjustInventory } from '../../services/inventoryService';
 import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Wrench, RefreshCw, AlertCircle, CheckCircle2, TrendingUp, TrendingDown } from 'lucide-react';
 
@@ -37,7 +38,7 @@ export default function StockAdjustment() {
     setTimeout(() => setToastMessage(''), 4000);
   };
 
-  const handleAdjustmentSubmit = (e) => {
+  const handleAdjustmentSubmit = async (e) => {
     e.preventDefault();
     if (!selectedSku || !qtyDelta) {
       showToast('Please select a SKU and provide an adjustment quantity.', 'error');
@@ -57,6 +58,22 @@ export default function StockAdjustment() {
     }
 
     const submitReason = `${reason}${notes.trim() ? ` - ${notes.trim()}` : ''}`;
+    const payload = {
+      product_id: selectedSku,
+      bin_id: selectedItem?.bin || 'BIN-001',
+      quantity: delta,
+      reason: submitReason,
+      operator: user?.email || 'operator',
+    };
+
+    try {
+      console.warn(`[StockAdjustment] Calling API: POST /api/inventory/adjust/ with payload`, payload);
+      await adjustInventory(payload);
+      console.warn(`[StockAdjustment] API Success: POST /api/inventory/adjust/`);
+    } catch (err) {
+      console.error(`[StockAdjustment] API Error falling back to context:`, err);
+    }
+
     const success = adjustStock(selectedSku, delta, user, submitReason);
 
     if (success) {

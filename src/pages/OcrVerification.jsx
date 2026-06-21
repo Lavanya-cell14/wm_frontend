@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../context/WarehouseContext';
 import { useAuth } from '../context/AuthContext';
+import { verifyOcrDocumentApi, rejectOcrDocumentApi } from '../services/ocrService';
 import { AlertBanner, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, StatusBadge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { 
   CheckSquare, XSquare, Plus, Trash2, ArrowLeft, Save, HelpCircle, AlertTriangle, 
@@ -20,6 +21,7 @@ export default function OcrVerification() {
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  const [apiOfflineWarning, setApiOfflineWarning] = useState('');
   const [activeTab, setActiveTab] = useState('queue');
 
   // Get initial document ID from location state or fallback to first VERIFICATION_PENDING doc
@@ -102,7 +104,7 @@ export default function OcrVerification() {
     showToast('Draft saved successfully!');
   };
 
-  const handleConfirmAndVerify = () => {
+  const handleConfirmAndVerify = async () => {
     if (!selectedDocId) return;
     
     // Simple verification validations
@@ -118,10 +120,19 @@ export default function OcrVerification() {
       return;
     }
 
+    // Call real API
+    try {
+      setApiOfflineWarning('');
+      await verifyOcrDocumentApi(selectedDocId, items);
+      showToast('OCR Document verified and inbound receipt created!', 'success');
+    } catch (err) {
+      console.error('[OCR Verification] Approval API failed, falling back to local context update:', err);
+      showToast('Django Backend offline/error. Updating local context for UI safety.', 'warning');
+      setApiOfflineWarning('Django Backend is currently offline. Your verification is being processed locally.');
+    }
+
     // Call context modifier
     verifyOcrDocument(selectedDocId, items, docDetails);
-    
-    showToast('OCR Document verified and inbound receipt created!', 'success');
     
     // Redirect to inbound receipts
     setTimeout(() => {
@@ -129,15 +140,25 @@ export default function OcrVerification() {
     }, 1500);
   };
 
-  const handleReject = () => {
+  const handleReject = async () => {
     if (!selectedDocId) return;
     if (!rejectReason.trim()) {
       showToast('Please provide a rejection reason.', 'warning');
       return;
     }
 
+    // Call real API
+    try {
+      setApiOfflineWarning('');
+      await rejectOcrDocumentApi(selectedDocId, rejectReason);
+      showToast('Document rejected and quarantined.', 'info');
+    } catch (err) {
+      console.error('[OCR Verification] Rejection API failed, falling back to local context update:', err);
+      showToast('Django Backend offline/error. Updating local context for UI safety.', 'warning');
+      setApiOfflineWarning('Django Backend is currently offline. Your rejection is being processed locally.');
+    }
+
     rejectOcrDocument(selectedDocId, rejectReason);
-    showToast('Document rejected and quarantined.', 'info');
     setShowRejectModal(false);
     setRejectReason('');
     
@@ -161,6 +182,14 @@ export default function OcrVerification() {
         <div className="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-top-4 duration-250">
           <AlertBanner type={toast.type} message={toast.message} />
         </div>
+      )}
+
+      {apiOfflineWarning && (
+        <AlertBanner 
+          type="warning" 
+          title="Backend Connection Warning" 
+          message={apiOfflineWarning} 
+        />
       )}
 
       {/* Header */}

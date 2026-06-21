@@ -156,40 +156,37 @@ export default function AiRecommendations() {
       </div>
 
       {/* Tab controls */}
-      <div className="flex border-b border-gray-200">
-        <Button
-          onClick={() => setActiveTab('review')}
-          className={`py-3.5 px-6 font-bold text-sm border-b-2 transition-all flex items-center gap-2 ${
-            activeTab === 'review'
-              ? 'border-[#0071C1] text-[#0071C1]'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          <Lightbulb className="w-4 h-4" />
-          Review Queue ({pendingReviews.length})
-        </Button>
-        <Button
-          onClick={() => setActiveTab('dispatch')}
-          className={`py-3.5 px-6 font-bold text-sm border-b-2 transition-all flex items-center gap-2 ${
-            activeTab === 'dispatch'
-              ? 'border-[#0071C1] text-[#0071C1]'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          <UserCheck className="w-4 h-4" />
-          Dispatch Queue ({approvedPlacements.length})
-        </Button>
-        <Button
-          onClick={() => setActiveTab('tracking')}
-          className={`py-3.5 px-6 font-bold text-sm border-b-2 transition-all flex items-center gap-2 ${
-            activeTab === 'tracking'
-              ? 'border-[#0071C1] text-[#0071C1]'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          <ClipboardList className="w-4 h-4" />
-          Inbound Tracking ({trackedInbounds.length})
-        </Button>
+      <div className="flex border-b border-gray-150 pb-4">
+        <div className="flex bg-slate-100/80 p-1 rounded-xl gap-1 w-full sm:w-auto border border-slate-200/50">
+          {[
+            { id: 'review', label: 'Review Queue', count: pendingReviews.length, icon: Lightbulb },
+            { id: 'dispatch', label: 'Dispatch Queue', count: approvedPlacements.length, icon: UserCheck },
+            { id: 'tracking', label: 'Inbound Tracking', count: trackedInbounds.length, icon: ClipboardList },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 sm:flex-initial py-2 px-5 font-bold text-xs rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${
+                  isActive
+                    ? 'bg-white text-[#0071C1] shadow-xs border border-slate-200/20'
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-slate-200/40'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span>{tab.label}</span>
+                <Badge
+                  variant={isActive ? 'primary' : 'secondary'}
+                  className="ml-1 font-bold text-[10px] px-2 py-0.5 rounded-full"
+                >
+                  {tab.count}
+                </Badge>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Tab Contents: REVIEW QUEUE */}

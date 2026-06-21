@@ -186,3 +186,92 @@ export const getBinById = async (binId) => {
   return await apiClient(`/api/bins/${binId}/`);
 };
 
+// ---------------------------------------------------------------------------
+// NAVIGATION NODES
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/warehouses/navigation-nodes/
+ * Returns: { results: NavigationNode[], count: number }
+ */
+export const getNavigationNodes = async () => {
+  const data = await apiClient('/api/warehouses/navigation-nodes/');
+  return normalizeResponse(data);
+};
+
+/**
+ * POST /api/warehouses/navigation-nodes/
+ * Returns the created NavigationNode.
+ */
+export const createNavigationNode = async (payload) => {
+  return await apiClient('/api/warehouses/navigation-nodes/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+/**
+ * PATCH /api/warehouses/navigation-nodes/{id}/
+ * Returns the updated NavigationNode.
+ */
+export const updateNavigationNode = async (id, payload) => {
+  return await apiClient(`/api/warehouses/navigation-nodes/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+};
+
+/**
+ * DELETE /api/warehouses/navigation-nodes/{id}/
+ */
+export const deleteNavigationNode = async (id) => {
+  return await apiClient(`/api/warehouses/navigation-nodes/${id}/`, {
+    method: 'DELETE',
+  });
+};
+
+// ---------------------------------------------------------------------------
+// WALKING PATHS
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/warehouses/paths/
+ * Returns: { results: WarehousePath[], count: number }
+ */
+export const getWarehousePaths = async () => {
+  const data = await apiClient('/api/warehouses/paths/');
+  return normalizeResponse(data);
+};
+
+/**
+ * POST /api/warehouses/paths/
+ * Returns the created WarehousePath.
+ */
+export const createWarehousePath = async (payload) => {
+  return await apiClient('/api/warehouses/paths/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+/**
+ * PATCH /api/warehouses/paths/{id}/
+ * Returns the updated WarehousePath.
+ */
+export const updateWarehousePath = async (id, payload) => {
+  return await apiClient(`/api/warehouses/paths/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+};
+
+/**
+ * DELETE /api/warehouses/paths/{id}/
+ */
+export const deleteWarehousePath = async (id) => {
+  return await apiClient(`/api/warehouses/paths/${id}/`, {
+    method: 'DELETE',
+  });
+};
+
+

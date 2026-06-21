@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
 import { useAuth } from '../context/AuthContext';
+import { adjustInventory } from '../services/inventoryService';
 import { Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Button, Badge, StatusBadge, SearchFilterBar, Pagination, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, AlertBanner, Modal, Input } from 'shared-ui';
 import { Package, ShieldCheck, ShieldAlert, Settings, AlertCircle } from 'lucide-react';
 
@@ -54,10 +55,25 @@ export default function Inventory() {
     setShowDamageModal(true);
   };
 
-  const submitAdjustment = (e) => {
+  const submitAdjustment = async (e) => {
     e.preventDefault();
     if (!selectedItem || !adjustQty) return;
-    adjustStock(selectedItem.sku, parseInt(adjustQty), user);
+    const qty = parseInt(adjustQty);
+    const payload = {
+      product_id: selectedItem.sku,
+      bin_id: selectedItem.bin || 'BIN-001',
+      quantity: qty,
+      reason: 'Manual adjustment via inventory screen',
+      operator: user?.email || 'operator',
+    };
+    try {
+      console.warn(`[Inventory] Calling API: POST /api/inventory/adjust/ with payload`, payload);
+      await adjustInventory(payload);
+      console.warn(`[Inventory] API Success: POST /api/inventory/adjust/`);
+    } catch (err) {
+      console.error(`[Inventory] API Error falling back to context:`, err);
+    }
+    adjustStock(selectedItem.sku, qty, user);
     setShowAdjustModal(false);
   };
 
