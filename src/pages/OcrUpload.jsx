@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../context/WarehouseContext';
 import { useAuth } from '../context/AuthContext';
-import { processOcrDocument, uploadOcrDocumentDjangoApi } from '../services/ocrService';
+import { processOcrDocument, uploadOcrDocumentDjangoApi, normalizeOcrResponse } from '../services/ocrService';
 import { AlertBanner, Badge, Button, Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Input, StatusBadge } from 'shared-ui';
 import { 
   FileText, UploadCloud, Trash2, ShieldAlert, Sparkles, 
@@ -93,6 +93,8 @@ export default function OcrUpload() {
   const [activeFileId, setActiveFileId] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [apiOfflineWarning, setApiOfflineWarning] = useState('');
+  const [rawOcrDebugData, setRawOcrDebugData] = useState(null);
+  const [processingStartTime, setProcessingStartTime] = useState(null);
   
   const fileInputRef = useRef(null);
 
@@ -124,6 +126,24 @@ export default function OcrUpload() {
     
     filesArray.forEach(file => {
       const nameLower = file.name.toLowerCase();
+
+      // Check if we can re-associate with an existing document of the same filename that is missing a file object
+      const matchingRestoredDoc = ocrDocuments.find(d => 
+        d.fileName === file.name && 
+        !(d.fileObject instanceof File || d.fileObject instanceof Blob)
+      );
+
+      if (matchingRestoredDoc) {
+        setOcrDocuments(prev => prev.map(d => 
+          d.id === matchingRestoredDoc.id 
+            ? { ...d, fileObject: file, status: 'OCR_UPLOADED' } 
+            : d
+        ));
+        setActiveFileId(matchingRestoredDoc.id);
+        addedCount++;
+        return;
+      }
+
       let matchedKey = Object.keys(mockOcrTemplates).find(key => nameLower.includes(key.split('.')[0]));
       
       let template = null;
@@ -235,73 +255,112 @@ export default function OcrUpload() {
       return;
     }
 
-    if (activeDoc.status !== 'OCR_UPLOADED') {
+    const hasRealFile = activeDoc.fileObject instanceof File || activeDoc.fileObject instanceof Blob;
+
+    console.log("[OCR Button] Process Selected clicked. Logs before setting OCR_PROCESSING:");
+    console.log("- activeDoc.id:", activeDoc.id);
+    console.log("- hasRealFile:", hasRealFile);
+    if (hasRealFile) {
+      console.log("- file constructor:", activeDoc.fileObject.constructor.name);
+      console.log("- file name:", activeDoc.fileObject.name);
+      console.log("- file size:", activeDoc.fileObject.size);
+    }
+
+    if (!hasRealFile) {
+      showToast("Please re-select the file before processing. Browser cannot restore uploaded files after refresh.", "warning");
+      // Keep status as OCR_UPLOADED, do not set OCR_PROCESSING, do not show stuck state
+      setOcrDocuments(prev => prev.map(d => d.id === activeFileId ? { ...d, status: 'OCR_UPLOADED' } : d));
+      setProcessing(false);
+      return;
+    }
+
+    if (
+      activeDoc.status !== 'OCR_UPLOADED' &&
+      activeDoc.status !== 'ERROR' &&
+      activeDoc.status !== 'PARSING' &&
+      activeDoc.status !== 'parsing' &&
+      activeDoc.status !== 'processing' &&
+      activeDoc.status !== 'OCR_PROCESSING'
+    ) {
       showToast('Document already processed.', 'warning');
       return;
     }
 
     setProcessing(true);
+    setProcessingStartTime(Date.now());
+    console.log("[OCR Flow] Starting handleProcess. Current activeDoc.status:", activeDoc.status, "processing state:", true);
     setOcrDocuments(prev => prev.map(d => d.id === activeFileId ? { ...d, status: 'OCR_PROCESSING' } : d));
+    setRawOcrDebugData(null); // Clear previous debug data
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.warn("[OCR Flow] 90s timeout reached, aborting OCR request...");
+      controller.abort();
+    }, 90000);
 
     try {
-      if (!activeDoc.fileObject) {
-        throw new Error('No local file object associated with this document.');
-      }
       
       try {
         console.warn("[OCR Upload] Saving file to Django BE via /api/ocr/upload/");
-        await uploadOcrDocumentDjangoApi(activeDoc.fileObject);
+        const djangoRes = await uploadOcrDocumentDjangoApi(activeDoc.fileObject);
+        if (djangoRes?.skipped) {
+          showToast("Backend login token missing. Django OCR sync skipped.", "warning");
+        }
       } catch (djangoErr) {
         console.warn("[OCR Upload] Django upload save failed, continuing extraction:", djangoErr);
+        showToast("Django backend save failed. Extraction will continue locally.", "warning");
       }
       
-      const res = await processOcrDocument(activeDoc.fileObject);
+      console.log("[OCR Flow] Before calling processOcrDocument for file:", activeDoc.fileName);
+      const res = await processOcrDocument(activeDoc.fileObject, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      console.log("[OCR Flow] After response is received from processOcrDocument. OCR response received:", res);
       
-      const extractedData = res.extracted_data || {};
-      const products = extractedData.products || [];
-      const partyInfo = extractedData.party_info || {};
+      let normalized;
+      try {
+        normalized = normalizeOcrResponse(res, activeDoc);
+        console.log("[OCR Flow] After normalizeOcrResponse output. Normalized response:", normalized);
+        if (!normalized.mappedItems || normalized.mappedItems.length === 0) {
+          throw new Error("No products found in OCR response products list.");
+        }
+      } catch (mapperError) {
+        console.error("[OCR Flow] Response structure is unexpected or mapping failed:", mapperError);
+        setRawOcrDebugData(res);
+        setOcrDocuments(prev => prev.map(d => d.id === activeFileId ? { 
+          ...d, 
+          status: 'ERROR',
+          warnings: 1,
+          warningsList: [`Mapping error: ${mapperError.message}`]
+        } : d));
+        console.log("[OCR Flow] Final document status after mapping: ERROR (Mapper Failure)");
+        throw mapperError;
+      }
 
-      const mappedItems = products.map((item, idx) => ({
-        id: `EXT-${Date.now()}-${idx}`,
-        sku: item.sku || '',
-        productName: item.product_name || '',
-        category: item.category || 'Electronics',
-        quantity: Number(item.quantity || 0),
-        uom: item.uom || 'BOX',
-        length: item.dimensions?.length || '',
-        width: item.dimensions?.width || '',
-        height: item.dimensions?.height || '',
-        weight: item.weight?.value || item.weight || '',
-        batchNumber: item.batch_number || `BAT-${Math.floor(1000 + Math.random() * 9000)}`,
-        expiryDate: item.expiry_date || '2028-12-31',
-        confidenceScore: res.confidence_score ? Math.round(res.confidence_score * 100) : 95,
-        validationStatus: item.sku ? 'Valid' : 'Warning'
-      }));
-
-      const updatedDocId = res.document_id || activeFileId;
-      const confidence = res.confidence_score ? Math.round(res.confidence_score * 100) : 95;
-      
+      console.log("[OCR Flow] Before setting OCR document state to VERIFICATION_PENDING with ID:", activeFileId);
       setOcrDocuments(prev => prev.map(d => 
         d.id === activeFileId 
           ? {
               ...d,
-              id: updatedDocId,
+              id: d.id, // Keep the uploaded ID (e.g. OCR-117)
+              documentNumber: normalized.documentNumber, // Attach normalized document number (e.g. INV-2026-1001)
               status: 'VERIFICATION_PENDING',
-              confidenceScore: confidence,
-              extractedItems: mappedItems,
-              supplierName: partyInfo.supplier_name || d.supplierName,
-              documentType: res.document_type || d.documentType,
+              confidenceScore: normalized.confidenceScore,
+              extractedItems: normalized.mappedItems,
+              supplierName: normalized.supplierName,
+              documentType: normalized.documentType,
+              totalAmount: normalized.totalAmount,
+              taxAmount: normalized.taxAmount,
+              fileName: activeDoc.fileName, // Keep actual uploaded file name
               warnings: 0,
               warningsList: []
             } 
           : d
       ));
       
-      if (updatedDocId !== activeFileId) {
-        setActiveFileId(updatedDocId);
-      }
+      console.log("[OCR Flow] Final document status after mapping: VERIFICATION_PENDING");
+      localStorage.setItem('latestProcessedDocId', activeFileId);
 
-      setProcessing(false);
+      console.log("[OCR Flow] Before showing success message / enabling verification link for ID:", activeFileId);
       showToast('OCR analysis completed successfully! Ready for verification.');
 
       logAudit(
@@ -312,22 +371,29 @@ export default function OcrUpload() {
         `Processed document ${activeDoc.fileName} using WMS Neural OCR Engine.`
       );
     } catch (err) {
-      console.error('[OCR Upload] API Error falling back to mock:', err);
+      clearTimeout(timeoutId);
+      console.error('[OCR Flow Error] API or Mapper failure:', err);
       
-      showToast('OCR Extraction Service offline. Using UI safety mock fallback.', 'danger');
-      setApiOfflineWarning('OCR Service is currently offline. Please start the OCR server on port 8001, or check your configuration.');
+      const isTimeout = err.name === 'AbortError' || err.message.includes('timeout');
+      const errorMsg = isTimeout 
+        ? "OCR request completed slowly or response mapping failed. Please retry or check OCR response."
+        : `OCR processing error: ${err.message}`;
+      
+      showToast(errorMsg, 'error');
+      setApiOfflineWarning(errorMsg);
 
-      setTimeout(() => {
-        setOcrDocuments(prev => prev.map(d => d.id === activeFileId ? { ...d, status: 'VERIFICATION_PENDING' } : d));
-        setProcessing(false);
-        logAudit(
-          user?.email || 'inventory@warehouseai.com',
-          user?.role || 'RECEIVING_INVENTORY_OFFICER',
-          'OCR_DOCUMENT_PROCESS',
-          'Inbound OCR (Mock Fallback)',
-          `Processed document ${activeDoc.fileName} using UI safety mock fallback.`
-        );
-      }, 1000);
+      console.log("[OCR Flow] Setting document status to ERROR");
+      setOcrDocuments(prev => prev.map(d => d.id === activeFileId ? { 
+        ...d, 
+        status: 'ERROR',
+        warnings: 1,
+        warningsList: [errorMsg]
+      } : d));
+      console.log("[OCR Flow] Final document status after mapping: ERROR (API/Network/Timeout Failure)");
+    } finally {
+      setProcessing(false);
+      setProcessingStartTime(null);
+      console.log("[OCR Flow] Finished handleProcess. Processing state:", false);
     }
   };
 
@@ -377,6 +443,56 @@ export default function OcrUpload() {
   const verificationPendingCount = ocrDocuments.filter(f => f.status === 'VERIFICATION_PENDING').length;
   const verifiedCount = ocrDocuments.filter(f => f.status === 'VERIFIED').length;
 
+  // Watchdog timer to prevent infinite loading of OCR_PROCESSING status
+  useEffect(() => {
+    const isSpinnerActive = activeFile && (
+      activeFile.status === 'OCR_PROCESSING' || 
+      activeFile.status === 'PARSING' || 
+      activeFile.status === 'parsing' || 
+      activeFile.status === 'processing'
+    );
+    if (isSpinnerActive) {
+      console.log(`[Watchdog] Active document ${activeFile.id} entered spinner state (${activeFile.status}). Starting 90s watchdog timer.`);
+      const timer = setTimeout(() => {
+        console.warn(`[Watchdog] 90s timeout reached for document ${activeFile.id}. Force stopping spinner and setting status to ERROR.`);
+        
+        setOcrDocuments(prev => prev.map(d => 
+          d.id === activeFile.id 
+            ? { 
+                ...d, 
+                status: 'ERROR',
+                warnings: 1,
+                warningsList: ['Watchdog timeout: The OCR extraction process timed out after 90 seconds.']
+              } 
+            : d
+        ));
+        setProcessing(false);
+        showToast("OCR request completed slowly or response mapping failed. Please retry or check OCR response.", "danger");
+      }, 90000);
+
+      return () => {
+        console.log(`[Watchdog] Clearing watchdog timer for document ${activeFile.id} (exited spinner state).`);
+        clearTimeout(timer);
+      };
+    }
+  }, [activeFileId, activeFile?.status]);
+
+  const isSpinnerVisible = !!(processing && activeFile && (
+    activeFile.status === 'OCR_PROCESSING' || 
+    activeFile.status === 'PARSING' || 
+    activeFile.status === 'parsing' || 
+    activeFile.status === 'processing'
+  ));
+
+  const isStuck = !!(activeFile && (
+    activeFile.status === 'OCR_PROCESSING' || 
+    activeFile.status === 'PARSING' || 
+    activeFile.status === 'parsing' || 
+    activeFile.status === 'processing'
+  ) && (!processing || (processingStartTime && Date.now() - processingStartTime > 90000)));
+
+  console.log("[OCR Render Log] activeFile.id:", activeFile?.id, "activeFile.status:", activeFile?.status, "processing:", processing, "isSpinnerVisible:", isSpinnerVisible);
+
   return (
     <div className="space-y-6">
       {/* Toast banner */}
@@ -395,6 +511,33 @@ export default function OcrUpload() {
           title="Service Connection Warning" 
           message={apiOfflineWarning} 
         />
+      )}
+
+      {rawOcrDebugData && (
+        <Card className="border border-red-200 bg-red-50/50 p-4 rounded-2xl">
+          <CardHeader className="pb-2 flex justify-between items-center">
+            <CardTitle className="text-xs uppercase font-bold text-red-800 flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 text-red-650" />
+              OCR Debug: Unexpected Response Shape
+            </CardTitle>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="text-xs h-7 text-red-700 border-red-200 hover:bg-red-50 bg-white font-semibold"
+              onClick={() => setRawOcrDebugData(null)}
+            >
+              Clear Debug
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-xs text-red-700 font-semibold">
+              The OCR API returned a 200 OK, but the response did not match the expected structure. Below is the raw response received:
+            </p>
+            <pre className="p-3 bg-slate-900 text-green-400 rounded-lg text-[10px] font-mono overflow-auto max-h-40 select-all">
+              {JSON.stringify(rawOcrDebugData, null, 2)}
+            </pre>
+          </CardContent>
+        </Card>
       )}
 
       {/* Header */}
@@ -486,7 +629,7 @@ export default function OcrUpload() {
                   <Button 
                     variant="outline" 
                     onClick={handleProcess}
-                    disabled={processing || !activeFile || activeFile.status !== 'OCR_UPLOADED'}
+                    disabled={processing || !activeFile || (activeFile.status !== 'OCR_UPLOADED' && activeFile.status !== 'ERROR')}
                   >
                     {processing ? (
                       <span className="flex items-center gap-1"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing...</span>
@@ -499,7 +642,7 @@ export default function OcrUpload() {
                     className="text-red-600 border-red-100 hover:bg-red-50"
                     onClick={handleClear}
                   >
-                    Clear All
+                    Clear OCR Queue
                   </Button>
                 </>
               )}
@@ -544,7 +687,7 @@ export default function OcrUpload() {
                         {f.status === 'OCR_UPLOADED' && (
                           <Badge variant="outline" className="text-[9px]">Uploaded</Badge>
                         )}
-                        {f.status === 'OCR_PROCESSING' && (
+                        {(f.status === 'OCR_PROCESSING' || f.status === 'PARSING' || f.status === 'parsing' || f.status === 'processing') && (
                           <Badge variant="primary" className="text-[9px] bg-blue-50 text-blue-700 animate-pulse border-blue-200">
                             <span className="flex items-center gap-1"><Loader2 className="w-2.5 h-2.5 animate-spin" /> Parsers</span>
                           </Badge>
@@ -557,6 +700,9 @@ export default function OcrUpload() {
                         )}
                         {f.status === 'REJECTED' && (
                           <Badge variant="danger" className="text-[9px]">Rejected</Badge>
+                        )}
+                        {f.status === 'ERROR' && (
+                          <Badge variant="danger" className="text-[9px]">Error</Badge>
                         )}
                         <Button
                           onClick={(e) => {
@@ -576,10 +722,9 @@ export default function OcrUpload() {
           </div>
 
           {/* Right Column: OCR Extraction Details Preview */}
-          <div className="lg:col-span-2">
-            {activeFile ? (
+          <div className="lg:col-span-2">            {activeFile ? (
               <Card className={`border border-gray-100 shadow-sm transition-all h-full ${
-                activeFile.status === 'OCR_UPLOADED' ? 'border-dashed' : ''
+                activeFile?.status === 'OCR_UPLOADED' ? 'border-dashed' : ''
               }`}>
                 <CardHeader className="border-b border-gray-100 bg-slate-50/50 pb-4 flex flex-row items-center justify-between">
                   <div>
@@ -587,11 +732,11 @@ export default function OcrUpload() {
                       <Sparkles className="w-4 h-4 text-blue-500 animate-pulse" />
                       OCR Data Preview Panel
                     </CardTitle>
-                    <p className="text-[10px] text-gray-400 font-mono mt-0.5">{activeFile.fileName}</p>
+                    <p className="text-[10px] text-gray-400 font-mono mt-0.5">{activeFile?.fileName}</p>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {activeFile.status === 'OCR_UPLOADED' && (
+                    {activeFile?.status === 'OCR_UPLOADED' && (
                       <Button 
                         size="sm" 
                         onClick={handleProcess}
@@ -602,19 +747,24 @@ export default function OcrUpload() {
                         Process manifest
                       </Button>
                     )}
-                    {activeFile.status === 'VERIFICATION_PENDING' && (
+                    {activeFile?.status === 'VERIFICATION_PENDING' && (
                       <Button 
                         size="sm" 
-                        onClick={() => navigate('/ocr-verification', { state: { documentId: activeFile.id } })}
+                        onClick={() => navigate('/ocr-verification', { state: { documentId: activeFile?.id } })}
                         className="text-xs h-8 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
                       >
                         <CheckSquare className="w-3 h-3" />
                         Verify Extracted Data
                       </Button>
                     )}
-                    {activeFile.status === 'VERIFIED' && (
+                    {activeFile?.status === 'VERIFIED' && (
                       <Badge variant="success" className="bg-emerald-600 text-white font-bold text-[10px]">
                         Receipt Verified
+                      </Badge>
+                    )}
+                    {activeFile?.status === 'ERROR' && (
+                      <Badge variant="danger" className="bg-red-650 text-white font-bold text-[10px]">
+                        Failed
                       </Badge>
                     )}
                   </div>
@@ -622,18 +772,32 @@ export default function OcrUpload() {
                 
                 <CardContent className="p-6">
                   {/* Status: Uploaded */}
-                  {activeFile.status === 'OCR_UPLOADED' && (
+                  {activeFile?.status === 'OCR_UPLOADED' && (
                     <div className="py-16 flex flex-col items-center justify-center text-center text-gray-400 space-y-3">
                       <FileText className="w-12 h-12 text-gray-300" />
-                      <h3 className="font-bold text-sm text-gray-800">Document Uploaded</h3>
-                      <p className="text-xs text-gray-500 max-w-sm">
-                        Please click the <strong>Process manifest</strong> button to parse and extract tabular data.
-                      </p>
+                      {!(activeFile?.fileObject instanceof File || activeFile?.fileObject instanceof Blob) ? (
+                        <>
+                          <h3 className="font-bold text-sm text-red-650">File Binary Missing</h3>
+                          <p className="text-xs text-red-500 max-w-sm">
+                            Please re-select the file before processing. Browser cannot restore uploaded files after refresh.
+                          </p>
+                          <Button size="sm" onClick={handleButtonClick} className="mt-2">
+                            Re-select File
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <h3 className="font-bold text-sm text-gray-800">Document Uploaded</h3>
+                          <p className="text-xs text-gray-500 max-w-sm">
+                            Please click the <strong>Process manifest</strong> button to parse and extract tabular data.
+                          </p>
+                        </>
+                      )}
                     </div>
                   )}
 
-                  {/* Status: Processing */}
-                  {activeFile.status === 'OCR_PROCESSING' && (
+                  {/* Status: Processing Spinner */}
+                  {isSpinnerVisible && (
                     <div className="py-16 flex flex-col items-center justify-center text-center text-gray-400 space-y-4">
                       <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
                       <h3 className="font-bold text-sm text-gray-800">Neural OCR Engine Extracting...</h3>
@@ -641,8 +805,55 @@ export default function OcrUpload() {
                     </div>
                   )}
 
+                  {/* Status: Stuck Processing */}
+                  {isStuck && (
+                    <div className="py-16 flex flex-col items-center justify-center text-center text-gray-400 space-y-4">
+                      <AlertTriangle className="w-12 h-12 text-amber-500 animate-bounce" />
+                      <h3 className="font-bold text-sm text-amber-800">Processing Interrupted or Stuck</h3>
+                      <p className="text-xs text-slate-500 max-w-md">
+                        This document status is marked as processing, but no extraction is active. You can reset the status and try again.
+                      </p>
+                      <Button 
+                        size="sm" 
+                        onClick={() => {
+                          setOcrDocuments(prev => prev.map(d => d.id === activeFile.id ? { ...d, status: 'OCR_UPLOADED' } : d));
+                          setRawOcrDebugData(null);
+                          setProcessing(false);
+                          showToast('Document status reset to Uploaded.', 'info');
+                        }} 
+                        className="mt-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold flex items-center gap-1"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        Reset Stuck Processing
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Status: ERROR */}
+                  {activeFile?.status === 'ERROR' && (
+                    <div className="py-16 flex flex-col items-center justify-center text-center text-gray-400 space-y-4">
+                      <AlertTriangle className="w-12 h-12 text-red-500" />
+                      <h3 className="font-bold text-sm text-red-800">OCR Processing Failed</h3>
+                      <p className="text-xs text-slate-500 max-w-md">
+                        {activeFile?.warningsList?.[0] || "OCR request completed slowly or response mapping failed. Please retry or check OCR response."}
+                      </p>
+                      {rawOcrDebugData && (
+                        <div className="w-full max-w-lg mt-4 text-left">
+                          <span className="text-[10px] text-gray-400 font-bold uppercase block mb-1">Raw OCR Response Details:</span>
+                          <pre className="p-3 bg-slate-900 text-green-400 rounded-lg text-[10px] font-mono overflow-auto max-h-40 select-all">
+                            {JSON.stringify(rawOcrDebugData, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                      <Button size="sm" onClick={handleProcess} disabled={processing} className="mt-2 bg-red-600 hover:bg-red-700 text-white font-semibold flex items-center gap-1">
+                        <RefreshCw className={`w-3.5 h-3.5 ${processing ? 'animate-spin' : ''}`} />
+                        {processing ? 'Retrying...' : 'Retry OCR Processing'}
+                      </Button>
+                    </div>
+                  )}
+
                   {/* Status: VERIFICATION_PENDING or VERIFIED or REJECTED */}
-                  {(activeFile.status === 'VERIFICATION_PENDING' || activeFile.status === 'VERIFIED' || activeFile.status === 'REJECTED') && activeFile.extractedItems && activeFile.extractedItems.length > 0 && (
+                  {(activeFile?.status === 'VERIFICATION_PENDING' || activeFile?.status === 'VERIFIED' || activeFile?.status === 'REJECTED') && activeFile?.extractedItems && activeFile?.extractedItems.length > 0 && (
                     <div className="space-y-6">
                       
                       {/* Document Confidence & Validation Warnings */}
@@ -651,10 +862,10 @@ export default function OcrUpload() {
                           <span className="text-[9px] text-gray-400 font-bold uppercase block">Validation Status</span>
                           <div className="flex items-center gap-1.5 mt-1.5">
                             <span className={`w-2 h-2 rounded-full ${
-                              activeFile.status === 'VERIFIED' ? 'bg-green-500' : activeFile.status === 'REJECTED' ? 'bg-red-500' : 'bg-amber-500'
+                              activeFile?.status === 'VERIFIED' ? 'bg-green-500' : activeFile?.status === 'REJECTED' ? 'bg-red-500' : 'bg-amber-500'
                             }`}></span>
                             <span className="text-xs font-bold text-gray-800">
-                              {activeFile.status === 'VERIFIED' ? 'Verified' : activeFile.status === 'REJECTED' ? 'Rejected' : 'Pending Verification'}
+                              {activeFile?.status === 'VERIFIED' ? 'Verified' : activeFile?.status === 'REJECTED' ? 'Rejected' : 'Pending Verification'}
                             </span>
                           </div>
                         </div>
@@ -663,24 +874,24 @@ export default function OcrUpload() {
                           <div className="flex justify-between items-center text-[9px] text-gray-400 font-bold uppercase">
                             <span>OCR Confidence Score</span>
                             <span className={
-                              activeFile.confidenceScore > 90 ? 'text-green-600' : 'text-amber-600'
-                            }>{activeFile.confidenceScore}%</span>
+                              activeFile?.confidenceScore > 90 ? 'text-green-600' : 'text-amber-600'
+                            }>{activeFile?.confidenceScore}%</span>
                           </div>
                           
                           {/* Progress bar */}
                           <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
                             <div 
                               className={`h-1.5 rounded-full ${
-                                activeFile.confidenceScore > 90 ? 'bg-green-500' : 'bg-amber-500'
+                                activeFile?.confidenceScore > 90 ? 'bg-green-500' : 'bg-amber-500'
                               }`}
-                              style={{ width: `${activeFile.confidenceScore}%` }}
+                              style={{ width: `${activeFile?.confidenceScore}%` }}
                             ></div>
                           </div>
                         </div>
                       </div>
 
                       {/* Redirect Banner for Verification Pending */}
-                      {activeFile.status === 'VERIFICATION_PENDING' && (
+                      {activeFile?.status === 'VERIFICATION_PENDING' && (
                         <div className="p-4 bg-blue-50/50 border border-blue-200 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                           <div>
                             <h4 className="text-xs font-bold text-blue-800">Manual Verification Required</h4>
@@ -688,7 +899,7 @@ export default function OcrUpload() {
                           </div>
                           <Button 
                             size="sm" 
-                            onClick={() => navigate('/ocr-verification', { state: { documentId: activeFile.id } })}
+                            onClick={() => navigate('/ocr-verification', { state: { documentId: activeFile?.id } })}
                             className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shrink-0 flex items-center gap-1.5"
                           >
                             <CheckSquare className="w-3.5 h-3.5" />
@@ -698,14 +909,14 @@ export default function OcrUpload() {
                       )}
 
                       {/* Warnings list */}
-                      {activeFile.warningsList && activeFile.warningsList.length > 0 && (
+                      {activeFile?.warningsList && activeFile?.warningsList.length > 0 && (
                         <div className="p-3.5 bg-amber-50/50 border border-amber-200 rounded-xl space-y-1.5">
                           <h4 className="text-[10px] font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1.5">
                             <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                             Extraction Warnings Detected
                           </h4>
                           <ul className="list-disc pl-4 space-y-1 text-[11px] text-amber-700 font-medium">
-                            {activeFile.warningsList.map((warn, i) => (
+                            {activeFile?.warningsList.map((warn, i) => (
                               <li key={i}>{warn}</li>
                             ))}
                           </ul>
@@ -720,26 +931,26 @@ export default function OcrUpload() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 p-4 text-xs font-semibold">
                           <div>
                             <span className="text-[10px] text-gray-400 block font-medium">Document Type</span>
-                            <span className="text-gray-900 font-bold">{activeFile.documentType}</span>
+                            <span className="text-gray-900 font-bold">{activeFile?.documentType}</span>
                           </div>
                           <div>
                             <span className="text-[10px] text-gray-400 block font-medium">Document ID Number</span>
-                            <span className="text-gray-900 font-mono font-bold">{activeFile.id}</span>
+                            <span className="text-gray-900 font-mono font-bold">{activeFile?.documentNumber || activeFile?.id}</span>
                           </div>
                           <div>
                             <span className="text-[10px] text-gray-400 block font-medium">Supplier Entity</span>
-                            <span className="text-gray-900 font-bold">{activeFile.supplierName}</span>
+                            <span className="text-gray-900 font-bold">{activeFile?.supplierName}</span>
                           </div>
                           <div>
                             <span className="text-[10px] text-gray-400 block font-medium">Uploader Email</span>
-                            <span className="text-gray-900 font-mono">{activeFile.uploadedBy}</span>
+                            <span className="text-gray-900 font-mono">{activeFile?.uploadedBy}</span>
                           </div>
                           
                           <div className="col-span-full border-t border-slate-100 my-1 pt-3 font-bold text-slate-500 uppercase tracking-widest text-[10px]">
                             Product Extracted Manifest Line Items
                           </div>
-
-                          {activeFile.extractedItems.map((item, index) => (
+ 
+                          {activeFile?.extractedItems?.map((item, index) => (
                             <React.Fragment key={item.id || index}>
                               <div>
                                 <span className="text-[10px] text-gray-400 block font-medium">SKU Reference</span>

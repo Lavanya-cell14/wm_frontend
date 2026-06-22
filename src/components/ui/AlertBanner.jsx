@@ -2,7 +2,8 @@ import React from 'react';
 import Button from './Button';
 import { AlertTriangle, Info, CheckCircle2, XCircle } from 'lucide-react';
 
-export default function AlertBanner({ type = 'warning', message, actionText, onAction }) {
+export default function AlertBanner({ type, variant, message, actionText, onAction }) {
+  const selectedType = type || variant || 'info';
   const configs = {
     warning: {
       bg: 'bg-amber-50',
@@ -38,8 +39,12 @@ export default function AlertBanner({ type = 'warning', message, actionText, onA
     }
   };
 
-  const config = configs[type];
-  const Icon = config.icon;
+  // Add alias mappings for compatibility
+  configs.error = configs.critical;
+  configs.danger = configs.critical;
+
+  const config = configs[selectedType] || configs.info;
+  const Icon = config.icon || Info;
 
   return (
     <div className={`w-full rounded-xl border p-4 flex flex-col sm:flex-row gap-4 sm:items-center justify-between ${config.bg} ${config.border}`}>
