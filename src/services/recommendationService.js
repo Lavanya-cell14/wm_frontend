@@ -13,6 +13,36 @@ export const rejectRecommendationApi = async (id) => {
   return { success: true };
 };
 
+export const generateStorageRecommendationApi = async (productId) => {
+  console.warn(`[AI Recommendation] Request payload:`, { product_id: productId });
+  const res = await apiClient('/api/recommendations/storage/', {
+    method: 'POST',
+    body: JSON.stringify({ product_id: productId })
+  });
+  console.warn(`[AI Recommendation] Response:`, res);
+  return res;
+};
+
+export const generateBinAllocationApi = async (productId) => {
+  console.warn(`[AI Allocation] Request payload:`, { product_id: productId });
+  const res = await apiClient('/api/recommendations/bin-allocation/', {
+    method: 'POST',
+    body: JSON.stringify({ product_id: productId })
+  });
+  console.warn(`[AI Allocation] Response:`, res);
+  return res;
+};
+
+export const completeBinAllocationApi = async (allocationId, operator) => {
+  console.warn(`[AI Allocation Complete] Request payload:`, { operator });
+  const res = await apiClient(`/api/recommendations/bin-allocation/${allocationId}/complete/`, {
+    method: 'PATCH',
+    body: JSON.stringify({ operator })
+  });
+  console.warn(`[AI Allocation Complete] Response:`, res);
+  return res;
+};
+
 // ---------------------------------------------------------------------------
 // RECOMMENDATIONS
 // ---------------------------------------------------------------------------

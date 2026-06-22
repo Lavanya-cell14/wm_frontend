@@ -16,17 +16,29 @@ import {
   TableCell,
   Modal,
   Pagination,
-  Input
+  Input,
+  SearchFilterBar,
+  AlertBanner
 } from 'shared-ui';
-import { Lightbulb, ChevronRight, Eye, Info, Sparkles, Filter, Settings, Cpu, HelpCircle, AlertTriangle } from 'lucide-react';
+import { Lightbulb, ChevronRight, Eye, Info, Sparkles, Filter, Settings, Cpu, HelpCircle, AlertTriangle, Loader2, CheckSquare } from 'lucide-react';
 import { 
   getRecommendationsApi, 
   suggestBinRecommendationApi, 
-  recommend3dPlacementApi 
+  recommend3dPlacementApi,
+  generateStorageRecommendationApi,
+  generateBinAllocationApi,
+  completeBinAllocationApi
 } from '../../services/recommendationService';
 
 export default function RecommendationsPage() {
-  const { aiRecommendations = [] } = useWarehouse();
+  const { 
+    aiRecommendations = [], 
+    inboundReceipts = [], 
+    products = [],
+    workers = [],
+    assignPutawayTask,
+    setAiRecommendations
+  } = useWarehouse();
   
   // Tab state: 'monitor' | 'allocation-tools'
   const [activeTab, setActiveTab] = useState('monitor');
@@ -41,6 +53,16 @@ export default function RecommendationsPage() {
   const [apiError, setApiError] = useState(null);
   const [fallbackUsed, setFallbackUsed] = useState(false);
 
+  // Live Slotting Flow State
+  const [activeLiveItemId, setActiveLiveItemId] = useState(null);
+  const [liveRecLoading, setLiveRecLoading] = useState(false);
+  const [liveRecError, setLiveRecError] = useState(null);
+  const [liveRecResult, setLiveRecResult] = useState(null);
+
+  const [liveAllocLoading, setLiveAllocLoading] = useState(false);
+  const [liveAllocError, setLiveAllocError] = useState(null);
+  const [liveAllocResult, setLiveAllocResult] = useState(null);
+
   // Suggest Bin form state
   const [suggestSku, setSuggestSku] = useState('SKU-1002');
   const [suggestWeight, setSuggestWeight] = useState('12');
@@ -48,6 +70,7 @@ export default function RecommendationsPage() {
   const [suggestQty, setSuggestQty] = useState('50');
   const [suggestResult, setSuggestResult] = useState(null);
   const [suggestLoading, setSuggestLoading] = useState(false);
+  const [suggestError, setSuggestError] = useState(null);
 
   // 3D Placement form state
   const [placementBin, setPlacementBin] = useState('BIN-001');
@@ -56,6 +79,13 @@ export default function RecommendationsPage() {
   const [placementDim, setPlacementDim] = useState('30x30x30');
   const [placementResult, setPlacementResult] = useState(null);
   const [placementLoading, setPlacementLoading] = useState(false);
+  const [placementError, setPlacementError] = useState(null);
+
+  const [toastMessage, setToastMessage] = useState('');
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 4000);
+  };
 
   const loadRecommendations = async () => {
     setLoading(true);
@@ -96,11 +126,87 @@ export default function RecommendationsPage() {
     }
   }, [activeTab]);
 
+  // Lookup function to map SKU from receipt to Product UUID
+  const getProductUuidForSku = (sku) => {
+    const prod = products.find(p => p.sku === sku || p.productId === sku || p.id === sku);
+    return prod ? (prod.productId || prod.id) : null;
+  };
+
+  // Generate storage recommendation (POST /api/recommendations/storage/)
+  const handleGenerateStorageRecommendation = async (receipt) => {
+    const productUuid = getProductUuidForSku(receipt.sku);
+    if (!productUuid) {
+      setLiveRecError(`Could not find a valid Product UUID for SKU "${receipt.sku}" in cache. Verify that the product has been created in the database.`);
+      setLiveRecResult(null);
+      return;
+    }
+
+    setActiveLiveItemId(receipt.id);
+    setLiveRecLoading(true);
+    setLiveRecError(null);
+    setLiveRecResult(null);
+    setLiveAllocResult(null);
+    setLiveAllocError(null);
+
+    try {
+      const res = await generateStorageRecommendationApi(productUuid);
+      setLiveRecResult({
+        zoneGroup: res.zone_group || 'N/A',
+        zone: res.zone || 'N/A',
+        score: res.recommendation_score ? Math.round(Number(res.recommendation_score) * 100) : 95,
+        reason: res.recommendation_reason || 'AI dynamic slotting layout verified.',
+        version: res.recommendation_version || 'v1'
+      });
+    } catch (err) {
+      console.error("[AI Recommendation Error]:", err);
+      setLiveRecError(err.message || "Failed to generate storage recommendation from Django backend.");
+    } finally {
+      setLiveRecLoading(false);
+    }
+  };
+
+  // Confirm and allocate bin (POST /api/recommendations/bin-allocation/)
+  const handleGenerateBinAllocation = async (receipt) => {
+    const productUuid = getProductUuidForSku(receipt.sku);
+    if (!productUuid) {
+      setLiveAllocError(`Could not find a valid Product UUID for SKU "${receipt.sku}" to allocate.`);
+      setLiveAllocResult(null);
+      return;
+    }
+
+    setActiveLiveItemId(receipt.id);
+    setLiveAllocLoading(true);
+    setLiveAllocError(null);
+    setLiveAllocResult(null);
+    setLiveRecResult(null);
+    setLiveRecError(null);
+
+    try {
+      const res = await generateBinAllocationApi(productUuid);
+      setLiveAllocResult({
+        binCode: res.bin?.code || 'N/A',
+        shelf: res.shelf?.number || 'N/A',
+        rack: res.rack?.code || 'N/A',
+        score: res.allocation_score ? Math.round(Number(res.allocation_score) * 100) : 95,
+        reason: res.allocation_reason || 'AI spatial assignment completed.',
+        routeDistance: res.route?.distance || '0',
+        routePath: res.route?.path || [],
+        storageStatus: res.storage_status || 'ALLOCATED'
+      });
+    } catch (err) {
+      console.error("[AI Allocation Error]:", err);
+      setLiveAllocError(err.message || "Failed to allocate bin space from Django backend.");
+    } finally {
+      setLiveAllocLoading(false);
+    }
+  };
+
   // Handlers for Tools
   const handleSuggestBin = async (e) => {
     if (e) e.preventDefault();
     setSuggestLoading(true);
     setSuggestResult(null);
+    setSuggestError(null);
     try {
       const payload = {
         sku: suggestSku,
@@ -117,15 +223,9 @@ export default function RecommendationsPage() {
         reason: res.reason || 'Storage rules verification completed. Direct AStar route matches.'
       });
     } catch (err) {
-      console.warn("API suggest-bin offline, showing mock response:", err);
-      // Fallback response
-      setSuggestResult({
-        bin: 'BIN-003',
-        aisle: 'Aisle A1',
-        shelf: 'Level 3',
-        confidence: 88,
-        reason: 'API offline. Mock Suggestion based on standard ambient volume limits.'
-      });
+      console.error("API suggest-bin offline:", err);
+      setSuggestError("AI Target Bin Suggestion Service offline or request failed.");
+      setSuggestResult(null);
     } finally {
       setSuggestLoading(false);
     }
@@ -135,6 +235,7 @@ export default function RecommendationsPage() {
     if (e) e.preventDefault();
     setPlacementLoading(true);
     setPlacementResult(null);
+    setPlacementError(null);
     try {
       const payload = {
         bin: placementBin,
@@ -151,14 +252,9 @@ export default function RecommendationsPage() {
         utilization: res.utilization_percentage ? Math.round(Number(res.utilization_percentage)) : 76
       });
     } catch (err) {
-      console.warn("API 3d-placement offline, showing mock response:", err);
-      setPlacementResult({
-        x: 1.2,
-        y: 0.5,
-        z: 0.8,
-        orientation: 'Horizontal Face-Out',
-        utilization: 82
-      });
+      console.error("API 3d-placement offline:", err);
+      setPlacementError("AI 3D Coordinate Placement Service offline or request failed.");
+      setPlacementResult(null);
     } finally {
       setPlacementLoading(false);
     }
@@ -176,6 +272,12 @@ export default function RecommendationsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-4 right-4 z-50 animate-bounce shadow-lg rounded-xl">
+          <AlertBanner type="success" message={toastMessage} />
+        </div>
+      )}
       
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -223,6 +325,272 @@ export default function RecommendationsPage() {
 
       {activeTab === 'monitor' ? (
         <>
+          {/* Pending Bin Allocation Queue */}
+          <Card className="border border-blue-100 shadow-sm bg-gradient-to-br from-white to-blue-50/10 mb-6">
+            <CardHeader className="pb-3 border-b border-gray-100">
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-sm font-bold uppercase text-blue-900 flex items-center gap-1.5">
+                    <Cpu className="w-4 h-4 text-blue-600 animate-pulse" />
+                    Pending Bin Allocation Queue
+                  </CardTitle>
+                  <CardDescription className="text-xs text-gray-500">
+                    Inbound items verified by Inventory Officer awaiting AI storage recommendation and physical bin assignment.
+                  </CardDescription>
+                </div>
+                <Badge variant="primary" className="text-xs font-mono">
+                  {inboundReceipts.filter(r => r.status === 'WAITING_FOR_BIN_ASSIGNMENT').length} pending
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4">
+              {inboundReceipts.filter(r => r.status === 'WAITING_FOR_BIN_ASSIGNMENT').length === 0 ? (
+                <div className="text-center py-6 text-gray-500 font-semibold text-xs">
+                  No inventory pending recommendation yet.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Receipt / Reference</TableHead>
+                          <TableHead>Product Details</TableHead>
+                          <TableHead>Qty / Wt / Dim</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">AI Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {inboundReceipts.filter(r => r.status === 'WAITING_FOR_BIN_ASSIGNMENT').map((receipt) => {
+                          const isActive = activeLiveItemId === receipt.id;
+                          return (
+                            <React.Fragment key={receipt.id}>
+                              <TableRow className="hover:bg-slate-50/20 transition-colors">
+                                <TableCell>
+                                  <div className="font-bold text-gray-900 text-xs">{receipt.id}</div>
+                                  <div className="text-[10px] text-gray-400 font-mono mt-0.5">{receipt.documentReference}</div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="font-bold text-gray-800 text-xs">{receipt.productName}</div>
+                                  <div className="text-[10px] text-gray-500 font-mono">SKU: {receipt.sku}</div>
+                                </TableCell>
+                                <TableCell className="text-xs text-slate-700">
+                                  <div>Qty: <span className="font-bold text-slate-900">{receipt.verifiedQuantity || receipt.quantityReceived}</span></div>
+                                  <div className="text-[10px] text-slate-500">{receipt.weight || 'N/A'} | {receipt.dimensions || 'N/A'}</div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="warning" className="text-[9px] uppercase font-bold animate-pulse">
+                                    Awaiting Bin
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex justify-end gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-[11px] h-8 px-3 font-semibold border-amber-200 hover:bg-amber-50 text-amber-800 flex items-center gap-1"
+                                      onClick={() => handleGenerateStorageRecommendation(receipt)}
+                                      disabled={liveRecLoading || liveAllocLoading}
+                                    >
+                                      {liveRecLoading && isActive ? (
+                                        <Loader2 className="w-3 h-3 animate-spin text-amber-600" />
+                                      ) : (
+                                        <Lightbulb className="w-3.5 h-3.5" />
+                                      )}
+                                      Suggest Storage Slot
+                                    </Button>
+                                    <Button
+                                      variant="primary"
+                                      size="sm"
+                                      className="text-[11px] h-8 px-3 font-semibold bg-[#0071C1] hover:bg-[#005c9e] text-white flex items-center gap-1"
+                                      onClick={() => handleGenerateBinAllocation(receipt)}
+                                      disabled={liveRecLoading || liveAllocLoading}
+                                    >
+                                      {liveAllocLoading && isActive ? (
+                                        <Loader2 className="w-3 h-3 animate-spin text-white" />
+                                      ) : (
+                                        <CheckSquare className="w-3.5 h-3.5" />
+                                      )}
+                                      Confirm & Allocate Bin
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                              
+                              {/* Live Results Panel */}
+                              {isActive && (
+                                <TableRow>
+                                  <TableCell colSpan={5} className="bg-slate-50/50 p-4 border-t border-b border-gray-150">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                                      {/* 1. Storage Recommendation Panel */}
+                                      <div className="p-4 bg-amber-50/30 border border-amber-150 rounded-xl space-y-2">
+                                        <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider flex items-center gap-1">
+                                          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                                          AI Storage Slotting Recommendation
+                                        </h4>
+                                        {liveRecLoading ? (
+                                          <div className="flex items-center gap-2 text-xs text-gray-500 font-semibold py-2">
+                                            <Loader2 className="w-4 h-4 animate-spin text-amber-500 animate-pulse" />
+                                            Querying AI slotting heuristics...
+                                          </div>
+                                        ) : liveRecError ? (
+                                          <div className="text-xs text-red-705 font-semibold p-2 bg-red-50 border border-red-100 rounded-lg flex items-center gap-1.5 text-left">
+                                            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                                            <span>{liveRecError}</span>
+                                          </div>
+                                        ) : liveRecResult ? (
+                                          <div className="space-y-2 text-xs font-semibold text-slate-700 text-left">
+                                            <div className="flex justify-between items-center">
+                                              <span>Recommended Zone: <span className="font-bold text-gray-900">{liveRecResult.zone}</span></span>
+                                              <Badge variant="success" className="font-mono">{liveRecResult.score}% Confidence</Badge>
+                                            </div>
+                                            <div>Zone Group: <span className="text-gray-900">{liveRecResult.zoneGroup}</span></div>
+                                            <p className="text-[11px] text-slate-500 leading-relaxed pt-1.5 border-t border-dashed border-amber-200">
+                                              <span className="font-bold text-slate-700 block">AI Rationale:</span>
+                                              {liveRecResult.reason}
+                                            </p>
+                                          </div>
+                                        ) : (
+                                          <div className="text-xs text-gray-400 font-medium py-2">
+                                            Click "Suggest Storage Slot" to fetch AI heuristics.
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* 2. Bin Allocation Panel */}
+                                      <div className="p-4 bg-blue-50/30 border border-blue-150 rounded-xl space-y-2">
+                                        <h4 className="text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1">
+                                          <Cpu className="w-3.5 h-3.5 text-blue-600" />
+                                          AI Physical Bin Allocation
+                                        </h4>
+                                        {liveAllocLoading ? (
+                                          <div className="flex items-center gap-2 text-xs text-gray-500 font-semibold py-2">
+                                            <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                                            Running spatial allocation algorithm...
+                                          </div>
+                                        ) : liveAllocError ? (
+                                          <div className="text-xs text-red-705 font-semibold p-2 bg-red-50 border border-red-100 rounded-lg flex items-center gap-1.5 text-left">
+                                            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                                            <span>{liveAllocError}</span>
+                                          </div>
+                                        ) : liveAllocResult ? (
+                                          <div className="space-y-3 text-xs font-semibold text-slate-700 text-left font-sans">
+                                            <div className="flex justify-between items-center">
+                                              <span>Allocated Bin: <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">{liveAllocResult.binCode}</span></span>
+                                              <Badge variant="primary" className="font-mono">{liveAllocResult.score}% Fit Score</Badge>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2 text-[11px] bg-white border border-gray-100 p-2 rounded-lg font-semibold text-slate-650">
+                                              <div>Rack ID: <span className="text-gray-900 font-mono">{liveAllocResult.rack}</span></div>
+                                              <div>Shelf Level: <span className="text-gray-900 font-mono">Level {liveAllocResult.shelf}</span></div>
+                                              <div>Status: <span className="text-emerald-700 font-bold">{liveAllocResult.storageStatus}</span></div>
+                                              <div>Transit Route: <span className="text-gray-900">{liveAllocResult.routeDistance}m</span></div>
+                                            </div>
+                                            <p className="text-[11px] text-slate-500 leading-relaxed pt-1 border-b border-gray-100 pb-2">
+                                              <span className="font-bold text-slate-700 block">AI Allocation Reason:</span>
+                                              {liveAllocResult.reason}
+                                            </p>
+
+                                            {/* Action to Dispatch/Create Putaway Task */}
+                                            <div className="space-y-2 pt-2">
+                                              <div className="flex gap-2">
+                                                <div className="flex-1 text-left">
+                                                  <label className="block text-[10px] text-gray-500 font-bold mb-1 uppercase">Assign Operator *</label>
+                                                  <select 
+                                                    id={`operator-select-${receipt.id}`}
+                                                    className="w-full border border-gray-300 rounded-lg px-2 py-1.5 bg-white text-xs font-semibold text-gray-700"
+                                                    defaultValue=""
+                                                  >
+                                                    <option value="" disabled>Select Operator...</option>
+                                                    {workers.filter(w => w.role === 'WAREHOUSE_OPERATOR' || w.role === 'OPERATOR' || w.role === 'staff' || w.role === 'STAFF').map(w => (
+                                                      <option key={w.id} value={`${w.id}|${w.name}`}>{w.name} ({w.zone || 'Aisle'})</option>
+                                                    ))}
+                                                  </select>
+                                                </div>
+                                                <div className="text-left">
+                                                  <label className="block text-[10px] text-gray-500 font-bold mb-1 uppercase">Priority</label>
+                                                  <select 
+                                                    id={`priority-select-${receipt.id}`}
+                                                    className="w-full border border-gray-300 rounded-lg px-2 py-1.5 bg-white text-xs font-semibold text-gray-700"
+                                                    defaultValue="Medium"
+                                                  >
+                                                    <option value="High">High</option>
+                                                    <option value="Medium">Medium</option>
+                                                    <option value="Low">Low</option>
+                                                  </select>
+                                                </div>
+                                              </div>
+                                              <Button
+                                                size="sm"
+                                                className="w-full bg-[#0071C1] hover:bg-[#005c9e] text-white py-2 font-bold justify-center"
+                                                onClick={() => {
+                                                  const opSel = document.getElementById(`operator-select-${receipt.id}`);
+                                                  const priSel = document.getElementById(`priority-select-${receipt.id}`);
+                                                  const opVal = opSel ? opSel.value : '';
+                                                  const priVal = priSel ? priSel.value : 'Medium';
+                                                  
+                                                  if (!opVal) {
+                                                    alert("Please select a warehouse operator to assign this task.");
+                                                    return;
+                                                  }
+                                                  const [opId, opName] = opVal.split('|');
+                                                  
+                                                  // Construct the custom AI recommendation object
+                                                  const customRec = {
+                                                    id: `REC-${Date.now()}`,
+                                                    inboundId: receipt.id,
+                                                    title: `AI Bin Allocation for ${receipt.productName}`,
+                                                    sku: receipt.sku,
+                                                    productName: receipt.productName,
+                                                    quantity: receipt.verifiedQuantity || receipt.quantityReceived,
+                                                    zone: liveRecResult?.zone || 'Zone A',
+                                                    aisle: 'A1',
+                                                    rack: liveAllocResult.rack || 'RACK-001',
+                                                    shelf: `Level ${liveAllocResult.shelf || 1}`,
+                                                    bin: liveAllocResult.binCode || 'BIN-001',
+                                                    confidence: liveAllocResult.score || 95,
+                                                    reason: liveAllocResult.reason || 'AI spatial assignment completed.',
+                                                    status: 'PENDING_REVIEW',
+                                                    createdAt: new Date().toISOString()
+                                                  };
+                                                  
+                                                  // Push into local aiRecommendations
+                                                  setAiRecommendations(prev => [customRec, ...prev]);
+                                                  
+                                                  // Call assignPutawayTask
+                                                  assignPutawayTask(receipt.id, opId, opName, priVal, customRec);
+                                                  
+                                                  showToast(`Putaway task assigned to ${opName} successfully!`);
+                                                  
+                                                  // Clear live state
+                                                  setActiveLiveItemId(null);
+                                                }}
+                                              >
+                                                Create & Assign Putaway Task
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div className="text-xs text-gray-400 font-medium py-2 font-semibold">
+                                            Click "Confirm & Allocate Bin" to execute the spatial allocator.
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Search Toolbar */}
           <div className="space-y-3">
             <SearchFilterBar 
@@ -385,6 +753,13 @@ export default function RecommendationsPage() {
                   </p>
                 </div>
               )}
+
+              {suggestError && (
+                <div className="mt-5 p-4 bg-red-50/50 border border-red-200 rounded-xl space-y-2 text-xs font-semibold text-red-800 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-red-650 shrink-0" />
+                  <p>{suggestError}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -444,6 +819,13 @@ export default function RecommendationsPage() {
                   <div className="text-slate-700 mt-2 text-[10px]">
                     Orientation: <span className="font-bold text-gray-900">{placementResult.orientation}</span>
                   </div>
+                </div>
+              )}
+
+              {placementError && (
+                <div className="mt-5 p-4 bg-red-50/50 border border-red-200 rounded-xl space-y-2 text-xs font-semibold text-red-800 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-red-650 shrink-0" />
+                  <p>{placementError}</p>
                 </div>
               )}
             </CardContent>

@@ -68,9 +68,9 @@ export default function InboundProducts() {
       console.warn(`[InboundProducts] API Success. URL: /api/inbound/, Status: 200, Count: ${data.count}, Fallback Used: false`);
     } catch (err) {
       const status = err.status || (err.code === 'NETWORK_ERROR' ? 0 : 'unknown');
-      setApiError('Inbound Shipments API unreachable — showing mock fallback data.');
+      setApiError('Inbound Shipments API unreachable — showing cached offline queue.');
       setFallbackUsed(true);
-      console.error(`[InboundProducts] API Error. URL: /api/inbound/, Status: ${status}, Detail: ${err.message}. Fallback Used: true (using context/WireMock data)`);
+      console.error(`[InboundProducts] API Error. URL: /api/inbound/, Status: ${status}, Detail: ${err.message}. Fallback Used: true (using context cached data)`);
     } finally {
       setLoading(false);
     }
@@ -123,7 +123,7 @@ export default function InboundProducts() {
         }
         return rec;
       }));
-      showToast('AI Bin recommendation generated successfully (Mock Fallback)!');
+      showToast('AI Bin recommendation generated successfully (Offline Fallback)!');
     }
   };
 
@@ -179,7 +179,7 @@ export default function InboundProducts() {
 
       {fallbackUsed && (
         <div className="mb-4">
-          <AlertBanner type="warning" message="Inbound Shipments API unreachable — showing mock fallback data." />
+          <AlertBanner type="warning" message="Inbound Shipments API unreachable — showing cached offline queue." />
         </div>
       )}
 

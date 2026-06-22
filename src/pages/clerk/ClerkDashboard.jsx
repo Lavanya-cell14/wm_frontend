@@ -35,11 +35,11 @@ export default function ClerkDashboard() {
   };
 
   // Calculations for KPIs
-  const todayUploads = ocrDocuments.length || 6;
+  const todayUploads = ocrDocuments.length;
   const pendingReviews = ocrDocuments.filter(d => d.status === 'VERIFICATION_PENDING').length;
-  const approvedDocs = ocrDocuments.filter(d => d.status === 'VERIFIED').length || 4;
-  const rejectedDocs = ocrDocuments.filter(d => d.status === 'REJECTED').length || 1;
-  const completedDocs = inboundReceipts.filter(r => r.status === 'STORED').length || 2;
+  const approvedDocs = ocrDocuments.filter(d => d.status === 'VERIFIED').length;
+  const rejectedDocs = ocrDocuments.filter(d => d.status === 'REJECTED').length;
+  const completedDocs = inboundReceipts.filter(r => r.status === 'STORED').length;
   
   const totalProducts = inventory.length;
   const totalStock = inventory.reduce((sum, item) => sum + (item.quantity || 0), 0);
@@ -87,15 +87,12 @@ export default function ClerkDashboard() {
       </div>
 
       {/* KPI Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard title="Today's Uploads" value={todayUploads} icon={UploadCloud} subtitle="Manifest files added" />
         <StatCard title="Pending Reviews" value={pendingReviews} icon={CheckSquare} subtitle="Awaiting officer confirm" />
         <StatCard title="Approved Docs" value={approvedDocs} icon={FileText} subtitle="Receipts generated" />
         <StatCard title="Rejected Docs" value={rejectedDocs} icon={AlertTriangle} subtitle="Quarantined filings" />
         <StatCard title="Completed Docs" value={completedDocs} icon={FileText} subtitle="Manifests stored" />
-        <StatCard title="Total Products" value={totalProducts} icon={Box} subtitle="Unique SKUs active" />
-        <StatCard title="Available Stock" value={availableStock} icon={Box} subtitle="Total free units" />
-        <StatCard title="Pending Allocations" value={pendingAllocations} icon={Activity} subtitle="Inbound placements queue" />
       </div>
 
       {/* Main content grids */}

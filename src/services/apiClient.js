@@ -15,6 +15,13 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 // Backend authentication is disabled (AllowAny). No headers required.
 // ---------------------------------------------------------------------------
 const getAuthHeaders = () => {
+  const token = localStorage.getItem('token') || 
+                localStorage.getItem('accessToken') || 
+                localStorage.getItem('access_token') || 
+                localStorage.getItem('access');
+  if (token) {
+    return { 'Authorization': `Bearer ${token}` };
+  }
   return {};
 };
 
@@ -46,7 +53,7 @@ export const apiClient = async (endpoint, options = {}) => {
   }
 
   const headers = {
-    'Content-Type': 'application/json',
+    ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
     ...getAuthHeaders(),         // auth slot — isolated, single swap point
     ...(options.headers || {}),  // per-call header overrides
   };

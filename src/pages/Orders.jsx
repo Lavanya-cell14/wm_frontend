@@ -74,7 +74,7 @@ export default function Orders() {
       setFallbackUsed(mapped.length === 0);
     } catch (err) {
       console.warn("API Error falling back to cache:", err);
-      setApiError('Orders API unreachable — showing mock fallback data.');
+      setApiError('Orders API unreachable — showing cached offline queue.');
       setFallbackUsed(true);
     } finally {
       setLoading(false);

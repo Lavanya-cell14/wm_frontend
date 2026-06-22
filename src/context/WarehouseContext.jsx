@@ -1,5 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
+import { getWarehouses, getZones, getBins } from '../services/warehouseStructureService';
+import { getInventory } from '../services/inventoryService';
+import { getProducts } from '../services/productService';
+import { getOrders } from '../services/orderService';
+import { getRoutesApi } from '../services/routeService';
+import { getInboundShipments } from '../services/inboundService';
+import { getAiRecommendationsApi } from '../services/recommendationService';
+import { getMovementsApi } from '../services/movementService';
+import { getUsersApi } from '../services/usersService';
 
 const WarehouseContext = createContext();
 
@@ -124,451 +133,82 @@ export const validateId = (id, prefix, existingIds) => {
 
 export function WarehouseProvider({ children }) {
   const { user } = useAuth();
-  const [warehouses, setWarehouses] = useState([
-    {
-      id: "WH-001",
-      name: "Central Fulfillment A",
-      location: "Chicago, IL",
-      status: "operational",
-      totalZones: 4,
-      capacity: 85,
-      activeStaff: 45,
-      area: "50,000 sq ft",
-    },
-  ]);
+  const [warehouses, setWarehouses] = useState([]);
+  const [zones, setZones] = useState([]);
+  const [racks, setRacks] = useState([]);
+  const [shelves, setShelves] = useState([]);
+  const [bins, setBins] = useState([]);
 
-  const [zones, setZones] = useState([
-    {
-      id: "ZONE-Z1",
-      name: "Zone A",
-      type: "Fast Moving",
-      warehouse: "Central Fulfillment A",
-      x: 10,
-      y: 5,
-      z: 0,
-      width: 20,
-      height: 10,
-      depth: 15,
-      capacityPercent: 65,
-      status: "Active",
-    },
-    {
-      id: "ZONE-Z2",
-      name: "Zone B",
-      type: "Electronics",
-      warehouse: "Central Fulfillment A",
-      x: 35,
-      y: 5,
-      z: 0,
-      width: 20,
-      height: 10,
-      depth: 15,
-      capacityPercent: 72,
-      status: "Active",
-    },
-    {
-      id: "ZONE-Z3",
-      name: "Zone C",
-      type: "Bulk Storage",
-      warehouse: "Central Fulfillment A",
-      x: 60,
-      y: 5,
-      z: 0,
-      width: 20,
-      height: 10,
-      depth: 15,
-      capacityPercent: 88,
-      status: "Active",
-    },
-    {
-      id: "ZONE-Z4",
-      name: "Zone D",
-      type: "Cold Storage",
-      warehouse: "Central Fulfillment A",
-      x: 85,
-      y: 5,
-      z: 0,
-      width: 20,
-      height: 10,
-      depth: 15,
-      capacityPercent: 40,
-      status: "Active",
-    },
-  ]);
-
-  const [racks, setRacks] = useState([
-    { id: "RACK-001", zoneId: "ZONE-Z1", name: "Rack 1", maxWeight: 1000, currentWeight: 350, status: "Active" },
-    { id: "RACK-002", zoneId: "ZONE-Z2", name: "Rack 2", maxWeight: 1500, currentWeight: 450, status: "Active" },
-    { id: "RACK-003", zoneId: "ZONE-Z3", name: "Rack 3", maxWeight: 2000, currentWeight: 800, status: "Active" },
-    { id: "RACK-004", zoneId: "ZONE-Z4", name: "Rack 4", maxWeight: 1200, currentWeight: 120, status: "Active" },
-  ]);
-
-  const [shelves, setShelves] = useState([
-    { id: "SHELF-001", rackId: "RACK-001", shelfLevel: "Level 1", maxWeight: 300, currentWeight: 100, status: "Active" },
-    { id: "SHELF-002", rackId: "RACK-001", shelfLevel: "Level 2", maxWeight: 300, currentWeight: 150, status: "Active" },
-    { id: "SHELF-003", rackId: "RACK-002", shelfLevel: "Level 1", maxWeight: 500, currentWeight: 200, status: "Active" },
-    { id: "SHELF-004", rackId: "RACK-003", shelfLevel: "Level 1", maxWeight: 600, currentWeight: 400, status: "Active" },
-  ]);
-
-  const [bins, setBins] = useState([
-    {
-      code: "BIN-001",
-      zone: "Zone A",
-      shelf: "S-01",
-      maxCapacity: 200,
-      currentCapacity: 120,
-      status: "Active",
-      x: 12,
-      y: 5,
-      z: 1,
-    },
-    {
-      code: "BIN-002",
-      zone: "Zone B",
-      shelf: "S-10",
-      maxCapacity: 50,
-      currentCapacity: 15,
-      status: "Active",
-      x: 32,
-      y: 5,
-      z: 1,
-    },
-    {
-      code: "BIN-003",
-      zone: "Zone B",
-      shelf: "S-03",
-      maxCapacity: 100,
-      currentCapacity: 50,
-      status: "Active",
-      x: 35,
-      y: 5,
-      z: 2,
-    },
-    {
-      code: "BIN-004",
-      zone: "Zone C",
-      shelf: "S-04",
-      maxCapacity: 100,
-      currentCapacity: 45,
-      status: "Active",
-      x: 58,
-      y: 6,
-      z: 2,
-    },
-  ]);
-
-  const [inventory, setInventory] = useState([
-    {
-      sku: "PRD-001",
-      name: "Dell Laptop",
-      category: "Electronics",
-      quantity: 50,
-      reserved: 0,
-      damaged: 0,
-      availableQuantity: 50,
-      reorderLevel: 10,
-      status: "In Stock",
-      warehouse: "Central Fulfillment A",
-      zone: "Zone B",
-      rack: "RACK-003",
-      shelf: "S-03",
-      bin: "BIN-003",
-      weight: "2.4 kg",
-      dimensions: "35 x 24 x 3 cm",
-      lastUpdated: "Just scanned",
-    },
-    {
-      sku: "PRD-002",
-      name: "MacBook Pro",
-      category: "Electronics",
-      quantity: 15,
-      reserved: 2,
-      damaged: 0,
-      availableQuantity: 13,
-      reorderLevel: 10,
-      status: "In Stock",
-      warehouse: "Central Fulfillment A",
-      zone: "Zone B",
-      rack: "RACK-002",
-      shelf: "S-01",
-      bin: "BIN-002",
-      weight: "1.4 kg",
-      dimensions: "30 x 21 x 2 cm",
-      lastUpdated: "10 mins ago",
-    },
-    {
-      sku: "PRD-003",
-      name: "Logitech Mouse",
-      category: "Accessories",
-      quantity: 120,
-      reserved: 10,
-      damaged: 1,
-      availableQuantity: 109,
-      reorderLevel: 10,
-      status: "In Stock",
-      warehouse: "Central Fulfillment A",
-      zone: "Zone A",
-      rack: "RACK-001",
-      shelf: "S-01",
-      bin: "BIN-001",
-      weight: "0.1 kg",
-      dimensions: "10 x 6 x 4 cm",
-      lastUpdated: "30 mins ago",
-    },
-    {
-      sku: "PRD-004",
-      name: "Industrial Drills Pro",
-      category: "Industrial Tools",
-      quantity: 25,
-      reserved: 4,
-      damaged: 0,
-      availableQuantity: 21,
-      reorderLevel: 10,
-      status: "In Stock",
-      warehouse: "Central Fulfillment A",
-      zone: "Zone C",
-      rack: "RACK-004",
-      shelf: "S-04",
-      bin: "BIN-004",
-      weight: "5.5 kg",
-      dimensions: "26 x 22 x 32 cm",
-      lastUpdated: "1 hr ago",
-    },
-  ]);
-
-  const [recentScans, setRecentScans] = useState([
-    {
-      id: "SCN-001",
-      sku: "PRD-002",
-      name: "MacBook Pro",
-      category: "Electronics",
-      time: "10:15 AM",
-      operator: "Warehouse Staff",
-      suggested: "BIN-002",
-      status: "Stored",
-    },
-  ]);
-
-  const [workers, setWorkers] = useState([
-    { id: 'WRK-001', name: 'System Admin', email: 'admin@warehouseai.com', role: 'ADMIN', warehouse: 'All Facilities', status: 'Active', lastLogin: '5 mins ago', createdAt: '2026-01-10' },
-    { id: 'WRK-002', name: 'Warehouse Manager', email: 'manager@warehouseai.com', role: 'WAREHOUSE_MANAGER', warehouse: 'Central Fulfillment A', status: 'Active', lastLogin: '1 hr ago', createdAt: '2026-01-12' },
-    { id: 'WRK-003', name: 'Warehouse Operator', email: 'staff@warehouseai.com', role: 'WAREHOUSE_OPERATOR', warehouse: 'East Coast Distribution', status: 'Active', lastLogin: '3 hrs ago', createdAt: '2026-01-15' },
-    { id: 'WRK-004', name: 'Receiving & Inventory Officer', email: 'inventory@warehouseai.com', role: 'RECEIVING_INVENTORY_OFFICER', warehouse: 'Central Fulfillment A', status: 'Active', lastLogin: '2 hrs ago', createdAt: '2026-02-01' }
-  ]);
-
-  const [putawayTasks, setPutawayTasks] = useState([
-    {
-      id: "PTW-001",
-      inboundId: "IR-001",
-      product: "Heavy Duty Drilling Rig 500W",
-      sku: "SKU-3092",
-      quantity: 8,
-      pickupLocation: "Receiving Dock",
-      destinationZone: "Zone C",
-      destinationRack: "RACK-004",
-      destinationShelf: "S-04",
-      destinationBin: "BIN-004",
-      assignedStaffId: "WRK-003",
-      assignedStaffName: "Warehouse Staff",
-      priority: "High",
-      dueTime: "Today, 18:00",
-      routePath: "Receiving Dock -> Aisle 1 -> Zone C -> RACK-004 -> S-04 -> BIN-004",
-      status: "ASSIGNED",
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: "PTW-002",
-      inboundId: "IR-002",
-      product: "Dell Laptop",
-      sku: "PRD-001",
-      quantity: 15,
-      pickupLocation: "Receiving Dock",
-      destinationZone: "Zone B",
-      destinationRack: "RACK-003",
-      destinationShelf: "S-03",
-      destinationBin: "BIN-003",
-      assignedStaffId: "WRK-003",
-      assignedStaffName: "Warehouse Staff",
-      priority: "Medium",
-      dueTime: "Today, 16:30",
-      routePath: "Receiving Dock -> Aisle 2 -> Zone B -> RACK-003 -> S-03 -> BIN-003",
-      status: "COMPLETED",
-      createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-      completedAt: new Date(Date.now() - 3600000).toISOString(),
-      estTime: "12 mins",
-      duration: "9 mins"
-    },
-    {
-      id: "PTW-003",
-      inboundId: "IR-003",
-      product: "MacBook Pro",
-      sku: "PRD-002",
-      quantity: 5,
-      pickupLocation: "Receiving Dock",
-      destinationZone: "Zone B",
-      destinationRack: "RACK-002",
-      destinationShelf: "S-01",
-      destinationBin: "BIN-002",
-      assignedStaffId: "WRK-003",
-      assignedStaffName: "Warehouse Staff",
-      priority: "Low",
-      dueTime: "Today, 17:00",
-      routePath: "Receiving Dock -> Aisle 2 -> Zone B -> RACK-002 -> S-01 -> BIN-002",
-      status: "COMPLETED",
-      createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
-      completedAt: new Date(Date.now() - 3600000 * 3.5).toISOString(),
-      estTime: "10 mins",
-      duration: "11 mins"
+  const [inventory, setInventory] = useState(() => {
+    const localData = localStorage.getItem('inventory');
+    if (localData) {
+      try {
+        return JSON.parse(localData);
+      } catch (e) {
+        console.error('Failed parsing inventory from localStorage', e);
+      }
     }
-  ]);
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('inventory', JSON.stringify(inventory));
+  }, [inventory]);
+
+  const [recentScans, setRecentScans] = useState([]);
+  const [workers, setWorkers] = useState([]);
+  const [putawayTasks, setPutawayTasks] = useState([]);
   const [stockAdjustments, setStockAdjustments] = useState([]);
   const [reservations, setReservations] = useState([]);
   const [damagedRecords, setDamagedRecords] = useState([]);
 
-  const [ocrDocuments, setOcrDocuments] = useState([
-    {
-      id: "OCR-001",
-      fileName: "dell_monitor_invoice.pdf",
-      documentType: "Invoice",
-      supplierName: "Dell Sourcing Ltd",
-      uploadedAt: "2026-06-15T09:00:00Z",
-      uploadedBy: "inventory@warehouseai.com",
-      status: "VERIFICATION_PENDING",
-      confidenceScore: 94,
-      extractedItems: [
-        {
-          id: "EXT-001",
-          sku: "", // Missing SKU
-          productName: 'Dell Monitor 27" UltraSharp',
-          category: "Electronics",
-          quantity: 40,
-          uom: "BOX",
-          length: 65,
-          width: 18,
-          height: 42,
-          weight: 6.5,
-          batchNumber: "BAT-9921",
-          expiryDate: "2028-12-31",
-          confidenceScore: 94,
-          validationStatus: "Warning"
-        }
-      ],
-      warnings: 2
-    },
-    {
-      id: "OCR-002",
-      fileName: "hp_printer_packing_slip.jpg",
-      documentType: "Packing List",
-      supplierName: "HP Supply Logistics",
-      uploadedAt: "2026-06-14T14:30:00Z",
-      uploadedBy: "inventory@warehouseai.com",
-      status: "OCR_UPLOADED",
-      confidenceScore: 88,
-      extractedItems: [
-        {
-          id: "EXT-002",
-          sku: "SKU-7734",
-          productName: "HP LaserJet Printer Pro",
-          category: "Electronics",
-          quantity: 15,
-          uom: "BOX",
-          length: "",
-          width: "",
-          height: "",
-          weight: 14.2,
-          batchNumber: "BAT-1029",
-          expiryDate: "2029-06-30",
-          confidenceScore: 88,
-          validationStatus: "Warning"
-        }
-      ],
-      warnings: 1
-    },
-    {
-      id: "OCR-003",
-      fileName: "logitech_mouse_bol.png",
-      documentType: "Bill of Lading",
-      supplierName: "Logitech Imports Inc",
-      uploadedAt: "2026-06-14T10:15:00Z",
-      uploadedBy: "inventory@warehouseai.com",
-      status: "OCR_PROCESSING",
-      confidenceScore: 68,
-      extractedItems: [
-        {
-          id: "EXT-003",
-          sku: "SKU-1198",
-          productName: "Logitech Wireless Mouse M510",
-          category: "Accessories",
-          quantity: 250,
-          uom: "PCS",
-          length: 12,
-          width: 6,
-          height: 4,
-          weight: 0.12,
-          batchNumber: "BAT-0881",
-          expiryDate: "2031-01-01",
-          confidenceScore: 68,
-          validationStatus: "Warning"
-        }
-      ],
-      warnings: 2
-    },
-    {
-      id: "OCR-004",
-      fileName: "drill_delivery_docket.pdf",
-      documentType: "Delivery Docket",
-      supplierName: "Industrial Tools Corp",
-      uploadedAt: "2026-06-13T16:00:00Z",
-      uploadedBy: "inventory@warehouseai.com",
-      status: "VERIFIED",
-      confidenceScore: 98,
-      extractedItems: [
-        {
-          id: "EXT-004",
-          sku: "SKU-3092",
-          productName: "Heavy Duty Drilling Rig 500W",
-          category: "Industrial Tools",
-          quantity: 8,
-          uom: "BOX",
-          length: 52,
-          width: 32,
-          height: 28,
-          weight: 18.5,
-          batchNumber: "BAT-4412",
-          expiryDate: "2030-05-01",
-          confidenceScore: 98,
-          validationStatus: "Valid"
-        }
-      ],
-      warnings: 0
+  const [ocrDocuments, setOcrDocuments] = useState(() => {
+    const localData = localStorage.getItem('ocrDocuments');
+    if (localData) {
+      try {
+        return JSON.parse(localData);
+      } catch (e) {
+        console.error('Failed parsing ocrDocuments from localStorage', e);
+      }
     }
-  ]);
+    return [];
+  });
 
-  const [inboundReceipts, setInboundReceipts] = useState([
-    {
-      id: "IR-001",
-      documentId: "OCR-004",
-      documentReference: "DD-9901",
-      sku: "SKU-3092",
-      productName: "Heavy Duty Drilling Rig 500W",
-      category: "Industrial Tools",
-      quantityReceived: 8,
-      verifiedQuantity: 8,
-      supplier: "Industrial Tools Corp",
-      receivedDate: "2026-06-13",
-      dimensions: "52 x 32 x 28 cm",
-      weight: "18.5 kg",
-      status: "WAITING_FOR_BIN_ASSIGNMENT",
-      binRecommendationStatus: "WAITING_FOR_BIN_ASSIGNMENT"
+  useEffect(() => {
+    const docsToSave = ocrDocuments.map(({ fileObject, ...rest }) => rest);
+    localStorage.setItem('ocrDocuments', JSON.stringify(docsToSave));
+  }, [ocrDocuments]);
+
+  const [inboundReceipts, setInboundReceipts] = useState(() => {
+    const localData = localStorage.getItem('inboundReceipts');
+    if (localData) {
+      try {
+        return JSON.parse(localData);
+      } catch (e) {
+        console.error('Failed parsing inboundReceipts from localStorage', e);
+      }
     }
-  ]);
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('inboundReceipts', JSON.stringify(inboundReceipts));
+  }, [inboundReceipts]);
 
   const addOcrDocument = (doc) => {
     setOcrDocuments(prev => [doc, ...prev]);
   };
 
   const verifyOcrDocument = (docId, updatedItems, docDetails) => {
-    setOcrDocuments(prev => prev.map(d => d.id === docId ? { ...d, status: 'VERIFIED', extractedItems: updatedItems } : d));
+    setOcrDocuments(prev => prev.map(d => d.id === docId ? { 
+      ...d, 
+      id: docDetails.document_number || d.id,
+      status: 'VERIFIED', 
+      extractedItems: updatedItems,
+      supplierName: docDetails.supplier || d.supplierName,
+      totalAmount: docDetails.total_amount || d.totalAmount,
+      taxAmount: docDetails.tax_amount || d.taxAmount
+    } : d));
     
     updatedItems.forEach((item, idx) => {
       const receiptId = `IR-${Date.now()}-${idx}`;
@@ -646,600 +286,271 @@ export function WarehouseProvider({ children }) {
     setOcrDocuments(prev => prev.map(d => d.id === docId ? { ...d, status: 'REJECTED', rejectReason: reason } : d));
   };
 
-  const [inboundTasks, setInboundTasks] = useState([
-    {
-      id: "INB-001",
-      supplier: "Dell Logistics",
-      supplierId: "SUP-001",
-      expectedArrival: "Today, 14:00",
-      product: "Dell Laptop",
-      sku: "PRD-001",
-      quantity: 50,
-      priority: "High",
-      status: "Pending",
-      assignedStaff: "Unassigned",
-    },
-  ]);
+  const [inboundTasks, setInboundTasks] = useState([]);
 
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [orders, setOrders] = useState([]);
   const [movements, setMovements] = useState([]);
-  const [routes, setRoutes] = useState([
-    {
-      id: "ROUTE-001",
-      from: "Receiving Dock A",
-      to: "BIN-003",
-      distance: "65m",
-      time: "4 mins",
-      operator: "Warehouse Staff",
-      status: "Active",
-    },
-  ]);
+  const [routes, setRoutes] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        const baseUrl = "https://0jejz.wiremockapi.cloud";
-        
-        // Fetch all 12 endpoints including newly added products, recommendations, and inbound-shipments
         const [
-          layoutRes, 
-          utilRes, 
-          invRes, 
-          workersRes, 
-          routesRes, 
-          ordersRes, 
-          movementsRes, 
-          scansRes, 
-          suppliersRes,
+          whsRes,
+          zonesRes,
+          binsRes,
           productsRes,
-          recsRes,
-          inboundsRes
+          invRes,
+          ordersRes,
+          routesRes,
+          inboundRes,
+          aiRecsRes,
+          movementsRes,
+          usersRes
         ] = await Promise.all([
-          fetch(`${baseUrl}/warehouse/warehouse-layout`).then(r => r.ok ? r.json() : null),
-          fetch(`${baseUrl}/warehouse/utilization`).then(r => r.ok ? r.json() : null),
-          fetch(`${baseUrl}/warehouse/inventory`).then(r => r.ok ? r.json() : null),
-          fetch(`${baseUrl}/warehouse/workers`).then(r => r.ok ? r.json() : null),
-          fetch(`${baseUrl}/warehouse/routes`).then(r => r.ok ? r.json() : null),
-          fetch(`${baseUrl}/warehouse/order`).then(r => r.ok ? r.json() : null),
-          fetch(`${baseUrl}/warehouse/movements`).then(r => r.ok ? r.json() : null),
-          fetch(`${baseUrl}/warehouse/scanner-response`).then(r => r.ok ? r.json() : null),
-          fetch(`${baseUrl}/warehouse/suppliers`).then(r => r.ok ? r.json() : null),
-          fetch(`${baseUrl}/warehouse/products`).then(r => r.ok ? r.json() : null),
-          fetch(`${baseUrl}/warehouse/ai-recommendations`).then(r => r.ok ? r.json() : null),
-          fetch(`${baseUrl}/warehouse/inbound-shipments`).then(r => r.ok ? r.json() : null)
+          getWarehouses().catch(e => { console.warn("Failed fetching warehouses:", e); return { results: [] }; }),
+          getZones().catch(e => { console.warn("Failed fetching zones:", e); return { results: [] }; }),
+          getBins().catch(e => { console.warn("Failed fetching bins:", e); return { results: [] }; }),
+          getProducts().catch(e => { console.warn("Failed fetching products:", e); return { results: [] }; }),
+          getInventory().catch(e => { console.warn("Failed fetching inventory:", e); return { results: [] }; }),
+          getOrders().catch(e => { console.warn("Failed fetching orders:", e); return { results: [] }; }),
+          getRoutesApi().catch(e => { console.warn("Failed fetching routes:", e); return { results: [] }; }),
+          getInboundShipments().catch(e => { console.warn("Failed fetching inbound shipments:", e); return { results: [] }; }),
+          getAiRecommendationsApi().catch(e => { console.warn("Failed fetching AI recommendations:", e); return { results: [] }; }),
+          getMovementsApi().catch(e => { console.warn("Failed fetching movements:", e); return { results: [] }; }),
+          getUsersApi().catch(e => { console.warn("Failed fetching users:", e); return { results: [] }; })
         ]);
 
-        // Map layout & utilization to zones and bins
-        if (layoutRes) {
-          const utilMap = {};
-          if (utilRes) {
-            utilRes.forEach(u => {
-              utilMap[u.zone] = u.utilizationPercent;
-            });
-          }
-
-          // Enforce exactly 4 zones: Zone A, Zone B, Zone C, and Zone D by default
-          const requiredZones = [
-            {
-              id: "ZONE-Z1",
-              name: "Zone A",
-              type: "Fast Moving Storage",
-              warehouse: layoutRes.name || "Central Fulfillment A",
-              x: 10,
-              y: 5,
-              z: 0,
-              width: 20,
-              height: 10,
-              depth: 15,
-              capacityPercent: utilMap["Z1"] || 65,
-              status: "Active"
-            },
-            {
-              id: "ZONE-Z2",
-              name: "Zone B",
-              type: "Electronics Storage",
-              warehouse: layoutRes.name || "Central Fulfillment A",
-              x: 35,
-              y: 5,
-              z: 0,
-              width: 20,
-              height: 10,
-              depth: 15,
-              capacityPercent: utilMap["Z2"] || 72,
-              status: "Active"
-            },
-            {
-              id: "ZONE-Z3",
-              name: "Zone C",
-              type: "Bulk Storage",
-              warehouse: layoutRes.name || "Central Fulfillment A",
-              x: 60,
-              y: 5,
-              z: 0,
-              width: 20,
-              height: 10,
-              depth: 15,
-              capacityPercent: utilMap["Z3"] || 88,
-              status: "Active"
-            },
-            {
-              id: "ZONE-Z4",
-              name: "Zone D",
-              type: "Cold Storage",
-              warehouse: layoutRes.name || "Central Fulfillment A",
-              x: 85,
-              y: 5,
-              z: 0,
-              width: 20,
-              height: 10,
-              depth: 15,
-              capacityPercent: utilMap["Z4"] || 40,
-              status: "Active"
-            }
-          ];
-
-          setZones(requiredZones);
-
-          // Dynamically synchronize the warehouse name, location, and area from the API to match the filtered zones list
-          if (layoutRes.name) {
-            setWarehouses(prev => prev.map(w => w.id === "WH-001" ? {
-              ...w,
-              name: layoutRes.name,
-              location: layoutRes.location || w.location,
-              area: layoutRes.area || w.area
-            } : w));
-          }
-
-          // Bins parsing
-          const mappedBins = [];
-          (layoutRes.zones || []).forEach((z, zIdx) => {
-            const zId = z.zoneId;
-            // Only map bins for Z1, Z2, Z3, Z4 (enforce 4 active zones limit)
-            if (zId !== 'Z1' && zId !== 'Z2' && zId !== 'Z3' && zId !== 'Z4') return;
-
-            let zoneName = `Zone ${zId}`;
-            if (zId === 'Z1') zoneName = "Zone A";
-            else if (zId === 'Z2') zoneName = "Zone B";
-            else if (zId === 'Z3') zoneName = "Zone C";
-            else if (zId === 'Z4') zoneName = "Zone D";
-
-            (z.racks || []).forEach((rack, rackIdx) => {
-              (rack.levels || []).forEach((level, levelIdx) => {
-                (level.bins || []).forEach((b, binIdx) => {
-                  mappedBins.push({
-                    code: b.binId,
-                    zone: zoneName,
-                    shelf: `S-0${levelIdx + 1}`,
-                    maxCapacity: b.maxLoadKg || 250,
-                    currentCapacity: b.occupied ? Math.floor((b.maxLoadKg || 250) * 0.6) : 0,
-                    status: "Active",
-                    x: 10 + rackIdx * 6 + binIdx * 2,
-                    y: 5 + levelIdx * 2,
-                    z: 1 + binIdx
-                  });
-                });
-              });
-            });
-          });
-
-          if (mappedBins.length > 0) {
-            setBins(mappedBins);
-          }
+        if (whsRes?.results?.length > 0) {
+          setWarehouses(whsRes.results);
+        } else {
+          setWarehouses([]);
         }
 
-        // Helper to distribute date timestamps cleanly across Jan 2026 to Jun 2026
-        const getDateForIdx = (idx) => {
-          const dates = [
-            "2026-01-12T09:15:00Z", "2026-01-26T14:40:00Z",
-            "2026-02-08T10:20:00Z", "2026-02-22T16:15:00Z",
-            "2026-03-05T08:45:00Z", "2026-03-19T13:30:00Z",
-            "2026-04-03T11:10:00Z", "2026-04-17T15:50:00Z",
-            "2026-05-02T07:30:00Z", "2026-05-15T12:00:00Z",
-            "2026-05-28T16:30:00Z", "2026-06-04T10:45:00Z",
-            "2026-06-18T14:00:00Z"
-          ];
-          return dates[idx % dates.length];
-        };
+        if (zonesRes?.results?.length > 0) {
+          setZones(zonesRes.results);
+        } else {
+          setZones([]);
+        }
 
-        // Map products catalog with enterprise datasets expansion & proper 6-month dates (22 items)
-        let mappedProducts = [];
-        if (productsRes) {
-          mappedProducts = productsRes.map((p, idx) => {
-            const date = getDateForIdx(idx);
+        if (binsRes?.results?.length > 0) {
+          setBins(binsRes.results);
+        } else {
+          setBins([]);
+        }
+
+        if (productsRes?.results) {
+          const mappedProducts = productsRes.results.map((p, idx) => {
             return {
               sku: p.sku || `SKU-100${idx + 1}`,
-              productId: p.productId || `PRD-000${idx + 1}`,
+              productId: p.productId || p.id || `PRD-000${idx + 1}`,
               name: p.name,
               category: p.category || "Electronics",
-              weight: `${p.weightKg || 2.0} kg`,
+              weight: p.weight || `${p.weightKg || 2.0} kg`,
               dimensions: p.dimensions || "25x25x25 cm",
-              reorderLevel: p.reorderPoint || 10,
-              unitOfMeasure: p.unitOfMeasure || "BOX",
-              quantity: 45 + idx,
-              bin: `BIN-00${(idx % 4) + 1}`,
-              createdAt: date,
-              updatedAt: new Date(new Date(date).getTime() + 2 * 24 * 60 * 60 * 1000).toISOString()
+              reorderLevel: p.reorderLevel || p.reorderPoint || 10,
+              unitOfMeasure: p.unitOfMeasure || p.uom || "BOX",
+              quantity: p.quantity || 0,
+              bin: p.bin || `BIN-00${(idx % 4) + 1}`,
+              createdAt: p.createdAt || new Date().toISOString(),
+              updatedAt: p.updatedAt || new Date().toISOString()
             };
           });
+          setProducts(mappedProducts);
+        } else {
+          setProducts([]);
         }
 
-        const categoriesList = ["Electronics", "Accessories", "Industrial Tools", "Safety Equipment", "Packaging Supplies"];
-        const namesList = [
-          "Lenovo ThinkPad", "Dell XPS 15", "Apple MacBook Air", "Logitech MX Master", 
-          "Mechanical Keyboard", "USB-C Hub Multiport", "Pro Heavy Drill", "Handheld Circular Saw", 
-          "Safety Helmet Premium", "High-Visibility Vest", "Bubble Wrap Heavy-Duty", "Heavy Duty Cardboard Box"
-        ];
-        
-        while (mappedProducts.length < 22) {
-          const idx = mappedProducts.length;
-          const name = namesList[idx % namesList.length];
-          const cat = categoriesList[idx % categoriesList.length];
-          const prdNum = idx + 1;
-          const skuCode = `SKU-10${10 + prdNum}`;
-          const date = getDateForIdx(idx);
-          mappedProducts.push({
-            productId: `PRD-000${prdNum}`,
-            sku: skuCode,
-            name,
-            category: cat,
-            weight: `${(1.2 + idx * 0.4).toFixed(1)} kg`,
-            dimensions: `${15 + idx}x${10 + idx}x${2 + idx} cm`,
-            reorderLevel: 10 + (idx % 3) * 5,
-            unitOfMeasure: idx % 4 === 0 ? "PALLET" : "BOX",
-            quantity: 15 + (idx * 8) % 60,
-            bin: `BIN-00${(idx % 4) + 1}`,
-            createdAt: date,
-            updatedAt: new Date(new Date(date).getTime() + 2 * 24 * 60 * 60 * 1000).toISOString()
-          });
-        }
-        setProducts(mappedProducts);
-
-        // Map inventory with 6-month historical timestamps (25 items)
-        if (invRes) {
-          const mappedInventory = invRes.map((item, idx) => {
-            const sku = item.productId;
+        if (invRes?.results) {
+          const mappedInventory = invRes.results.map((item, idx) => {
+            const sku = item.productId || item.sku;
+            const matchedProd = (productsRes?.results || []).find(p => p.sku === sku || p.productId === sku);
+            const name = item.productName || item.name || (matchedProd ? matchedProd.name : `Product ${sku}`);
+            const category = item.category || (matchedProd ? matchedProd.category : "Electronics");
+            const binId = item.binId || item.bin;
             
-            // Cross-reference with our mapped products to retrieve beautiful spec labels
-            const matchedProd = mappedProducts.find(p => p.sku === sku || p.productId === sku);
-            const name = matchedProd ? matchedProd.name : `Product ${sku}`;
-            const category = matchedProd ? matchedProd.category : "Industrial Tools";
-            const weight = matchedProd ? matchedProd.weight : "2.0 kg";
-            const dimensions = matchedProd ? matchedProd.dimensions : "25 x 25 x 25 cm";
-
-            const binId = item.binId;
-            let zoneName = "Zone A";
-            if (binId) {
-              if (binId.startsWith('Z2')) zoneName = "Zone B";
-              else if (binId.startsWith('Z3')) zoneName = "Zone C";
-              else if (binId.startsWith('Z4')) zoneName = "Zone D";
-              else if (binId.startsWith('Z5')) zoneName = "Zone E";
-            }
-
-            const pDate = matchedProd ? matchedProd.createdAt : getDateForIdx(idx);
-
             return {
-              sku: matchedProd ? matchedProd.sku : sku,
-              name,
-              category,
+              sku: sku,
+              name: name,
+              category: category,
               quantity: item.quantity || 0,
-              reserved: item.reservedQuantity || 0,
-              damaged: 0,
-              availableQuantity: item.availableQuantity || 0,
-              reorderLevel: matchedProd ? matchedProd.reorderLevel : 10,
-              status: item.status === "AVAILABLE" ? "In Stock" : item.status || "In Stock",
-              warehouse: "Central Fulfillment A",
-              zone: zoneName,
-              rack: binId ? `RACK-${binId.split('-')[1] || '001'}` : "RACK-001",
-              shelf: binId ? binId.split('-')[2] || "S-01" : "S-01",
+              reserved: item.reservedQuantity || item.reserved || 0,
+              damaged: item.damagedQuantity || item.damaged || 0,
+              availableQuantity: item.availableQuantity || (item.quantity - (item.reservedQuantity || 0)) || 0,
+              reorderLevel: item.reorderLevel || (matchedProd ? matchedProd.reorderLevel : 10),
+              status: item.status || "In Stock",
+              warehouse: item.warehouse || "Central Fulfillment A",
+              zone: item.zone || "Zone A",
+              rack: item.rack || "RACK-001",
+              shelf: item.shelf || "S-01",
               bin: binId || "BIN-001",
-              weight,
-              dimensions,
-              createdAt: pDate,
-              lastUpdated: new Date(pDate).toLocaleDateString()
+              weight: item.weight || (matchedProd ? matchedProd.weight : "N/A"),
+              dimensions: item.dimensions || (matchedProd ? matchedProd.dimensions : "N/A"),
+              lastUpdated: item.lastUpdated || new Date().toLocaleDateString()
             };
           });
-
-          // Sync any missing mapped products to make sure inventory catalog matches
-          mappedProducts.forEach((prod, idx) => {
-            if (!mappedInventory.some(item => item.sku === prod.sku)) {
-              mappedInventory.push({
-                sku: prod.sku,
-                name: prod.name,
-                category: prod.category,
-                quantity: prod.quantity,
-                reserved: 0,
-                damaged: 0,
-                availableQuantity: prod.quantity,
-                reorderLevel: prod.reorderLevel,
-                status: "In Stock",
-                warehouse: "Central Fulfillment A",
-                zone: "Zone A",
-                rack: "RACK-001",
-                shelf: "S-01",
-                bin: prod.bin,
-                weight: prod.weight,
-                dimensions: prod.dimensions,
-                createdAt: prod.createdAt,
-                lastUpdated: new Date(prod.updatedAt).toLocaleDateString()
-              });
-            }
-          });
-
           setInventory(mappedInventory);
+        } else {
+          setInventory([]);
         }
 
-        // Map workers
-        if (workersRes) {
-          const mappedWorkers = workersRes.map(w => {
-            let role = "WAREHOUSE_OPERATOR";
-            if (w.role.toUpperCase() === 'SUPERVISOR') role = "WAREHOUSE_MANAGER";
-            else if (w.role.toUpperCase() === 'CLERK') role = "RECEIVING_INVENTORY_OFFICER";
-
-            return {
-              id: w.workerId,
-              name: w.name,
-              email: `${w.workerId.toLowerCase()}@warehouseai.com`,
-              role,
-              warehouse: "Central Fulfillment A",
-              status: "Active",
-              lastLogin: "Just now",
-              createdAt: "2026-01-10",
-              efficiency: `${w.efficiencyScore || 90}%`,
-              zone: w.zoneAssigned ? `Zone ${w.zoneAssigned === 'Z1' ? 'A' : w.zoneAssigned === 'Z2' ? 'B' : w.zoneAssigned === 'Z3' ? 'C' : w.zoneAssigned === 'Z4' ? 'D' : 'E'}` : "Zone A"
-            };
-          });
+        if (usersRes?.results) {
+          const mappedWorkers = usersRes.results.map(w => ({
+            id: w.workerId || w.id,
+            name: w.name || w.username,
+            email: w.email || `${w.id || w.username}@warehouseai.com`,
+            role: w.role || "WAREHOUSE_OPERATOR",
+            warehouse: w.warehouse || "Central Fulfillment A",
+            status: w.status || "Active",
+            lastLogin: w.lastLogin || "Just now",
+            createdAt: w.createdAt || "2026-01-10",
+            efficiency: w.efficiency || `${w.efficiencyScore || 90}%`,
+            zone: w.zoneAssigned || w.zone || "Zone A"
+          }));
           setWorkers(mappedWorkers);
+        } else {
+          setWorkers([]);
         }
 
-        // Map routes
-        if (routesRes) {
-          const mappedRoutes = routesRes.map(r => ({
-            id: r.routeId,
-            from: r.stops && r.stops[0] ? r.stops[0] : "Receiving Dock",
-            to: r.stops && r.stops.length > 0 ? r.stops[r.stops.length - 1] : "BIN-001",
-            distance: `${r.distanceMeters || 100}m`,
-            time: `${Math.round((r.estimatedTimeSec || 300) / 60)} mins`,
-            operator: r.workerId || "Unassigned",
-            status: "Active"
+        if (routesRes?.results) {
+          const mappedRoutes = routesRes.results.map(r => ({
+            id: r.routeId || r.id,
+            from: r.stops && r.stops[0] ? r.stops[0] : (r.from || "Receiving Dock"),
+            to: r.stops && r.stops.length > 0 ? r.stops[r.stops.length - 1] : (r.to || "BIN-001"),
+            distance: r.distance || `${r.distanceMeters || 100}m`,
+            time: r.time || `${Math.round((r.estimatedTimeSec || 300) / 60)} mins`,
+            operator: r.workerId || r.operator || "Unassigned",
+            status: r.status || "Active"
           }));
           setRoutes(mappedRoutes);
+        } else {
+          setRoutes([]);
         }
 
-        // Map orders with proper 6-month dates (24 items)
-        let mappedOrders = [];
-        if (ordersRes) {
-          mappedOrders = ordersRes.map((o, idx) => {
-            const date = getDateForIdx(idx);
-            const status = o.status === "CREATED" ? "Pending" : o.status === "PICKING" ? "In Progress" : o.status === "PACKED" ? "Packed" : "Dispatched";
+        if (ordersRes?.results) {
+          const mappedOrders = ordersRes.results.map((o, idx) => {
+            const status = o.status === "CREATED" ? "Pending" : o.status === "PICKING" ? "In Progress" : o.status === "PACKED" ? "Packed" : o.status || "Pending";
             return {
-              id: o.orderId,
-              customer: o.customerName,
-              dispatchTime: "Today, 20:00",
-              productCount: o.quantity || 1,
+              id: o.orderId || o.id,
+              customer: o.customerName || o.customer || "Unknown Customer",
+              dispatchTime: o.dispatchTime || "Today, 20:00",
+              productCount: o.quantity || o.productCount || 1,
               status,
-              progress: o.status === "CREATED" ? 10 : o.status === "PICKING" ? 40 : o.status === "PACKED" ? 80 : 100,
-              orderDate: date.split('T')[0],
-              createdAt: date,
-              completedAt: status === "Dispatched" ? new Date(new Date(date).getTime() + 6 * 60 * 60 * 1000).toISOString() : null
+              progress: o.progress || (status === "Pending" ? 10 : status === "In Progress" ? 40 : status === "Packed" ? 80 : 100),
+              orderDate: o.orderDate || new Date().toISOString().split('T')[0],
+              createdAt: o.createdAt || new Date().toISOString(),
+              completedAt: o.completedAt || null
             };
           });
+          setOrders(mappedOrders);
+        } else {
+          setOrders([]);
         }
 
-        const customerList = ["Alpha Logistics", "Beta Corp", "Delta Distribution", "Omega Retail", "Prime Supply", "Global Traders", "Zenith Inc", "Apex Partners"];
-        while (mappedOrders.length < 24) {
-          const idx = mappedOrders.length;
-          const date = getDateForIdx(idx);
-          const prdNum = idx + 1;
-          const status = idx % 4 === 0 ? "Pending" : idx % 4 === 1 ? "In Progress" : idx % 4 === 2 ? "Packed" : "Dispatched";
-          mappedOrders.push({
-            id: `ORD-00${prdNum}`,
-            customer: customerList[idx % customerList.length],
-            dispatchTime: idx % 2 === 0 ? "Today, 18:00" : "Tomorrow, 10:00",
-            productCount: 2 + (idx % 5),
-            status,
-            progress: status === "Pending" ? 10 : status === "In Progress" ? 40 : status === "Packed" ? 80 : 100,
-            orderDate: date.split('T')[0],
-            createdAt: date,
-            completedAt: status === "Dispatched" ? new Date(new Date(date).getTime() + 5 * 60 * 60 * 1000).toISOString() : null
-          });
-        }
-        setOrders(mappedOrders);
-
-        // Map movements with proper 6-month dates (26 items)
-        let mappedMovements = [];
-        if (movementsRes) {
-          mappedMovements = movementsRes.slice(0, 50).map((m, idx) => {
-            const date = getDateForIdx(idx);
+        if (movementsRes?.results) {
+          const mappedMovements = movementsRes.results.map((m, idx) => {
             return {
-              id: m.movementId,
-              item: `Product ${m.productId}`,
-              sku: m.productId,
-              from: m.fromBin,
-              to: m.toBin,
-              user: m.workerId || "Warehouse Staff",
-              time: new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              id: m.movementId || m.id,
+              item: m.productName || m.itemName || `Product ${m.productId || m.sku}`,
+              sku: m.productId || m.sku,
+              from: m.fromBin || m.from,
+              to: m.toBin || m.to,
+              user: m.workerId || m.user || "Warehouse Staff",
+              time: m.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               type: m.type || "Putaway",
-              status: "Completed",
-              qty: m.quantity || 1,
-              movementDate: date.split('T')[0],
-              timestamp: date
+              status: m.status || "Completed",
+              qty: m.quantity || m.qty || 1,
+              movementDate: m.movementDate || new Date().toISOString().split('T')[0],
+              timestamp: m.timestamp || new Date().toISOString()
             };
           });
+          setMovements(mappedMovements);
+        } else {
+          setMovements([]);
         }
 
-        while (mappedMovements.length < 26) {
-          const idx = mappedMovements.length;
-          const date = getDateForIdx(idx);
-          const prdNum = idx + 1;
-          mappedMovements.push({
-            id: `MOV-00${prdNum}`,
-            item: idx % 2 === 0 ? "Lenovo ThinkPad" : "Mechanical Keyboard",
-            sku: idx % 2 === 0 ? "SKU-1011" : "SKU-1015",
-            from: `BIN-00${(idx % 4) + 1}`,
-            to: `BIN-00${((idx + 2) % 4) + 1}`,
-            user: "Warehouse Staff",
-            time: new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            type: idx % 3 === 0 ? "Putaway" : idx % 3 === 1 ? "Relocation" : "Replenish",
-            status: "Completed",
-            qty: 5 + (idx % 10),
-            movementDate: date.split('T')[0],
-            timestamp: date
-          });
-        }
-        setMovements(mappedMovements);
-
-        // Map scans
-        if (scansRes) {
-          const mappedScans = scansRes.slice(0, 20).map(s => {
-            const sku = `PRD-${s.barcode ? s.barcode.substring(s.barcode.length - 3) : '001'}`;
-            return {
-              id: s.scanId,
-              sku,
-              name: `Product ${sku}`,
-              category: "Electronics",
-              time: s.timestamp ? new Date(s.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now",
-              operator: s.workerId || "Warehouse Staff",
-              suggested: s.binId || "BIN-001",
-              status: s.scanType || "Scanned"
-            };
-          });
-          setRecentScans(mappedScans);
-        }
-
-        // Map AI recommendations with proper 6-month dates (20 items)
-        let mappedRecs = [];
-        if (recsRes) {
-          mappedRecs = recsRes.map((r, idx) => {
-            const date = getDateForIdx(idx);
-            return {
-              id: r.recommendationId || `REC-00${idx + 1}`,
-              title: r.title,
-              confidence: r.confidencePercent || 92,
-              reason: r.reason,
-              impact: r.estimatedSavings || "10% efficiency increase",
-              priority: r.priority === "HIGH" ? "High" : r.priority === "MEDIUM" ? "Medium" : "Low",
-              status: r.status === "ACTIVE" ? "Active" : "Active",
-              createdAt: date,
-              updatedAt: new Date(new Date(date).getTime() + 12 * 60 * 60 * 1000).toISOString()
-            };
-          });
-        }
-
-        const recTitles = [
-          "Dynamic Slotting Rebalancing", "Fast-Moving Electronics Reallocation",
-          "Bulk Storage Rack Density Optimization", "Safety Aisle Clearance & Re-routing",
-          "Reorder Level Threshold Adjustments", "Cold Zone Aisle Expansion",
-          "AGV Cross-Docking Coordination", "Peak Hour Outbound Pre-Packing",
-          "Hazardous Materials Isolation", "Gravity Flow Rack Utilization",
-          "Supplier Lead Time Buffer Optimization", "Shelf-Level Consolidation Planning"
-        ];
-        const rationales = [
-          "Transfer underutilized packaging items to higher shelving to prioritize fast-moving electronic accessories on ground zones.",
-          "High-turnover laptop SKUs are experiencing elevated dwell times. Relocating them closest to picking docks will reduce transit time by 15%.",
-          "Optimize bulk industrial items' layout by height-balancing bins. Heavy boxes should reside on racks 1-3 to alleviate forklift strain.",
-          "Route telemetry suggests foot bottlenecks in Zone A. Re-routing low-priority putaways preserves clear access lanes.",
-          "Stock levels for popular adapters are depleting faster than replenish runs. Increase standard buffers to secure stock consistency.",
-          "Cold storage placement suggestions: consolidate organic/perishable stocks to Zone C-02 to prevent temperature leaks.",
-          "Sync raw inbound shipments direct to the packaging dock slots to bypass intermediate shelf storage entirely.",
-          "Analyze orders pipeline to pre-assemble components during low-traffic afternoon periods.",
-          "Flammable supplies detected in mixed-use containers. Recommend immediate transfer to designated safety cages in Zone E.",
-          "Optimize gravity-fed flow racks with low-friction roller tracks to expedite small picking orders.",
-          "Current supply delays from Dell require increasing lead-time adjustments from 3 days to 5 days.",
-          "Consolidate fragmented partial pallets in Bin S-02 and Bin S-03 to recover 2 unused bays."
-        ];
-        const impactsList = [
-          "Saves 18 mins per picker loop", "15% quicker shipping turnarounds",
-          "Secures 22% more space capacity", "Reduces pathway delays by 9%",
-          "Reduces out-of-stock events by 35%", "Decreases cooling leaks by 5%",
-          "Cuts handling time by 10 mins", "Improves peak-hour throughput by 14%",
-          "Secures OSHA compliance standard", "Speeds up small pickings by 20%",
-          "Prevents bottleneck delays", "Recovers 2 complete bulk storage bays"
-        ];
-
-        while (mappedRecs.length < 20) {
-          const idx = mappedRecs.length;
-          const prdNum = idx + 1;
-          const date = getDateForIdx(idx);
-          mappedRecs.push({
-            id: `REC-00${prdNum}`,
-            title: recTitles[idx % recTitles.length],
-            confidence: 88 + (idx * 3) % 11,
-            reason: rationales[idx % rationales.length],
-            impact: impactsList[idx % impactsList.length],
-            priority: idx % 3 === 0 ? "High" : idx % 3 === 1 ? "Medium" : "Low",
-            status: "Active",
-            createdAt: date,
-            updatedAt: new Date(new Date(date).getTime() + 12 * 60 * 60 * 1000).toISOString()
-          });
-        }
-        setAiRecommendations(mappedRecs);
-
-        // Map inbound tasks with proper 6-month dates (22 items)
-        let mappedInbounds = [];
-        if (inboundsRes) {
-          mappedInbounds = inboundsRes.map((i, idx) => {
-            const date = getDateForIdx(idx);
+        if (inboundRes?.results) {
+          const mappedInbounds = inboundRes.results.map((i, idx) => {
             const status = i.status === "PENDING" ? "Pending" : i.status === "IN_TRANSIT" ? "In Transit" : "Completed";
             return {
-              id: i.shipmentId || `INB-000${idx + 1}`,
-              supplier: i.supplierName || "Global Sourcing",
+              id: i.shipmentId || i.id || `INB-000${idx + 1}`,
+              supplier: i.supplierName || i.supplier || "Global Sourcing",
               supplierId: i.supplierId || `SUP-00${idx + 1}`,
-              expectedArrival: new Date(date).toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric', year: 'numeric' }),
-              product: i.sku === "SKU-1001" ? "Dell Laptop" : i.sku === "SKU-1002" ? "HP EliteBook" : `Product ${i.sku}`,
+              expectedArrival: i.expectedArrival || new Date().toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric', year: 'numeric' }),
+              product: i.productName || i.product || `Product ${i.sku}`,
               sku: i.sku || `PRD-00${idx + 1}`,
               quantity: i.quantity || 40,
-              priority: i.priority === "HIGH" ? "High" : i.priority === "MEDIUM" ? "Medium" : "Low",
+              priority: i.priority || "Medium",
               status,
-              assignedStaff: "Unassigned",
-              createdAt: new Date(new Date(date).getTime() - 24 * 60 * 60 * 1000).toISOString(),
-              completedAt: status === "Completed" ? date : null
+              assignedStaff: i.assignedStaff || "Unassigned",
+              createdAt: i.createdAt || new Date().toISOString(),
+              completedAt: i.completedAt || null
             };
           });
-        }
+          setInboundTasks(mappedInbounds);
 
-        const suppliersList = [
-          "Dell Logistics", "HP Supply Chain", "Logitech Sourcing", "Industrial Tools Corp", 
-          "Safety First Gear", "Packaging World Co", "Global Tech Imports", "Summit Parts Supplier"
-        ];
-        const skusList = ["SKU-1001", "SKU-1002", "SKU-1011", "SKU-1012", "SKU-1013", "SKU-1014", "SKU-1015"];
-        const productsList = [
-          "Dell Laptop", "HP EliteBook", "Lenovo ThinkPad", "Apple MacBook Air", 
-          "Logitech MX Master", "Mechanical Keyboard", "Pro Heavy Drill", "Handheld Circular Saw"
-        ];
+          // Sync backend shipments to inboundReceipts for Recommendations page live queue
+          const mappedReceipts = inboundRes.results.map((ship, idx) => {
+            let mappedStatus = 'WAITING_FOR_BIN_ASSIGNMENT';
+            if (ship.status === 'COMPLETED' || ship.status === 'STORED') {
+              mappedStatus = 'STORED';
+            } else if (ship.status === 'IN_PROGRESS' || ship.status === 'IN_TRANSIT') {
+              mappedStatus = 'BIN_SUGGESTED';
+            } else if (ship.status === 'PENDING' || ship.status === 'WAITING_FOR_BIN_ASSIGNMENT') {
+              mappedStatus = 'WAITING_FOR_BIN_ASSIGNMENT';
+            }
 
-        while (mappedInbounds.length < 22) {
-          const idx = mappedInbounds.length;
-          const prdNum = idx + 1;
-          const sup = suppliersList[idx % suppliersList.length];
-          const skuCode = skusList[idx % skusList.length];
-          const prodName = productsList[idx % productsList.length];
-          const date = getDateForIdx(idx);
-          const status = idx % 4 === 0 ? "Pending" : idx % 4 === 1 ? "In Transit" : "Completed";
-          mappedInbounds.push({
-            id: `INB-000${prdNum}`,
-            supplier: sup,
-            supplierId: `SUP-00${idx + 1}`,
-            expectedArrival: new Date(date).toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric', year: 'numeric' }),
-            product: prodName,
-            sku: skuCode,
-            quantity: 20 + (idx * 15) % 150,
-            priority: idx % 3 === 0 ? "High" : idx % 3 === 1 ? "Medium" : "Low",
-            status,
-            assignedStaff: idx % 2 === 0 ? "System Admin" : "Unassigned",
-            createdAt: new Date(new Date(date).getTime() - 24 * 60 * 60 * 1000).toISOString(),
-            completedAt: status === "Completed" ? date : null
+            return {
+              id: ship.shipment_code || ship.id || `IR-GEN-${idx}`,
+              documentId: 'OCR-N/A',
+              documentReference: ship.shipment_code || 'REF-GEN',
+              sku: ship.sku || 'SKU-GENERIC',
+              productName: ship.product_name || ship.product || `Shipment from ${ship.supplier_name || 'Supplier'}`,
+              category: ship.category || 'General',
+              quantityReceived: Number(ship.quantity || 50),
+              verifiedQuantity: Number(ship.quantity || 50),
+              supplier: ship.supplier_name || ship.supplier || 'Unknown Supplier',
+              receivedDate: ship.expected_arrival ? ship.expected_arrival.split('T')[0] : new Date().toISOString().split('T')[0],
+              dimensions: ship.dimensions || 'N/A',
+              weight: ship.weight || 'N/A',
+              status: mappedStatus,
+              binRecommendationStatus: mappedStatus === 'WAITING_FOR_BIN_ASSIGNMENT' ? 'WAITING_FOR_BIN_ASSIGNMENT' : 'RECOMMENDATION_APPROVED',
+              bin: ship.bin || 'BIN-001',
+              _rawBackendId: ship.id
+            };
           });
+          setInboundReceipts(mappedReceipts);
+        } else {
+          setInboundTasks([]);
         }
-        setInboundTasks(mappedInbounds);
+
+        if (aiRecsRes?.results) {
+          const mappedRecs = aiRecsRes.results.map((r, idx) => {
+            return {
+              id: r.recommendationId || r.id || `REC-00${idx + 1}`,
+              title: r.title || "Slotting Optimization",
+              confidence: r.confidencePercent || r.confidence || 92,
+              reason: r.reason || "Underutilized racks re-routing",
+              impact: r.estimatedSavings || r.impact || "10% efficiency increase",
+              priority: r.priority || "Medium",
+              status: r.status || "Active",
+              createdAt: r.createdAt || new Date().toISOString(),
+              updatedAt: r.updatedAt || new Date().toISOString()
+            };
+          });
+          setAiRecommendations(mappedRecs);
+        } else {
+          setAiRecommendations([]);
+        }
 
       } catch (err) {
-        console.error("Error fetching WireMock APIs", err);
-        setError("Failed to synchronize layout and real-time inventory from central cloud API.");
+        console.error("Error fetching APIs", err);
+        setError("Failed to synchronize layout and real-time inventory from central backend API.");
       } finally {
         setIsLoading(false);
       }
@@ -1249,39 +560,18 @@ export function WarehouseProvider({ children }) {
   }, []);
 
 
-  const [aiRecommendations, setAiRecommendations] = useState([
-    {
-      id: "REC-001",
-      title: "Slotting Optimization in Zone B",
-      priority: "High",
-      confidence: 96,
-      reason: "Move fast-moving electronics to lower shelves.",
-      impact: "Saves 12 mins per pick cycle.",
-      status: "Active",
-    },
-  ]);
+  const [aiRecommendations, setAiRecommendations] = useState([]);
 
-  const [auditLogs, setAuditLogs] = useState([
-    {
-      id: "LOG-001",
-      timestamp: new Date().toISOString(),
-      user: "system",
-      role: "SYSTEM",
-      action: "INIT",
-      module: "System",
-      details: "WarehouseAI initialized.",
-      status: "Success",
-    },
-  ]);
+  const [auditLogs, setAuditLogs] = useState([]);
 
   const [kpis, setKpis] = useState({
-    scannedToday: 3,
-    pendingPutaway: 2,
-    activeInbound: 2,
-    assignedMovements: 1,
-    completedToday: 2,
-    aiAccepted: 2,
-    avgPutawayTime: "7.8 mins",
+    scannedToday: 0,
+    pendingPutaway: 0,
+    activeInbound: 0,
+    assignedMovements: 0,
+    completedToday: 0,
+    aiAccepted: 0,
+    avgPutawayTime: "0 mins",
     operationalStatus: "green",
   });
 
@@ -2096,11 +1386,11 @@ export function WarehouseProvider({ children }) {
     logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "GENERATE_AI_RECOMMENDATION", "AI Recommendations", `Generated AI bin recommendation for inbound item ${receipt.productName}.`);
   };
 
-  const assignPutawayTask = (inboundId, staffId, staffName, priority) => {
+  const assignPutawayTask = (inboundId, staffId, staffName, priority, customRecommendation) => {
     const receipt = inboundReceipts.find(r => r.id === inboundId);
     if (!receipt) return;
 
-    const recommendation = aiRecommendations.find(r => r.inboundId === inboundId) || {};
+    const recommendation = customRecommendation || aiRecommendations.find(r => r.inboundId === inboundId) || {};
 
     const nextPtwId = generateNextId('PTW-', putawayTasks.map(t => t.id));
     const newTask = {
@@ -2272,6 +1562,7 @@ export function WarehouseProvider({ children }) {
         addOcrDocument,
         verifyOcrDocument,
         rejectOcrDocument,
+        setAiRecommendations,
       }}
     >
       {children}

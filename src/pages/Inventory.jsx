@@ -120,7 +120,7 @@ export default function Inventory() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0071C1]"></div>
-        <p className="text-sm text-gray-500 font-semibold animate-pulse">Syncing live inventory from WireMock cloud...</p>
+        <p className="text-sm text-gray-500 font-semibold animate-pulse">Syncing live inventory from Central API database...</p>
       </div>
     );
   }

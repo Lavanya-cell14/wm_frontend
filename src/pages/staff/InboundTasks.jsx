@@ -54,9 +54,9 @@ export default function InboundTasks() {
       console.warn(`[InboundTasks] API Success. URL: /api/inbound/, Status: 200, Count: ${data.count}, Fallback Used: false`);
     } catch (err) {
       const status = err.status || (err.code === 'NETWORK_ERROR' ? 0 : 'unknown');
-      setApiError('Inbound Shipments API unreachable — showing mock fallback data.');
+      setApiError('Inbound Shipments API unreachable — showing cached offline queue.');
       setFallbackUsed(true);
-      console.error(`[InboundTasks] API Error. URL: /api/inbound/, Status: ${status}, Detail: ${err.message}. Fallback Used: true (using context/WireMock data)`);
+      console.error(`[InboundTasks] API Error. URL: /api/inbound/, Status: ${status}, Detail: ${err.message}. Fallback Used: true (using context cached data)`);
     } finally {
       setLoading(false);
     }
@@ -106,7 +106,7 @@ export default function InboundTasks() {
       }
     } else {
       startInboundTask(taskId);
-      showToast(`Receiving verification initiated for shipment ${taskId} (Mock Fallback).`);
+      showToast(`Receiving verification initiated for shipment ${taskId} (Offline Fallback).`);
     }
   };
 
@@ -127,7 +127,7 @@ export default function InboundTasks() {
       }
     } else {
       completeInboundTask(taskId, user);
-      showToast(`Verify successful! Shipment ${taskId} logged as fully received (Mock Fallback).`);
+      showToast(`Verify successful! Shipment ${taskId} logged as fully received (Offline Fallback).`);
     }
   };
 
@@ -141,7 +141,7 @@ export default function InboundTasks() {
 
       {fallbackUsed && (
         <div className="mb-4">
-          <AlertBanner type="warning" message="Inbound Shipments API unreachable — showing mock fallback data." />
+          <AlertBanner type="warning" message="Inbound Shipments API unreachable — showing cached offline queue." />
         </div>
       )}
 

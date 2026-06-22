@@ -27,15 +27,39 @@ export const sidebarItems = [
     allowedRoles: ['WAREHOUSE_MANAGER'],
   },
   {
-    name: 'AI Assistant',
-    path: '/manager/ai-assistant',
-    icon: Bot,
+    name: 'Inventory Overview',
+    path: '/manager/inventory',
+    icon: Box,
+    allowedRoles: ['WAREHOUSE_MANAGER'],
+  },
+  {
+    name: 'Orders',
+    path: '/manager/orders',
+    icon: ArrowUpFromLine,
+    allowedRoles: ['WAREHOUSE_MANAGER'],
+  },
+  {
+    name: 'Routes',
+    path: '/manager/routes',
+    icon: Navigation,
     allowedRoles: ['WAREHOUSE_MANAGER'],
   },
   {
     name: 'Reports',
     path: '/manager/reports',
     icon: FileText,
+    allowedRoles: ['WAREHOUSE_MANAGER'],
+  },
+  {
+    name: 'AI Copilot',
+    path: '/manager/ai-assistant',
+    icon: Bot,
+    allowedRoles: ['WAREHOUSE_MANAGER'],
+  },
+  {
+    name: 'Audit Logs',
+    path: '/manager/audit',
+    icon: ClipboardList,
     allowedRoles: ['WAREHOUSE_MANAGER'],
   },
 
@@ -50,6 +74,12 @@ export const sidebarItems = [
     name: 'OCR Center',
     path: '/inventory/ocr-center',
     icon: UploadCloud,
+    allowedRoles: ['RECEIVING_INVENTORY_OFFICER'],
+  },
+  {
+    name: 'Inbound Queue',
+    path: '/inventory/inbound',
+    icon: ArrowDownToLine,
     allowedRoles: ['RECEIVING_INVENTORY_OFFICER'],
   },
   {
@@ -76,18 +106,6 @@ export const sidebarItems = [
     icon: CheckSquare,
     allowedRoles: ['RECEIVING_INVENTORY_OFFICER'],
   },
-  {
-    name: 'Inbound Queue',
-    path: '/inventory/inbound',
-    icon: ArrowDownToLine,
-    allowedRoles: ['RECEIVING_INVENTORY_OFFICER'],
-  },
-  {
-    name: 'Orders',
-    path: '/inventory/orders',
-    icon: ArrowUpFromLine,
-    allowedRoles: ['RECEIVING_INVENTORY_OFFICER'],
-  },
 
   // ─── WAREHOUSE OPERATOR ───────────────────────────────────────────────────
   {
@@ -97,19 +115,13 @@ export const sidebarItems = [
     allowedRoles: ['WAREHOUSE_OPERATOR'],
   },
   {
-    name: 'Inbound Tasks',
-    path: '/operator/inbound',
-    icon: ArrowDownToLine,
-    allowedRoles: ['WAREHOUSE_OPERATOR'],
-  },
-  {
-    name: 'Storage Tasks',
+    name: 'Putaway Tasks',
     path: '/operator/storage-tasks',
     icon: ClipboardList,
     allowedRoles: ['WAREHOUSE_OPERATOR'],
   },
   {
-    name: 'Navigation',
+    name: 'Route Guidance',
     path: '/operator/navigation',
     icon: Navigation,
     allowedRoles: ['WAREHOUSE_OPERATOR'],
@@ -147,15 +159,21 @@ export const sidebarItems = [
     allowedRoles: ['ADMIN'],
   },
   {
-    name: 'Users',
+    name: 'Users & Roles',
     path: '/admin/users',
     icon: Users,
     allowedRoles: ['ADMIN'],
   },
   {
-    name: 'Reports',
-    path: '/admin/reports',
-    icon: BarChart3,
+    name: 'System Health',
+    path: '/admin/health',
+    icon: Activity,
+    allowedRoles: ['ADMIN'],
+  },
+  {
+    name: 'Audit Logs',
+    path: '/admin/audit',
+    icon: ClipboardList,
     allowedRoles: ['ADMIN'],
   },
   {

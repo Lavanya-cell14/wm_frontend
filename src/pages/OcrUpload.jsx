@@ -9,79 +9,7 @@ import {
   CheckCircle2, AlertCircle, RefreshCw, Send, Loader2, X, AlertTriangle, CheckSquare
 } from 'lucide-react';
 
-const mockOcrTemplates = {
-  'dell_monitor_invoice.pdf': {
-    document_type: 'Invoice',
-    document_number: 'INV-2026-1024',
-    supplier: 'Dell Sourcing Ltd',
-    sku: '', // Missing SKU warning
-    product_name: 'Dell Monitor 27" UltraSharp',
-    category: 'Electronics',
-    quantity: 40,
-    uom: 'BOX',
-    length: 65,
-    width: 18,
-    height: 42,
-    weight: 6.5,
-    confidence_score: 94,
-    validation_status: 'Warning',
-    warnings: ['Missing SKU - Manual SKU assignment required in inventory log.', 'Unregistered SKU code pattern.']
-  },
-  'hp_printer_packing_slip.jpg': {
-    document_type: 'Packing List',
-    document_number: 'PS-5502',
-    supplier: 'HP Supply Logistics',
-    sku: 'SKU-7734',
-    product_name: 'HP LaserJet Printer Pro',
-    category: 'Electronics',
-    quantity: 15,
-    uom: 'BOX',
-    length: '', // Missing dimensions warning
-    width: '',
-    height: '',
-    weight: 14.2,
-    confidence_score: 88,
-    validation_status: 'Warning',
-    warnings: ['Missing dimensions - Cargo volume measurements required for slotting bin allocation.']
-  },
-  'logitech_mouse_bol.png': {
-    document_type: 'Bill of Lading',
-    document_number: 'BOL-8812-US',
-    supplier: 'Logitech Imports Inc',
-    sku: 'SKU-1198',
-    product_name: 'Logitech Wireless Mouse M510',
-    category: 'Accessories',
-    quantity: 250,
-    uom: 'PCS',
-    length: 12,
-    width: 6,
-    height: 4,
-    weight: 0.12,
-    confidence_score: 68, // Low confidence extraction
-    validation_status: 'Warning',
-    warnings: [
-      'Low confidence extraction (68%) - Please review scanned values manually.',
-      'Duplicate document warning - Document ID BOL-8812-US already processed on 2026-06-12.'
-    ]
-  },
-  'drill_delivery_docket.pdf': {
-    document_type: 'Delivery Docket',
-    document_number: 'DD-9901',
-    supplier: 'Industrial Tools Corp',
-    sku: 'SKU-3092',
-    product_name: 'Heavy Duty Drilling Rig 500W',
-    category: 'Industrial Tools',
-    quantity: 8,
-    uom: 'BOX',
-    length: 52,
-    width: 32,
-    height: 28,
-    weight: 18.5,
-    confidence_score: 98,
-    validation_status: 'Valid',
-    warnings: []
-  }
-};
+
 
 export default function OcrUpload() {
   const navigate = useNavigate();
@@ -125,8 +53,6 @@ export default function OcrUpload() {
     let addedCount = 0;
     
     filesArray.forEach(file => {
-      const nameLower = file.name.toLowerCase();
-
       // Check if we can re-associate with an existing document of the same filename that is missing a file object
       const matchingRestoredDoc = ocrDocuments.find(d => 
         d.fileName === file.name && 
@@ -144,63 +70,37 @@ export default function OcrUpload() {
         return;
       }
 
-      let matchedKey = Object.keys(mockOcrTemplates).find(key => nameLower.includes(key.split('.')[0]));
-      
-      let template = null;
-      if (matchedKey) {
-        template = { ...mockOcrTemplates[matchedKey] };
-      } else {
-        // Generic fallback data
-        template = {
-          document_type: 'Invoice',
-          document_number: `DOC-${Math.floor(1000 + Math.random() * 9000)}`,
-          supplier: 'Generic Freight Supplier',
-          sku: `SKU-${Math.floor(1000 + Math.random() * 9000)}`,
-          product_name: file.name.split('.')[0].replace(/[-_]/g, ' '),
-          category: 'Safety Equipment',
-          quantity: Math.floor(10 + Math.random() * 90),
-          uom: 'BOX',
-          length: 30,
-          width: 30,
-          height: 30,
-          weight: 4.5,
-          confidence_score: 95,
-          validation_status: 'Valid',
-          warnings: []
-        };
-      }
-
       const newId = `OCR-${Math.floor(100 + Math.random() * 900)}`;
       const newDoc = {
         id: newId,
         fileName: file.name,
         fileObject: file, // Keep actual file for API call
-        documentType: template.document_type,
-        supplierName: template.supplier,
+        documentType: 'Invoice',
+        supplierName: '',
         uploadedAt: new Date().toISOString(),
         uploadedBy: user?.email || 'inventory@warehouseai.com',
         status: 'OCR_UPLOADED',
-        confidenceScore: template.confidence_score,
+        confidenceScore: 0,
         extractedItems: [
           {
             id: `EXT-${Date.now()}-${Math.floor(Math.random()*100)}`,
-            sku: template.sku,
-            productName: template.product_name,
-            category: template.category,
-            quantity: Number(template.quantity),
-            uom: template.uom,
-            length: template.length,
-            width: template.width,
-            height: template.height,
-            weight: template.weight,
-            batchNumber: `BAT-${Math.floor(1000 + Math.random() * 9000)}`,
-            expiryDate: '2028-12-31',
-            confidenceScore: template.confidence_score,
-            validationStatus: template.validation_status
+            sku: '',
+            productName: file.name.split('.')[0].replace(/[-_]/g, ' '),
+            category: '',
+            quantity: 0,
+            uom: 'BOX',
+            length: '',
+            width: '',
+            height: '',
+            weight: '',
+            batchNumber: '',
+            expiryDate: '',
+            confidenceScore: 0,
+            validationStatus: 'Warning'
           }
         ],
-        warnings: template.warnings ? template.warnings.length : 0,
-        warningsList: template.warnings || []
+        warnings: 0,
+        warningsList: []
       };
 
       addOcrDocument(newDoc);
@@ -298,86 +198,35 @@ export default function OcrUpload() {
       controller.abort();
     }, 90000);
 
+    // 1. Optional Django/backend sync try/catch
     try {
-      
-      try {
-        console.warn("[OCR Upload] Saving file to Django BE via /api/ocr/upload/");
-        const djangoRes = await uploadOcrDocumentDjangoApi(activeDoc.fileObject);
-        if (djangoRes?.skipped) {
-          showToast("Backend login token missing. Django OCR sync skipped.", "warning");
-        }
-      } catch (djangoErr) {
-        console.warn("[OCR Upload] Django upload save failed, continuing extraction:", djangoErr);
-        showToast("Django backend save failed. Extraction will continue locally.", "warning");
+      console.log("[OCR] Optional backend sync started");
+      console.warn("[OCR Upload] Saving file to Django BE via /api/ocr/upload/");
+      const djangoRes = await uploadOcrDocumentDjangoApi(activeDoc.fileObject);
+      if (djangoRes?.skipped) {
+        showToast("Backend login token missing. Django OCR sync skipped.", "warning");
       }
-      
+    } catch (djangoErr) {
+      console.error("[OCR] Optional backend sync failed:", djangoErr);
+      showToast("Django backend save failed. Extraction will continue locally.", "warning");
+    }
+
+    // 2. OCR extraction try/catch
+    let res = null;
+    try {
+      console.log("[OCR] Extract request started");
       console.log("[OCR Flow] Before calling processOcrDocument for file:", activeDoc.fileName);
-      const res = await processOcrDocument(activeDoc.fileObject, { signal: controller.signal });
+      res = await processOcrDocument(activeDoc.fileObject, { signal: controller.signal });
       clearTimeout(timeoutId);
-      console.log("[OCR Flow] After response is received from processOcrDocument. OCR response received:", res);
-      
-      let normalized;
-      try {
-        normalized = normalizeOcrResponse(res, activeDoc);
-        console.log("[OCR Flow] After normalizeOcrResponse output. Normalized response:", normalized);
-        if (!normalized.mappedItems || normalized.mappedItems.length === 0) {
-          throw new Error("No products found in OCR response products list.");
-        }
-      } catch (mapperError) {
-        console.error("[OCR Flow] Response structure is unexpected or mapping failed:", mapperError);
-        setRawOcrDebugData(res);
-        setOcrDocuments(prev => prev.map(d => d.id === activeFileId ? { 
-          ...d, 
-          status: 'ERROR',
-          warnings: 1,
-          warningsList: [`Mapping error: ${mapperError.message}`]
-        } : d));
-        console.log("[OCR Flow] Final document status after mapping: ERROR (Mapper Failure)");
-        throw mapperError;
-      }
-
-      console.log("[OCR Flow] Before setting OCR document state to VERIFICATION_PENDING with ID:", activeFileId);
-      setOcrDocuments(prev => prev.map(d => 
-        d.id === activeFileId 
-          ? {
-              ...d,
-              id: d.id, // Keep the uploaded ID (e.g. OCR-117)
-              documentNumber: normalized.documentNumber, // Attach normalized document number (e.g. INV-2026-1001)
-              status: 'VERIFICATION_PENDING',
-              confidenceScore: normalized.confidenceScore,
-              extractedItems: normalized.mappedItems,
-              supplierName: normalized.supplierName,
-              documentType: normalized.documentType,
-              totalAmount: normalized.totalAmount,
-              taxAmount: normalized.taxAmount,
-              fileName: activeDoc.fileName, // Keep actual uploaded file name
-              warnings: 0,
-              warningsList: []
-            } 
-          : d
-      ));
-      
-      console.log("[OCR Flow] Final document status after mapping: VERIFICATION_PENDING");
-      localStorage.setItem('latestProcessedDocId', activeFileId);
-
-      console.log("[OCR Flow] Before showing success message / enabling verification link for ID:", activeFileId);
-      showToast('OCR analysis completed successfully! Ready for verification.');
-
-      logAudit(
-        user?.email || 'inventory@warehouseai.com',
-        user?.role || 'RECEIVING_INVENTORY_OFFICER',
-        'OCR_DOCUMENT_PROCESS',
-        'Inbound OCR',
-        `Processed document ${activeDoc.fileName} using WMS Neural OCR Engine.`
-      );
-    } catch (err) {
+      console.log("[OCR] Extract success raw response:", res);
+    } catch (extractErr) {
       clearTimeout(timeoutId);
-      console.error('[OCR Flow Error] API or Mapper failure:', err);
+      console.error('[OCR Flow Error] API failure:', extractErr);
       
-      const isTimeout = err.name === 'AbortError' || err.message.includes('timeout');
+      const isTimeout = extractErr.name === 'AbortError' || extractErr.message.includes('timeout');
       const errorMsg = isTimeout 
-        ? "OCR request completed slowly or response mapping failed. Please retry or check OCR response."
-        : `OCR processing error: ${err.message}`;
+        ? "OCR request completed slowly. Please retry."
+        : `OCR processing error: ${extractErr.message}`;
       
       showToast(errorMsg, 'error');
       setApiOfflineWarning(errorMsg);
@@ -389,51 +238,105 @@ export default function OcrUpload() {
         warnings: 1,
         warningsList: [errorMsg]
       } : d));
-      console.log("[OCR Flow] Final document status after mapping: ERROR (API/Network/Timeout Failure)");
-    } finally {
       setProcessing(false);
       setProcessingStartTime(null);
-      console.log("[OCR Flow] Finished handleProcess. Processing state:", false);
+      return;
     }
-  };
 
-  const handleFillDemoFile = (templateName) => {
-    const template = mockOcrTemplates[templateName];
-    const newId = `OCR-${Math.floor(100 + Math.random() * 900)}`;
-    const newDoc = {
-      id: newId,
-      fileName: templateName,
-      documentType: template.document_type,
-      supplierName: template.supplier,
-      uploadedAt: new Date().toISOString(),
-      uploadedBy: user?.email || 'inventory@warehouseai.com',
-      status: 'OCR_UPLOADED',
-      confidenceScore: template.confidence_score,
-      extractedItems: [
+    // 3. Normalization try/catch
+    let normalized = null;
+    try {
+      normalized = normalizeOcrResponse(res, activeDoc);
+      console.log("[OCR] Normalize success:", normalized);
+      if (!normalized.mappedItems || normalized.mappedItems.length === 0) {
+        throw new Error("No products found in OCR response products list.");
+      }
+    } catch (mapperError) {
+      console.error("[OCR] Normalize failed:", mapperError);
+      setRawOcrDebugData(res);
+      
+      const fallbackItems = [
         {
-          id: `EXT-${Date.now()}`,
-          sku: template.sku,
-          productName: template.product_name,
-          category: template.category,
-          quantity: Number(template.quantity),
-          uom: template.uom,
-          length: template.length,
-          width: template.width,
-          height: template.height,
-          weight: template.weight,
+          id: `EXT-${Date.now()}-fallback`,
+          sku: '',
+          productName: activeDoc.fileName.split('.')[0].replace(/[-_]/g, ' '),
+          category: 'General',
+          quantity: 1,
+          uom: 'BOX',
+          length: '',
+          width: '',
+          height: '',
+          weight: '',
           batchNumber: `BAT-${Math.floor(1000 + Math.random() * 9000)}`,
           expiryDate: '2028-12-31',
-          confidenceScore: template.confidence_score,
-          validationStatus: template.validation_status
+          confidenceScore: 50,
+          validationStatus: 'Warning',
+          storageType: 'GENERAL',
+          isFragile: false,
+          isStackable: true
         }
-      ],
-      warnings: template.warnings ? template.warnings.length : 0,
-      warningsList: template.warnings || []
-    };
+      ];
 
-    setOcrDocuments(prev => [newDoc, ...prev]);
-    setActiveFileId(newId);
-    showToast(`Added demo file: ${templateName}`);
+      setOcrDocuments(prev => prev.map(d => 
+        d.id === activeFileId 
+          ? {
+              ...d,
+              status: 'VERIFICATION_PENDING',
+              confidenceScore: 50,
+              extractedItems: fallbackItems,
+              supplierName: 'MANUAL_REVIEW',
+              documentType: 'Invoice',
+              totalAmount: '',
+              taxAmount: '',
+              fileName: activeDoc.fileName,
+              warnings: 1,
+              warningsList: [`Normalization/Mapper error: ${mapperError.message}. Ready for manual review.`]
+            } 
+          : d
+      ));
+
+      localStorage.setItem('latestProcessedDocId', activeFileId);
+      showToast('OCR response normalization failed. Document marked for Manual Review.', 'warning');
+      setProcessing(false);
+      setProcessingStartTime(null);
+      return;
+    }
+
+    console.log("[OCR Flow] Before setting OCR document state to VERIFICATION_PENDING with ID:", activeFileId);
+    setOcrDocuments(prev => prev.map(d => 
+      d.id === activeFileId 
+        ? {
+            ...d,
+            id: d.id, // Keep the uploaded ID (e.g. OCR-117)
+            documentNumber: normalized.documentNumber, // Attach normalized document number (e.g. INV-2026-1001)
+            status: 'VERIFICATION_PENDING',
+            confidenceScore: normalized.confidenceScore,
+            extractedItems: normalized.mappedItems,
+            supplierName: normalized.supplierName,
+            documentType: normalized.documentType,
+            totalAmount: normalized.totalAmount,
+            taxAmount: normalized.taxAmount,
+            fileName: activeDoc.fileName, // Keep actual uploaded file name
+            warnings: 0,
+            warningsList: []
+          } 
+        : d
+    ));
+    
+    console.log("[OCR Flow] Final document status after mapping: VERIFICATION_PENDING");
+    localStorage.setItem('latestProcessedDocId', activeFileId);
+
+    showToast('OCR analysis completed successfully! Ready for verification.');
+
+    logAudit(
+      user?.email || 'inventory@warehouseai.com',
+      user?.role || 'RECEIVING_INVENTORY_OFFICER',
+      'OCR_DOCUMENT_PROCESS',
+      'Inbound OCR',
+      `Processed document ${activeDoc.fileName} using WMS Neural OCR Engine.`
+    );
+    setProcessing(false);
+    setProcessingStartTime(null);
   };
 
   const activeFile = ocrDocuments.find(f => f.id === activeFileId);
@@ -550,35 +453,6 @@ export default function OcrUpload() {
           <p className="text-gray-500 text-sm mt-1">
             Upload cargo manifests, bill of ladings, or invoices to extract product metadata and dimensions automatically.
           </p>
-        </div>
-
-        {/* Quick Demo Fills */}
-        <div className="flex flex-wrap items-center gap-2 bg-slate-100 p-2 rounded-xl border border-slate-200">
-          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider pl-1.5 mr-1">Load Demo Documents:</span>
-          <Button 
-            onClick={() => handleFillDemoFile('dell_monitor_invoice.pdf')}
-            className="px-2.5 py-1 text-[10px] font-bold bg-white text-blue-700 hover:bg-blue-50 border border-slate-200 rounded-lg transition-colors"
-          >
-            Dell Invoice
-          </Button>
-          <Button 
-            onClick={() => handleFillDemoFile('hp_printer_packing_slip.jpg')}
-            className="px-2.5 py-1 text-[10px] font-bold bg-white text-blue-700 hover:bg-blue-50 border border-slate-200 rounded-lg transition-colors"
-          >
-            HP Slip
-          </Button>
-          <Button 
-            onClick={() => handleFillDemoFile('logitech_mouse_bol.png')}
-            className="px-2.5 py-1 text-[10px] font-bold bg-white text-blue-700 hover:bg-blue-50 border border-slate-200 rounded-lg transition-colors"
-          >
-            Logitech BOL
-          </Button>
-          <Button 
-            onClick={() => handleFillDemoFile('drill_delivery_docket.pdf')}
-            className="px-2.5 py-1 text-[10px] font-bold bg-white text-blue-700 hover:bg-blue-50 border border-slate-200 rounded-lg transition-colors"
-          >
-            Drill Docket
-          </Button>
         </div>
       </div>
 

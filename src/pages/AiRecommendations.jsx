@@ -425,7 +425,7 @@ export default function AiRecommendations() {
                       
                       // Map state to human descriptions
                       const statusSteps = [
-                        { key: 'WAITING_FOR_BIN_ASSIGNMENT', label: 'Clerk Verified' },
+                        { key: 'WAITING_FOR_BIN_ASSIGNMENT', label: 'Officer Verified' },
                         { key: 'BIN_SUGGESTED', label: 'Slot Sug.' },
                         { key: 'RECOMMENDATION_APPROVED', label: 'Appr' },
                         { key: 'ASSIGNED_TO_STAFF', label: 'Assigned' },

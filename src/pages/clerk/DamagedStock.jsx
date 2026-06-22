@@ -467,7 +467,7 @@ export default function DamagedStock() {
               <h4 className="font-bold text-gray-900 border-b border-gray-100 pb-1.5 uppercase text-[10px] tracking-wider text-[#0071C1]">Incident Logistics</h4>
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>Source Bin: <span className="font-bold font-mono text-slate-900">{selectedItemForModal.bin || 'N/A'}</span></div>
-                <div>Reported By: <span className="font-bold text-slate-900">{selectedItemForModal.reportedBy || 'clerk@warehouse.com'}</span></div>
+                <div>Reported By: <span className="font-bold text-slate-900">{selectedItemForModal.reportedBy || 'officer@warehouse.com'}</span></div>
                 <div className="col-span-2">Reported Date: <span className="font-bold text-slate-900">{selectedItemForModal.reportedDate ? new Date(selectedItemForModal.reportedDate).toLocaleString() : 'N/A'}</span></div>
               </div>
             </div>

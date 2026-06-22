@@ -93,6 +93,10 @@ function App() {
             <Route path="/manager/digital-twin" element={<DigitalTwin />} />
             <Route path="/manager/ai-assistant" element={<AiCopilot />} />
             <Route path="/manager/reports" element={<ManagerReports />} />
+            <Route path="/manager/inventory" element={<Inventory />} />
+            <Route path="/manager/orders" element={<Orders />} />
+            <Route path="/manager/routes" element={<RoutesOptimization />} />
+            <Route path="/manager/audit" element={<AuditLogs />} />
 
             {/* Redirects for legacy manager paths */}
             <Route path="/analytics" element={<Navigate to="/manager/analytics" replace />} />

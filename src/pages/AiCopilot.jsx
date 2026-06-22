@@ -27,16 +27,6 @@ export default function AiCopilot() {
     "Show products stored today"
   ];
 
-  const mockAnswers = {
-    "WHERE IS SKU100?": "SKU-1001 (Heavy Duty Drilling Rig) is stored in Zone C, Rack 4, Shelf S-04, Bin BIN-004. Current stock level is 8 units.",
-    "SHOW PRODUCTS IN ZONE A": "Zone A (Fast Moving) currently stores:\n- SKU-1002 (Power Grinder) - 120 units in BIN-001\nTotal stock in Zone A is 120 units with 65% capacity utilization.",
-    "SHOW AVAILABLE BINS": "There are 12 available/empty bins in Central Fulfillment A:\n- Zone A: BIN-006, BIN-007\n- Zone B: BIN-008, BIN-009, BIN-010\n- Zone C: BIN-012, BIN-015\n- Zone D: BIN-018, BIN-019, BIN-020",
-    "FIND FRAGILE PRODUCTS": "Fragile items identified in inventory logs:\n- SKU-3092 (Heavy Duty Drilling Rig 500W) - Mapped to Zone C (Requires dry storage, avoid heavy stacking).\n- SKU-3001 (Battery Cells) - Mapped to Zone B (Temperature control rules apply).",
-    "WHICH AISLES ARE CONGESTED?": "Traffic congestion analysis indicates:\n- Aisle A1 (Zone A): Moderate traffic due to concurrent storage tasks.\n- Aisle B2 (Zone B): Clear.\n- Aisle C3 (Zone C): Clear.",
-    "SHOW WAREHOUSE OCCUPANCY": "Warehouse space utilization breakdown:\n- Zone A (Fast Moving): 65% occupied\n- Zone B (Electronics): 72% occupied\n- Zone C (Bulk Storage): 88% occupied (High Load Warning)\n- Zone D (Cold Storage): 40% occupied\nOverall facility storage utilization: 60.0% occupied.",
-    "SHOW PRODUCTS STORED TODAY": "Items checked in and stored today:\n- Dell Laptop (15 units stored in BIN-003 by Warehouse Operator)\n- MacBook Pro (5 units stored in BIN-002 by Warehouse Operator)"
-  };
-
   const handleSendMessage = async (textToSend) => {
     if (!textToSend.trim()) return;
 
@@ -60,22 +50,13 @@ export default function AiCopilot() {
         setMessages(prev => [...prev, { sender: 'bot', text: botText }]);
       }
     } catch (err) {
-      console.error('[AI Copilot] API query failed, falling back to cached templates:', err);
+      console.error('[AI Copilot] API query failed:', err);
       
       const warningText = queryMode === 'rag' 
-        ? "⚠️ RAG AI Assistant is offline (Port 8002 unreachable). Showing cached local response."
-        : "⚠️ WMS Query API is offline (Port 8000 unreachable). Showing cached local response.";
+        ? "⚠️ RAG AI Assistant is offline (Port 8002 unreachable)."
+        : "⚠️ WMS Query API is offline (Port 8000 unreachable).";
         
-      const matchKey = userMsg.toUpperCase().replace(/[?]/g, '');
-      let botText = "I have queried the database, but could not find a specific match for that request. Try asking one of the suggested prompts below.";
-      
-      // Try to find a match in mock answers
-      for (const k of Object.keys(mockAnswers)) {
-        if (matchKey.includes(k) || k.includes(matchKey)) {
-          botText = mockAnswers[k];
-          break;
-        }
-      }
+      const botText = `Unable to connect to AI service: ${err.message || 'Connection refused'}. Please try again later.`;
 
       setMessages(prev => [
         ...prev, 

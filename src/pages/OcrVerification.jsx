@@ -29,6 +29,13 @@ export default function OcrVerification() {
     const pendingDocs = ocrDocuments.filter(d => d.status === 'VERIFICATION_PENDING');
     let docId = location.state?.documentId;
     
+    if (!docId) {
+      const latestId = localStorage.getItem('latestProcessedDocId');
+      if (latestId && pendingDocs.some(d => d.id === latestId)) {
+        docId = latestId;
+      }
+    }
+    
     if (!docId && pendingDocs.length > 0) {
       docId = pendingDocs[0].id;
     }
@@ -48,8 +55,10 @@ export default function OcrVerification() {
     if (doc) {
       setSelectedDocId(docId);
       setDocDetails({
-        document_number: doc.id,
-        supplier: doc.supplierName
+        document_number: doc.documentNumber || doc.id,
+        supplier: doc.supplierName,
+        total_amount: doc.totalAmount || '',
+        tax_amount: doc.taxAmount || ''
       });
       // Clone items so we can edit locally
       setItems(JSON.parse(JSON.stringify(doc.extractedItems || [])));
@@ -84,7 +93,10 @@ export default function OcrVerification() {
       height: '',
       weight: '',
       confidenceScore: 100,
-      validationStatus: 'Valid'
+      validationStatus: 'Valid',
+      storageType: 'GENERAL',
+      isFragile: false,
+      isStackable: true
     };
     setItems(prev => [...prev, newRow]);
   };
@@ -98,7 +110,14 @@ export default function OcrVerification() {
     
     setOcrDocuments(prev => prev.map(d => 
       d.id === selectedDocId 
-        ? { ...d, extractedItems: items } 
+        ? { 
+            ...d, 
+            extractedItems: items,
+            supplierName: docDetails.supplier,
+            id: docDetails.document_number,
+            totalAmount: docDetails.total_amount,
+            taxAmount: docDetails.tax_amount
+          } 
         : d
     ));
     showToast('Draft saved successfully!');
@@ -303,7 +322,7 @@ export default function OcrVerification() {
                   </div>
                 </div>
 
-                <CardContent className="p-4 bg-slate-50/20 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                <CardContent className="p-4 bg-slate-50/20 grid grid-cols-1 sm:grid-cols-5 gap-4 text-xs">
                   <div>
                     <span className="text-[10px] text-gray-400 block font-medium">Supplier Entity Name</span>
                     <Input 
@@ -323,12 +342,30 @@ export default function OcrVerification() {
                     />
                   </div>
                   <div>
+                    <span className="text-[10px] text-gray-400 block font-medium">Total Amount ($)</span>
+                    <Input 
+                      type="number" 
+                      className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-xs font-semibold p-2 bg-white"
+                      value={docDetails.total_amount || ''}
+                      onChange={(e) => setDocDetails({ ...docDetails, total_amount: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-gray-400 block font-medium">Tax Amount ($)</span>
+                    <Input 
+                      type="number" 
+                      className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-xs font-semibold p-2 bg-white"
+                      value={docDetails.tax_amount || ''}
+                      onChange={(e) => setDocDetails({ ...docDetails, tax_amount: e.target.value })}
+                    />
+                  </div>
+                  <div>
                     <span className="text-[10px] text-gray-400 block font-medium">OCR Extraction Confidence</span>
                     <div className="flex items-center gap-2 mt-2">
                       <div className="flex-1 bg-gray-200 rounded-full h-2">
                         <div 
-                          className={`h-2 rounded-full ${selectedDoc.confidenceScore > 90 ? 'bg-green-500' : 'bg-amber-500'}`}
-                          style={{ width: `${selectedDoc.confidenceScore}%` }}
+                           className={`h-2 rounded-full ${selectedDoc.confidenceScore > 90 ? 'bg-green-500' : 'bg-amber-500'}`}
+                           style={{ width: `${selectedDoc.confidenceScore}%` }}
                         ></div>
                       </div>
                       <span className="font-bold text-slate-700">{selectedDoc.confidenceScore}%</span>
@@ -362,6 +399,9 @@ export default function OcrVerification() {
                         <TableHead className="p-3">UOM</TableHead>
                         <TableHead className="p-3">Dims (LxWxH cm)</TableHead>
                         <TableHead className="p-3">Weight (kg)</TableHead>
+                        <TableHead className="p-3">Storage Type</TableHead>
+                        <TableHead className="p-3 text-center">Fragile</TableHead>
+                        <TableHead className="p-3 text-center">Stackable</TableHead>
                         <TableHead className="p-3 text-center">Confidence</TableHead>
                         <TableHead className="p-3 text-right">Action</TableHead>
                       </TableRow>
@@ -475,6 +515,40 @@ export default function OcrVerification() {
                                 className="w-full rounded-md border-gray-200 p-1.5 text-xs focus:ring-blue-500 focus:border-blue-500"
                                 value={item.weight}
                                 onChange={(e) => handleItemChange(idx, 'weight', e.target.value)}
+                              />
+                            </TableCell>
+
+                            {/* Storage Type */}
+                            <TableCell className="p-3 min-w-[120px]">
+                              <select 
+                                className="rounded-md border-gray-200 p-1.5 text-xs focus:ring-blue-500 focus:border-blue-500 bg-white w-full font-semibold"
+                                value={item.storageType || 'GENERAL'}
+                                onChange={(e) => handleItemChange(idx, 'storageType', e.target.value)}
+                              >
+                                <option value="GENERAL">General</option>
+                                <option value="COLD">Cold</option>
+                                <option value="FAST">Fast Moving</option>
+                                <option value="HAZARDOUS">Hazardous</option>
+                              </select>
+                            </TableCell>
+
+                            {/* Fragile */}
+                            <TableCell className="p-3 text-center">
+                              <input 
+                                type="checkbox"
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                                checked={!!item.isFragile}
+                                onChange={(e) => handleItemChange(idx, 'isFragile', e.target.checked)}
+                              />
+                            </TableCell>
+
+                            {/* Stackable */}
+                            <TableCell className="p-3 text-center">
+                              <input 
+                                type="checkbox"
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                                checked={!!item.isStackable}
+                                onChange={(e) => handleItemChange(idx, 'isStackable', e.target.checked)}
                               />
                             </TableCell>
 

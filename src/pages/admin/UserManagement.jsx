@@ -376,7 +376,7 @@ export default function UserManagement() {
                 <option value="ADMIN">ADMIN (System Control)</option>
                 <option value="WAREHOUSE_MANAGER">WAREHOUSE_MANAGER (Warehouse Manager)</option>
                 <option value="WAREHOUSE_OPERATOR">Warehouse Operator (Floor Operations)</option>
-                <option value="RECEIVING_INVENTORY_OFFICER">RECEIVING_INVENTORY_OFFICER (Receiving & Inventory)</option>
+                <option value="RECEIVING_INVENTORY_OFFICER">RECEIVING_INVENTORY_OFFICER (Inventory Officer)</option>
               </select>
             </div>
 

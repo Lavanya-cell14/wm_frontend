@@ -27,24 +27,24 @@ export default function Dashboard() {
 
   // Dynamic KPI Calculations
   const totalInventoryCount = inventory.reduce((sum, item) => sum + (item.quantity || 0), 0);
-  const occupiedBinsCount = bins.filter(b => b.status === 'Occupied' || b.status === 'Partial').length || 18;
-  const availableBinsCount = bins.filter(b => b.status === 'Empty' || b.status === 'Active' && b.currentCapacity === 0).length || 12;
-  const totalBinsCount = bins.length || 30;
-  const storageUtilizationStr = totalBinsCount > 0 ? ((occupiedBinsCount / totalBinsCount) * 100).toFixed(1) : '60.0';
-  const pendingOcrCount = ocrDocuments.filter(doc => doc.status === 'VERIFICATION_PENDING' || doc.status === 'OCR_UPLOADED').length || 2;
+  const occupiedBinsCount = bins.filter(b => b.status === 'Occupied' || b.status === 'Partial').length;
+  const availableBinsCount = bins.filter(b => b.status === 'Empty' || b.status === 'Active' && b.currentCapacity === 0).length;
+  const totalBinsCount = bins.length;
+  const storageUtilizationStr = totalBinsCount > 0 ? ((occupiedBinsCount / totalBinsCount) * 100).toFixed(1) : '0.0';
+  const pendingOcrCount = ocrDocuments.filter(doc => doc.status === 'VERIFICATION_PENDING' || doc.status === 'OCR_UPLOADED').length;
   
-  const completedAllocationsCount = inboundReceipts.filter(r => r.status === 'STORED' || r.status === 'COMPLETED').length || 4;
+  const completedAllocationsCount = inboundReceipts.filter(r => r.status === 'STORED' || r.status === 'COMPLETED').length;
   const completedTasksCount = putawayTasks.filter(t => t.status === 'COMPLETED').length;
   const activeTasksCount = putawayTasks.filter(t => ['IN_PROGRESS', 'PICKED_FROM_RECEIVING', 'REACHED_BIN', 'DELAYED'].includes(t.status)).length;
 
   // Overview metrics breakdown
-  const availableStock = totalInventoryCount - 350 > 0 ? totalInventoryCount - 350 : totalInventoryCount;
-  const allocatedStock = totalInventoryCount > 350 ? 350 : 0;
+  const availableStock = totalInventoryCount;
+  const allocatedStock = 0;
   const storedStockCount = putawayTasks.filter(t => t.status === 'COMPLETED').reduce((sum, t) => sum + (t.quantity || 0), 0);
 
-  const approvedOcrDocs = ocrDocuments.filter(doc => doc.status === 'VERIFIED' || doc.status === 'PROCESSED').length || 8;
-  const rejectedOcrDocs = ocrDocuments.filter(doc => doc.status === 'REJECTED' || doc.status === 'ERROR').length || 1;
-  const allocationsInProgress = inboundReceipts.filter(r => ['RECOMMENDATION_APPROVED', 'ASSIGNED_TO_STAFF', 'IN_PROGRESS'].includes(r.status)).length || 2;
+  const approvedOcrDocs = ocrDocuments.filter(doc => doc.status === 'VERIFIED' || doc.status === 'PROCESSED').length;
+  const rejectedOcrDocs = ocrDocuments.filter(doc => doc.status === 'REJECTED' || doc.status === 'ERROR').length;
+  const allocationsInProgress = inboundReceipts.filter(r => ['RECOMMENDATION_APPROVED', 'ASSIGNED_TO_STAFF', 'IN_PROGRESS'].includes(r.status)).length;
 
   // Paginated Read-Only Storage Tasks
   const totalTasksPages = Math.max(1, Math.ceil(putawayTasks.length / tasksPageSize));

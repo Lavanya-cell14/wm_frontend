@@ -3,7 +3,9 @@ import Button from './Button';
 import { AlertTriangle, Info, CheckCircle2, XCircle } from 'lucide-react';
 
 export default function AlertBanner({ type, variant, message, actionText, onAction }) {
-  const selectedType = type || variant || 'info';
+  const rawType = type || variant || 'info';
+  const selectedType = typeof rawType === 'string' ? rawType.toLowerCase() : 'info';
+  
   const configs = {
     warning: {
       bg: 'bg-amber-50',
@@ -43,19 +45,27 @@ export default function AlertBanner({ type, variant, message, actionText, onActi
   configs.error = configs.critical;
   configs.danger = configs.critical;
 
-  const config = configs[selectedType] || configs.info;
+  const config = configs[selectedType] || configs.info || {
+    bg: 'bg-blue-50',
+    border: 'border-blue-200',
+    icon: Info,
+    iconColor: 'text-blue-500',
+    textColor: 'text-blue-800',
+    btnClass: 'bg-blue-100 hover:bg-blue-200 text-blue-900'
+  };
+
   const Icon = config.icon || Info;
 
   return (
-    <div className={`w-full rounded-xl border p-4 flex flex-col sm:flex-row gap-4 sm:items-center justify-between ${config.bg} ${config.border}`}>
+    <div className={`w-full rounded-xl border p-4 flex flex-col sm:flex-row gap-4 sm:items-center justify-between ${config.bg || ''} ${config.border || ''}`}>
       <div className="flex items-center gap-3">
-        <Icon className={`w-5 h-5 shrink-0 ${config.iconColor}`} />
-        <p className={`text-sm font-medium ${config.textColor}`}>{message}</p>
+        <Icon className={`w-5 h-5 shrink-0 ${config.iconColor || ''}`} />
+        <p className={`text-sm font-medium ${config.textColor || ''}`}>{message}</p>
       </div>
       {actionText && onAction && (
         <Button 
           onClick={onAction}
-          className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors shrink-0 ${config.btnClass}`}
+          className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors shrink-0 ${config.btnClass || ''}`}
         >
           {actionText}
         </Button>
@@ -63,3 +73,4 @@ export default function AlertBanner({ type, variant, message, actionText, onActi
     </div>
   );
 }
+
