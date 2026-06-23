@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
 import { AlertBanner, Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Map, Layers, Navigation, Box, HelpCircle, ShieldAlert, Sparkles, LayoutGrid, MonitorPlay, Network, Radio } from 'lucide-react';
@@ -7,8 +7,36 @@ import { getTwinSummaryApi, getTwinOccupancyApi } from '../services/digitalTwinS
 import { getLayoutGraphApi } from '../services/layoutService';
 import { subscribeOccupancyFeed, subscribeAlertsFeed } from '../services/websocketService';
 
+// ─── Normalize raw Django API bin → standard shape expected by WarehouseScene ─
+// Django /api/bins/ returns: { id, bin_code, zone (id), zone_name, rack (id),
+//   shelf_number, is_occupied, max_capacity, current_capacity, x, y, z }
+// Context passes these raw objects unchanged.
+// WarehouseScene expects: { code, zone, rack, shelf, status, currentCapacity,
+//   maxCapacity, x, y, z }
+function normalizeBinForScene(b) {
+  if (!b) return null;
+  // Already normalized if it has 'code' field
+  if (b.code !== undefined) return b;
+  // Map raw API fields
+  const shelfNum = b.shelf_number != null ? b.shelf_number : (b.shelf || 1);
+  return {
+    id: b.id,
+    code: b.bin_code || b.code || `BIN-${b.id}`,
+    zone: b.zone_name || b.zone || 'Zone A',
+    rack: b.rack_code || b.rack || 'Rack-1',
+    shelf: shelfNum,
+    status: b.is_occupied ? 'FULL' : (b.status || 'EMPTY'),
+    currentCapacity: Number(b.current_capacity ?? b.currentCapacity ?? 0),
+    maxCapacity: Number(b.max_capacity ?? b.maxCapacity ?? 100),
+    x: b.x != null ? Number(b.x) : null,
+    y: b.y != null ? Number(b.y) : null,
+    z: b.z != null ? Number(b.z) : null,
+  };
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function DigitalTwin() {
-  const { zones, bins, inventory } = useWarehouse();
+  const { warehouses, zones, racks, shelves, bins: rawBins, inventory } = useWarehouse();
   const [activeLayers, setActiveLayers] = useState({
     zones: true,
     bins: true,
@@ -19,6 +47,25 @@ export default function DigitalTwin() {
   });
   const [selectedBin, setSelectedBin] = useState(null);
   const [viewMode, setViewMode] = useState('3d'); // '3d' or '2d'
+
+  // ── Normalize raw API bins to the standard shape WarehouseScene understands
+  const bins = useMemo(() => {
+    const raw = Array.isArray(rawBins) ? rawBins : [];
+    const normalized = raw.map(normalizeBinForScene).filter(Boolean);
+
+    // Debug log — visible in browser console when opening Digital Twin
+    console.group('[DigitalTwin] Data received from WarehouseContext');
+    console.log('Warehouses:', warehouses?.length ?? 0, warehouses);
+    console.log('Zones:', zones?.length ?? 0, zones);
+    console.log('Racks:', racks?.length ?? 0, racks);
+    console.log('Shelves:', shelves?.length ?? 0, shelves);
+    console.log('Raw Bins:', raw.length, '→ Normalized:', normalized.length);
+    if (raw.length > 0) console.log('Sample raw bin:', raw[0]);
+    if (normalized.length > 0) console.log('Sample normalized bin:', normalized[0]);
+    console.groupEnd();
+
+    return normalized;
+  }, [rawBins]);
   
   // States for live metrics
   const [telemetry, setTelemetry] = useState(null);

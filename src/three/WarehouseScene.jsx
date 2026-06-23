@@ -2,6 +2,90 @@ import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
+// ─── Deterministic Layout Engine ──────────────────────────────────────────────
+// Generates stable 3D positions from the natural ordering of bins even when
+// the backend hasn't stored explicit x/y/z coordinates.
+//
+// Layout strategy:
+//   • Zones are laid out in a grid horizontally (2 per row, spaced by ZONE_GAP).
+//   • Within each zone, racks are placed in columns (spaced by RACK_GAP_Z).
+//   • Bins on the same shelf (same zone + rack + shelf) sit side-by-side along X.
+//   • Each shelf level stacks upward on Y.
+
+const BIN_W = 1.6;   // bin width  (X)
+const BIN_H = 0.9;   // bin height (Y)
+const BIN_D = 1.4;   // bin depth  (Z)
+const BIN_PAD_X = 0.3;  // horizontal gap between bins in same shelf row
+const SHELF_H_GAP = 0.4; // vertical gap between shelf levels
+const RACK_GAP_Z = 3.5;  // space between racks along Z inside a zone
+const ZONE_W = 26;        // allocated width per zone column
+const ZONE_D = 22;        // allocated depth per zone row
+const ZONE_COLS = 3;      // zones per row
+const ZONE_PAD = 3;       // padding between zones
+
+function buildDeterministicPositions(bins) {
+  // Group bins: zone → rack → shelf → [bins]
+  const tree = {};
+  bins.forEach(bin => {
+    const zoneKey = bin.zone || 'Zone A';
+    const rackKey = bin.rack || bin.aisle || 'Rack-1';
+    const shelfKey = bin.shelf !== undefined ? String(bin.shelf) : '1';
+    if (!tree[zoneKey]) tree[zoneKey] = {};
+    if (!tree[zoneKey][rackKey]) tree[zoneKey][rackKey] = {};
+    if (!tree[zoneKey][rackKey][shelfKey]) tree[zoneKey][rackKey][shelfKey] = [];
+    tree[zoneKey][rackKey][shelfKey].push(bin);
+  });
+
+  const positions = {};
+  const zoneKeys = Object.keys(tree);
+
+  zoneKeys.forEach((zoneKey, zoneIdx) => {
+    // Zones grid: ZONE_COLS zones per row
+    const zoneCol = zoneIdx % ZONE_COLS;
+    const zoneRow = Math.floor(zoneIdx / ZONE_COLS);
+    const zoneOriginX = zoneCol * (ZONE_W + ZONE_PAD);
+    const zoneOriginZ = zoneRow * (ZONE_D + ZONE_PAD);
+
+    const rackKeys = Object.keys(tree[zoneKey]);
+    rackKeys.forEach((rackKey, rackIdx) => {
+      const rackOriginZ = zoneOriginZ + rackIdx * RACK_GAP_Z;
+      const shelfKeys = Object.keys(tree[zoneKey][rackKey]).sort();
+
+      shelfKeys.forEach((shelfKey, shelfIdx) => {
+        const shelfY = 0.5 + shelfIdx * (BIN_H + SHELF_H_GAP);
+        const shelfBins = tree[zoneKey][rackKey][shelfKey];
+
+        shelfBins.forEach((bin, binIdx) => {
+          const binX = zoneOriginX + binIdx * (BIN_W + BIN_PAD_X);
+          positions[bin.code] = [binX, shelfY, rackOriginZ];
+        });
+      });
+    });
+  });
+
+  return positions;
+}
+
+// Returns per-zone bounding box info for zone plate rendering
+function buildZoneBounds(bins, positions) {
+  const bounds = {};
+  bins.forEach(bin => {
+    const zoneKey = bin.zone || 'Zone A';
+    const pos = positions[bin.code];
+    if (!pos) return;
+    if (!bounds[zoneKey]) {
+      bounds[zoneKey] = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
+    }
+    const b = bounds[zoneKey];
+    if (pos[0] < b.minX) b.minX = pos[0];
+    if (pos[0] > b.maxX) b.maxX = pos[0];
+    if (pos[2] < b.minZ) b.minZ = pos[2];
+    if (pos[2] > b.maxZ) b.maxZ = pos[2];
+  });
+  return bounds;
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
 export default function WarehouseScene({ 
   zones = [], 
   bins = [], 
@@ -22,6 +106,9 @@ export default function WarehouseScene({
   useEffect(() => {
     if (!mountRef.current) return;
 
+    // ── Guard: render empty-state if no bins provided ────────────────────────
+    if (!Array.isArray(bins) || bins.length === 0) return;
+    // ─────────────────────────────────────────────────────────────────────────
     // 1. Scene setup
     const scene = new THREE.Scene();
     scene.background = new THREE.Color('#0b1329'); // Sleek dark slate blue
@@ -91,6 +178,28 @@ export default function WarehouseScene({
     floor.receiveShadow = true;
     scene.add(floor);
 
+    // ── Precompute deterministic positions for all bins ──────────────────────
+    // A bin from Django has x/y/z = 0 when no spatial coords were set.
+    // We treat x===0 AND y===0 AND z===0 as "no coords" (same as null)
+    // to force the deterministic layout engine instead of stacking everything
+    // at the world origin.
+    const hasExplicitCoords = (b) =>
+      (b.x != null && b.y != null && b.z != null) &&
+      !(b.x === 0 && b.y === 0 && b.z === 0);
+
+    const binsNeedingAutoLayout = bins.filter(b => !hasExplicitCoords(b));
+    const autoPositions = buildDeterministicPositions(binsNeedingAutoLayout);
+
+    const getBinPosition = (bin) => {
+      if (hasExplicitCoords(bin)) {
+        return [bin.x, bin.y, bin.z];
+      }
+      return autoPositions[bin.code] || [0, 0.5, 0];
+    };
+
+    // Zone bounding info (computed from auto-placed bins)
+    const autoZoneBounds = buildZoneBounds(binsNeedingAutoLayout, autoPositions);
+
     // Bins & Racks rendering lists
     const binMeshes = [];
     const pulsingObjects = [];
@@ -104,24 +213,49 @@ export default function WarehouseScene({
     };
 
     // 6. Draw Zones Bounding boxes
-    zones.forEach((zone, idx) => {
-      // Find zone coordinates and size
-      const zX = zone.x !== undefined ? zone.x : (idx * 25 - 37.5);
-      const zZ = zone.z !== undefined ? zone.z : 0;
-      const zWidth = zone.width || 22;
-      const zDepth = zone.depth || 18;
-      const zHeight = 0.2; // Flat border pads
+    // Use zone name as lookup key to match auto-positioned bins
+    const zoneColorMap = {
+      'Zone A': '#0071C1',
+      'Zone B': '#a855f7',
+      'Zone C': '#f97316',
+      'Zone D': '#10b981',
+    };
+    const PAD = 2.0; // extra padding around bin bounds for zone plate
 
-      // Colors for Zones
-      const zoneColorMap = {
-        'Zone A': '#0071C1', // Blue
-        'Zone B': '#a855f7', // Purple
-        'Zone C': '#f97316', // Orange
-        'Zone D': '#10b981', // Green
-      };
-      const zColor = zoneColorMap[zone.name] || '#64748b';
+    // Collect all unique zone names from either zones API data or from bins
+    const allZoneNames = new Set([
+      ...zones.map(z => z.name),
+      ...Object.keys(autoZoneBounds)
+    ]);
 
-      // Draw Zone floor area plate
+    allZoneNames.forEach((zoneName, idx) => {
+      const zColor = zoneColorMap[zoneName] || '#64748b';
+      const zHeight = 0.2;
+
+      let zX, zZ, zWidth, zDepth;
+      const bounds = autoZoneBounds[zoneName];
+      const apiZone = zones.find(z => z.name === zoneName);
+
+      if (apiZone && apiZone.x != null && apiZone.z != null) {
+        // Use API-provided coordinates if available
+        zX = apiZone.x;
+        zZ = apiZone.z;
+        zWidth = apiZone.width || 22;
+        zDepth = apiZone.depth || 18;
+      } else if (bounds) {
+        // Derive from computed bin positions with padding
+        zX = bounds.minX - PAD;
+        zZ = bounds.minZ - PAD;
+        zWidth = (bounds.maxX - bounds.minX) + PAD * 2 + BIN_W;
+        zDepth = (bounds.maxZ - bounds.minZ) + PAD * 2 + BIN_D;
+      } else {
+        // Fallback: evenly spaced strip
+        zX = idx * 29;
+        zZ = 0;
+        zWidth = 22;
+        zDepth = 18;
+      }
+
       const zoneGeo = new THREE.BoxGeometry(zWidth, zHeight, zDepth);
       const zoneMat = new THREE.MeshStandardMaterial({
         color: zColor,
@@ -133,38 +267,37 @@ export default function WarehouseScene({
       zoneMesh.position.set(zX + zWidth / 2, 0.05, zZ + zDepth / 2);
       scene.add(zoneMesh);
 
-      // Draw simple wire outline for the zone
       const edges = new THREE.EdgesGeometry(zoneGeo);
-      const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: zColor, linewidth: 2 }));
+      const line = new THREE.LineSegments(
+        edges,
+        new THREE.LineBasicMaterial({ color: zColor, linewidth: 2 })
+      );
       line.position.copy(zoneMesh.position);
       scene.add(line);
 
-      // Text sprite tag for Zone label (rendered dynamically in 3D)
+      // Zone label sprite
       const canvas = document.createElement('canvas');
-      canvas.width = 128;
+      canvas.width = 160;
       canvas.height = 64;
       const ctx = canvas.getContext('2d');
       ctx.fillStyle = zColor;
-      ctx.font = 'bold 24px Inter, sans-serif';
-      ctx.fillText(zone.name, 10, 40);
-      
+      ctx.font = 'bold 26px Inter, sans-serif';
+      ctx.fillText(zoneName, 10, 42);
       const texture = new THREE.CanvasTexture(canvas);
       const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
       const sprite = new THREE.Sprite(spriteMat);
-      sprite.position.set(zX + zWidth / 2, 4, zZ + zDepth / 2);
-      sprite.scale.set(8, 4, 1);
+      sprite.position.set(zX + zWidth / 2, 5, zZ + zDepth / 2);
+      sprite.scale.set(10, 4, 1);
       scene.add(sprite);
     });
 
     // 7. Draw Racks and Shelves (derived from bins grouping)
-    // To represent realistic wire shelves, we group bins by their combination of zone and rack name
+    // Group bins by zone+rack+shelf to draw shelf support beams
     const shelfGroupings = {};
 
     bins.forEach(bin => {
-      // Standardize values
-      const bX = bin.x || 0;
-      const bY = bin.y || 1;
-      const bZ = bin.z || 0;
+      // Use deterministic or API-provided position
+      const [bX, bY, bZ] = getBinPosition(bin);
       
       // Determine occupancy status
       const item = inventory.find(i => i.bin === bin.code);
@@ -176,11 +309,9 @@ export default function WarehouseScene({
         statusKey = 'full';
       }
 
-      // Draw Bin Cube
-      // Width/Depth dimensions fit inside racks
-      const binWidth = 1.6;
-      const binHeight = 0.9;
-      const binDepth = 1.4;
+      const binWidth = BIN_W;
+      const binHeight = BIN_H;
+      const binDepth = BIN_D;
 
       const binGeo = new THREE.BoxGeometry(binWidth, binHeight, binDepth);
       const binMat = new THREE.MeshStandardMaterial({
@@ -279,7 +410,33 @@ export default function WarehouseScene({
       });
     });
 
-    // 9. Click Handler Raycaster with drag prevention
+    // 9. Auto-center camera on all placed bins
+    if (binMeshes.length > 0) {
+      let sumX = 0, sumY = 0, sumZ = 0;
+      let minX = Infinity, maxX = -Infinity;
+      let minZ = Infinity, maxZ = -Infinity;
+      binMeshes.forEach(mesh => {
+        sumX += mesh.position.x;
+        sumY += mesh.position.y;
+        sumZ += mesh.position.z;
+        if (mesh.position.x < minX) minX = mesh.position.x;
+        if (mesh.position.x > maxX) maxX = mesh.position.x;
+        if (mesh.position.z < minZ) minZ = mesh.position.z;
+        if (mesh.position.z > maxZ) maxZ = mesh.position.z;
+      });
+      const count = binMeshes.length;
+      const centX = sumX / count;
+      const centZ = sumZ / count;
+      const spreadX = (maxX - minX) || 10;
+      const spreadZ = (maxZ - minZ) || 10;
+      const spread = Math.max(spreadX, spreadZ, 10);
+      // Position camera at 45° elevation, offset back from centroid by spread amount
+      camera.position.set(centX + spread * 0.8, spread * 0.7, centZ + spread * 1.2);
+      controls.target.set(centX, 1.5, centZ);
+      controls.update();
+    }
+
+    // 10. Click Handler Raycaster with drag prevention
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     let pointerStartX = 0;
@@ -380,13 +537,33 @@ export default function WarehouseScene({
       ref={mountRef} 
       className="w-full h-[450px] relative rounded-2xl overflow-hidden border border-slate-800 shadow-inner bg-[#0b1329]"
     >
-      {/* Help Overlay HUD */}
-      <div className="absolute bottom-4 left-4 z-10 bg-slate-900/80 border border-slate-700/60 backdrop-blur-xs text-[10px] text-slate-300 font-bold p-3 rounded-lg flex flex-col gap-1.5 select-none pointer-events-none">
-        <div>🖱️ Left-Click + Drag : Orbit Camera</div>
-        <div>🖱️ Right-Click + Drag : Pan Camera</div>
-        <div>🖱️ Scroll Wheel : Zoom Camera</div>
-        <div className="text-yellow-400 font-bold mt-1">🏷️ Click any bin block to load telemetry details</div>
-      </div>
+      {/* Empty state overlay — shown when no bins are available */}
+      {(!Array.isArray(bins) || bins.length === 0) && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center z-20 gap-4 pointer-events-none">
+          <div className="text-5xl opacity-30">🏭</div>
+          <div className="text-center">
+            <p className="text-slate-300 font-bold text-sm">
+              No warehouse layout data available.
+            </p>
+            <p className="text-slate-500 text-xs mt-1 font-medium">
+              Create warehouse structure first: Warehouses → Zones → Racks → Bins.
+            </p>
+          </div>
+          <div className="text-[10px] text-slate-600 font-mono bg-slate-900/60 border border-slate-700 px-3 py-1.5 rounded-lg">
+            Admin → Bins → Add Bin to get started
+          </div>
+        </div>
+      )}
+
+      {/* Help Overlay HUD — only shown when bins exist */}
+      {Array.isArray(bins) && bins.length > 0 && (
+        <div className="absolute bottom-4 left-4 z-10 bg-slate-900/80 border border-slate-700/60 backdrop-blur-xs text-[10px] text-slate-300 font-bold p-3 rounded-lg flex flex-col gap-1.5 select-none pointer-events-none">
+          <div>🖱️ Left-Click + Drag : Orbit Camera</div>
+          <div>🖱️ Right-Click + Drag : Pan Camera</div>
+          <div>🖱️ Scroll Wheel : Zoom Camera</div>
+          <div className="text-yellow-400 font-bold mt-1">🏷️ Click any bin block to load telemetry details</div>
+        </div>
+      )}
     </div>
   );
 }
