@@ -29,6 +29,7 @@ import {
   generateBinAllocationApi,
   completeBinAllocationApi
 } from '../../services/recommendationService';
+import { getBins } from '../../services/warehouseStructureService';
 
 export default function RecommendationsPage() {
   const { 
@@ -36,9 +37,68 @@ export default function RecommendationsPage() {
     inboundReceipts = [], 
     products = [],
     workers = [],
+    bins = [],
     assignPutawayTask,
-    setAiRecommendations
+    setAiRecommendations,
+    setInboundReceipts,
+    fetchData,
   } = useWarehouse();
+
+  const mapRoleLabel = (role) => {
+    if (!role) return 'Warehouse Operator';
+    const r = role.toUpperCase();
+    if (r === 'ADMIN') return 'Administrator';
+    if (r === 'MANAGER' || r === 'WAREHOUSE_MANAGER') return 'Warehouse Manager';
+    if (r === 'STAFF' || r === 'OPERATOR' || r === 'WAREHOUSE_OPERATOR') return 'Warehouse Operator';
+    return role;
+  };
+
+  const getOperatorDisplayLabel = (w, idx) => {
+    const mappedRole = mapRoleLabel(w.role);
+    const firstName = (w.first_name || '').trim();
+    const lastName = (w.last_name || '').trim();
+    if (firstName && lastName) {
+      return `${firstName} ${lastName} — ${mappedRole}`;
+    } else if (firstName) {
+      return `${firstName} — ${mappedRole}`;
+    } else if (lastName) {
+      return `${lastName} — ${mappedRole}`;
+    }
+    return `Operator ${idx + 1} — Warehouse Operator`;
+  };
+
+  // Robust operator list selection
+  const getFilteredOperators = () => {
+    // 1. First priority: users with role WAREHOUSE_OPERATOR or OPERATOR
+    let ops = workers.filter(w => w.role === 'WAREHOUSE_OPERATOR' || w.role === 'OPERATOR');
+    
+    // 2. Second priority: include users with role STAFF / staff if no operator role exists
+    if (ops.length === 0) {
+      ops = workers.filter(w => w.role === 'STAFF' || w.role === 'staff');
+    }
+    
+    // 3. Third priority: include any available worker/user as final fallback for demo
+    if (ops.length === 0) {
+      ops = workers;
+    }
+    
+    // Hide users whose username contains "admin" unless explicitly an operator
+    let filteredOps = ops.filter(w => {
+      const username = (w.username || w.name || '').toLowerCase();
+      const isExplicitOp = w.role === 'WAREHOUSE_OPERATOR' || w.role === 'OPERATOR';
+      if (username.includes('admin') && !isExplicitOp) {
+        return false;
+      }
+      return true;
+    });
+
+    if (filteredOps.length === 0 && ops.length > 0) {
+      return ops;
+    }
+    return filteredOps;
+  };
+
+  const filteredOperators = getFilteredOperators();
   
   // Tab state: 'monitor' | 'allocation-tools'
   const [activeTab, setActiveTab] = useState('monitor');
@@ -52,6 +112,92 @@ export default function RecommendationsPage() {
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [fallbackUsed, setFallbackUsed] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Local bins state — backup direct fetch when context bins = [] (backend was
+  // offline at app startup so WarehouseContext could not load bins).
+  // ---------------------------------------------------------------------------
+  const [localBins, setLocalBins] = useState([]);
+
+  // Shared bin normalizer — same mapping used in WarehouseContext
+  const normalizeBin = (b) => {
+    const maxCap = Number(b.max_capacity ?? b.maxCapacity ?? 100);
+    const curCap = Number(b.current_capacity ?? b.currentCapacity ?? 0);
+    const isOccupied = b.is_occupied ?? false;
+    
+    const codeVal = b.bin_code ?? b.code ?? b.binCode ?? b.name;
+    
+    // Parse fallback locations from bin code pattern: RACK-A1-01-L1-B01
+    let parsed = { zone: null, rack: null, shelf: null };
+    if (codeVal && typeof codeVal === 'string') {
+      const parts = codeVal.split('-');
+      if (parts.length >= 2) {
+        const rackPart = parts[1];
+        if (rackPart && rackPart.length > 0) {
+          const zoneLetter = rackPart.charAt(0).toUpperCase();
+          if (['A', 'B', 'C', 'D', 'E', 'F', 'G'].includes(zoneLetter)) {
+            parsed.zone = `Zone ${zoneLetter}`;
+          }
+        }
+      }
+      if (parts.length >= 4) {
+        parsed.shelf = parts[3];
+      }
+      if (parts.length >= 3) {
+        parsed.rack = `${parts[0]}-${parts[1]}-${parts[2]}`;
+      } else if (parts.length >= 2) {
+        parsed.rack = `${parts[0]}-${parts[1]}`;
+      }
+    }
+
+    let status = b.status || null;
+    if (!status) {
+      if (isOccupied) status = 'FULL';
+      else if (curCap >= maxCap && maxCap > 0) status = 'FULL';
+      else status = 'Active';
+    }
+
+    return {
+      id:              b.bin_id   ?? b.id   ?? b.binId,
+      code:            codeVal,
+      binCode:         codeVal,
+      shelfId:         b.shelf    ?? b.shelf_id  ?? b.shelfId,
+      rackId:          b.rack_id  ?? b.rackId,
+      zoneId:          b.zone_id  ?? b.zoneId,
+      zone:            b.zone     ?? parsed.zone,
+      rack:            b.rack     ?? b.rack_code ?? parsed.rack,
+      shelf:           b.shelf_level ?? parsed.shelf ?? null,
+      maxCapacity:     maxCap,
+      currentCapacity: curCap,
+      isOccupied:      isOccupied,
+      status:          status,
+      ...b,
+    };
+  };
+
+  useEffect(() => {
+    // Only fetch bins here if context gave us nothing (i.e., backend was
+    // offline when WarehouseContext first loaded).
+    if (bins.length > 0) return;
+
+    console.log('[Recommendations] Context bins empty — attempting backup direct fetch of /api/bins/');
+    getBins()
+      .then(res => {
+        const raw = res?.results || [];
+        console.log('[Recommendations] Backup fetch raw bins count:', raw.length, '| sample:', raw[0]);
+        if (raw.length > 0) {
+          const nb = raw.map(normalizeBin);
+          console.log('[Recommendations] Backup normalized bins count:', nb.length, '| sample:', nb[0]);
+          setLocalBins(nb);
+        } else {
+          console.warn('[Recommendations] Backup fetch also returned 0 bins. Raw response:', res);
+        }
+      })
+      .catch(err => {
+        console.error('[Recommendations] Backup /api/bins/ fetch failed:', err?.message || err);
+      });
+  }, [bins.length]);
+  // ---------------------------------------------------------------------------
 
   // Live Slotting Flow State
   const [activeLiveItemId, setActiveLiveItemId] = useState(null);
@@ -82,8 +228,10 @@ export default function RecommendationsPage() {
   const [placementError, setPlacementError] = useState(null);
 
   const [toastMessage, setToastMessage] = useState('');
-  const showToast = (msg) => {
+  const [toastType, setToastType] = useState('success');
+  const showToast = (msg, type = 'success') => {
     setToastMessage(msg);
+    setToastType(type);
     setTimeout(() => setToastMessage(''), 4000);
   };
 
@@ -126,27 +274,137 @@ export default function RecommendationsPage() {
     }
   }, [activeTab]);
 
+  // ---------------------------------------------------------------------------
+  // Pick the best available real bin from context for local fallback
+  // ---------------------------------------------------------------------------
+  const pickFallbackBin = (customBins) => {
+    // Merge context bins with locally fetched bins (backup fetch when context was empty)
+    // Deduplicate by code so we don't double-count if context later reloads
+    const allBins = customBins || (bins.length > 0 ? bins : localBins);
+
+    console.log('[Recommendations] bins count', bins.length);
+    console.log('[Recommendations] sample bin', bins[0]);
+
+    if (allBins.length === 0) {
+      console.error('[Recommendations] No bins with any code field found in context. Full bins array:', bins, '| localBins:', localBins);
+      return null;
+    }
+
+    const hasBinCode = (b) => !!(b.code || b.binCode || b.bin_code || b.name);
+
+    const isAvailable = (b) => {
+      const maxCap = Number(b.maxCapacity ?? b.max_capacity ?? 0);
+      const curCap = Number(b.currentCapacity ?? b.current_capacity ?? 0);
+      const isOccupied = b.isOccupied ?? b.is_occupied ?? false;
+
+      // Available bin logic: is_occupied === false OR currentCapacity < maxCapacity
+      return (isOccupied === false || curCap < maxCap);
+    };
+
+    // Prefer: has code + available
+    const availableBins = allBins.filter(b => hasBinCode(b) && isAvailable(b));
+    console.log('[Recommendations] available bins count', availableBins.length);
+
+    if (availableBins.length > 0) {
+      const pick = availableBins[Math.floor(Math.random() * availableBins.length)];
+      // Normalize the picked bin's code to a single field for downstream use
+      return {
+        ...pick,
+        code: pick.code || pick.binCode || pick.bin_code || pick.name,
+        zone: pick.zone || null,
+        rack: pick.rack || pick.rack_code || null,
+        shelf: pick.shelf || pick.shelf_level || null,
+      };
+    }
+
+    // Fallback 2: any bin with any code identifier (even if availability unknown)
+    const anyWithCode = allBins.filter(hasBinCode);
+    if (anyWithCode.length > 0) {
+      console.warn('[Recommendations] No clearly available bins — using first bin with a code identifier.');
+      const pick = anyWithCode[0];
+      return {
+        ...pick,
+        code: pick.code || pick.binCode || pick.bin_code || pick.name,
+        zone: pick.zone || null,
+        rack: pick.rack || pick.rack_code || null,
+        shelf: pick.shelf || pick.shelf_level || null,
+      };
+    }
+
+    // Truly no usable bins at all
+    console.error('[Recommendations] No bins with any code field found in context. Full bins array:', bins, '| localBins:', localBins);
+    return null;
+  };
+
+  // ---------------------------------------------------------------------------
   // Lookup function to map SKU from receipt to Product UUID
+  // ---------------------------------------------------------------------------
   const getProductUuidForSku = (sku) => {
     const prod = products.find(p => p.sku === sku || p.productId === sku || p.id === sku);
     return prod ? (prod.productId || prod.id) : null;
   };
 
-  // Generate storage recommendation (POST /api/recommendations/storage/)
-  const handleGenerateStorageRecommendation = async (receipt) => {
-    const productUuid = getProductUuidForSku(receipt.sku);
-    if (!productUuid) {
-      setLiveRecError(`Could not find a valid Product UUID for SKU "${receipt.sku}" in cache. Verify that the product has been created in the database.`);
-      setLiveRecResult(null);
-      return;
+  // ---------------------------------------------------------------------------
+  // Ensure bins are loaded on-demand
+  // ---------------------------------------------------------------------------
+  const ensureBinsLoaded = async () => {
+    let currentBins = bins.length > 0 ? bins : localBins;
+    if (currentBins.length === 0) {
+      console.log('[Recommendations] Bins empty. Triggering on-demand fetch of /api/bins/ inside handler...');
+      try {
+        const res = await getBins();
+        const raw = res?.results || [];
+        if (raw.length > 0) {
+          const nb = raw.map(normalizeBin);
+          console.log('[Recommendations] On-demand fetched and normalized bins:', nb.length);
+          setLocalBins(nb);
+          return nb;
+        } else {
+          console.warn('[Recommendations] On-demand fetch returned 0 results.');
+        }
+      } catch (err) {
+        console.error('[Recommendations] On-demand fetch failed:', err?.message || err);
+      }
     }
+    return currentBins;
+  };
 
+  // ---------------------------------------------------------------------------
+  // SUGGEST STORAGE SLOT — with console log, visible error, and local fallback
+  // ---------------------------------------------------------------------------
+  const handleGenerateStorageRecommendation = async (receipt) => {
+    console.log('[Recommendations] Suggest Storage Slot clicked', receipt);
+
+    // Open the results panel immediately regardless of UUID availability
     setActiveLiveItemId(receipt.id);
     setLiveRecLoading(true);
     setLiveRecError(null);
     setLiveRecResult(null);
     setLiveAllocResult(null);
     setLiveAllocError(null);
+
+    const loadedBins = await ensureBinsLoaded();
+    const productUuid = getProductUuidForSku(receipt.sku);
+
+    if (!productUuid) {
+      console.warn(`[Recommendations] Product UUID not found for SKU "${receipt.sku}" — using local context fallback for storage recommendation.`);
+      
+      // Local fallback: derive zone suggestion from receipt data
+      const fallbackBin = pickFallbackBin(loadedBins);
+      const fallbackZone = fallbackBin?.zone || receipt.storageZone || 'Zone A';
+      const fallbackZoneGroup = fallbackZone === 'Zone D' ? 'Cold Storage ZG' : 'Ambient Storage ZG';
+
+      setLiveRecResult({
+        zoneGroup: fallbackZoneGroup,
+        zone: fallbackZone,
+        score: 88,
+        reason: `Local fallback: Product SKU "${receipt.sku}" is not yet registered in the product catalog. Storage zone "${fallbackZone}" selected from available bin inventory. Confirm & Allocate will assign a real bin from context.`,
+        isFallback: true,
+      });
+      setLiveRecLoading(false);
+      showToast(`Product UUID not found for SKU "${receipt.sku}". Showing local fallback recommendation.`, 'warning');
+      return;
+    }
 
     try {
       const res = await generateStorageRecommendationApi(productUuid);
@@ -157,23 +415,94 @@ export default function RecommendationsPage() {
         reason: res.recommendation_reason || 'AI dynamic slotting layout verified.',
         version: res.recommendation_version || 'v1'
       });
+      showToast('Storage recommendation fetched successfully!');
     } catch (err) {
-      console.error("[AI Recommendation Error]:", err);
-      setLiveRecError(err.message || "Failed to generate storage recommendation from Django backend.");
+      console.error("[Recommendations] Storage recommendation API failed, using local fallback:", err);
+
+      // Local fallback on API failure
+      const fallbackBin = pickFallbackBin(loadedBins);
+      const fallbackZone = fallbackBin?.zone || 'Zone A';
+      const fallbackZoneGroup = fallbackZone === 'Zone D' ? 'Cold Storage ZG' : 'Ambient Storage ZG';
+
+      setLiveRecResult({
+        zoneGroup: fallbackZoneGroup,
+        zone: fallbackZone,
+        score: 85,
+        reason: `Backend API offline. Local fallback: Selected zone "${fallbackZone}" from available bin inventory. You can proceed with Confirm & Allocate Bin to assign a physical slot.`,
+        isFallback: true,
+      });
+      showToast('Backend offline — showing local fallback recommendation.', 'warning');
     } finally {
       setLiveRecLoading(false);
     }
   };
 
-  // Confirm and allocate bin (POST /api/recommendations/bin-allocation/)
-  const handleGenerateBinAllocation = async (receipt) => {
-    const productUuid = getProductUuidForSku(receipt.sku);
-    if (!productUuid) {
-      setLiveAllocError(`Could not find a valid Product UUID for SKU "${receipt.sku}" to allocate.`);
-      setLiveAllocResult(null);
-      return;
+  // ---------------------------------------------------------------------------
+  // Commit bin allocation to inbound receipt and AI recommendation lists
+  // ---------------------------------------------------------------------------
+  const commitAllocation = (receipt, binVal, shelfVal, rackVal, zoneVal, scoreVal, reasonVal) => {
+    const zGroup = zoneVal === 'Zone D' ? 'Cold Storage ZG' : 'Ambient Storage ZG';
+    const aisleVal = zoneVal === 'Zone C' ? 'Aisle 3' : 'Aisle 1';
+
+    const customRec = {
+      id: `REC-${Date.now()}`,
+      inboundId: receipt.id,
+      title: `AI Bin Allocation for ${receipt.productName}`,
+      sku: receipt.sku,
+      productName: receipt.productName,
+      quantity: receipt.verifiedQuantity || receipt.quantityReceived,
+      zoneGroup: zGroup,
+      zone: zoneVal,
+      aisle: aisleVal,
+      rack: rackVal,
+      shelf: shelfVal,
+      bin: binVal,
+      binCode: binVal,
+      confidence: scoreVal,
+      reason: reasonVal,
+      storageStatus: 'ALLOCATED',
+      allocationStatus: 'BIN_ALLOCATED',
+      status: 'RECOMMENDATION_APPROVED',
+      createdAt: new Date().toISOString()
+    };
+
+    const allocation = customRec;
+    console.log('[Recommendations] allocation created', allocation);
+
+    if (setAiRecommendations) {
+      setAiRecommendations(prev => {
+        const filtered = prev.filter(r => r.inboundId !== receipt.id);
+        return [customRec, ...filtered];
+      });
     }
 
+    if (setInboundReceipts) {
+      setInboundReceipts(prev => prev.map(r =>
+        r.id === receipt.id ? { 
+          ...r, 
+          status: 'BIN_ALLOCATED',
+          bin: binVal,
+          binCode: binVal,
+          allocatedBin: binVal,
+          zone: zoneVal,
+          zoneGroup: zGroup,
+          aisle: aisleVal,
+          rack: rackVal,
+          shelf: shelfVal,
+          storageStatus: 'ALLOCATED',
+          allocationStatus: 'BIN_ALLOCATED'
+        } : r
+      ));
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // CONFIRM & ALLOCATE BIN — with console log, visible error, and local fallback
+  // ---------------------------------------------------------------------------
+  const handleGenerateBinAllocation = async (receipt) => {
+    console.log('[Recommendations] Confirm Allocate clicked', receipt);
+
+    // Open the results panel immediately
     setActiveLiveItemId(receipt.id);
     setLiveAllocLoading(true);
     setLiveAllocError(null);
@@ -181,21 +510,126 @@ export default function RecommendationsPage() {
     setLiveRecResult(null);
     setLiveRecError(null);
 
+    const loadedBins = await ensureBinsLoaded();
+    const productUuid = getProductUuidForSku(receipt.sku);
+
+    if (!productUuid) {
+      console.warn(`[Recommendations] Product UUID not found for SKU "${receipt.sku}" — using local context bin fallback.`);
+
+      // Use a real bin from context
+      const fallbackBin = pickFallbackBin(loadedBins);
+
+      if (!fallbackBin) {
+        const msg = `No available bins found in context. Please ensure bins are loaded (Admin → Bins).`;
+        console.error('[Recommendations]', msg);
+        setLiveAllocError(msg);
+        setLiveAllocLoading(false);
+        showToast(msg, 'error');
+        return;
+      }
+
+      const localResult = {
+        binCode: fallbackBin.code,
+        shelf: fallbackBin.shelf || fallbackBin.shelfLevel || '1',
+        rack: fallbackBin.rack || fallbackBin.rackCode || 'RACK-001',
+        zone: fallbackBin.zone || 'Zone A',
+        score: 87,
+        reason: `Local context fallback: Bin "${fallbackBin.code}" selected from loaded warehouse inventory. Product SKU "${receipt.sku}" not in product catalog — bin allocation performed using real bin data from context.`,
+        routeDistance: '35',
+        routePath: [`Receiving Dock`, `${fallbackBin.zone || 'Zone A'}`, `${fallbackBin.code}`],
+        storageStatus: 'ALLOCATED',
+        isFallback: true,
+      };
+
+      console.log('[Recommendations] Local fallback bin allocation result:', localResult);
+      setLiveAllocResult(localResult);
+      setLiveAllocLoading(false);
+
+      commitAllocation(
+        receipt,
+        fallbackBin.code,
+        fallbackBin.shelf || fallbackBin.shelfLevel || '1',
+        fallbackBin.rack || fallbackBin.rackCode || 'RACK-001',
+        fallbackBin.zone || 'Zone A',
+        87,
+        localResult.reason
+      );
+
+      showToast(`Bin "${fallbackBin.code}" allocated from local context. Select operator below and dispatch.`, 'success');
+      return;
+    }
+
+    // --- Backend API path ---
     try {
-      const res = await generateBinAllocationApi(productUuid);
-      setLiveAllocResult({
+      const res = await generateBinAllocationApi(productUuid, receipt._rawBackendId || receipt.id);
+      const apiResult = {
         binCode: res.bin?.code || 'N/A',
         shelf: res.shelf?.number || 'N/A',
         rack: res.rack?.code || 'N/A',
+        zone: res.zone || 'Zone A',
         score: res.allocation_score ? Math.round(Number(res.allocation_score) * 100) : 95,
         reason: res.allocation_reason || 'AI spatial assignment completed.',
         routeDistance: res.route?.distance || '0',
         routePath: res.route?.path || [],
-        storageStatus: res.storage_status || 'ALLOCATED'
-      });
+        storageStatus: res.storage_status || 'ALLOCATED',
+        isFallback: false,
+      };
+      setLiveAllocResult(apiResult);
+
+      commitAllocation(
+        receipt,
+        apiResult.binCode,
+        apiResult.shelf,
+        apiResult.rack,
+        apiResult.zone,
+        apiResult.score,
+        apiResult.reason
+      );
+
+      showToast(`Bin "${apiResult.binCode}" allocated successfully!`);
+      if (fetchData) {
+        await fetchData();
+      }
     } catch (err) {
-      console.error("[AI Allocation Error]:", err);
-      setLiveAllocError(err.message || "Failed to allocate bin space from Django backend.");
+      console.error("[Recommendations] Bin allocation API failed, using local context fallback:", err);
+
+      // Local fallback on API failure
+      const fallbackBin = pickFallbackBin(loadedBins);
+
+      if (!fallbackBin) {
+        const msg = `Bin allocation API offline and no bins found in context. Please check Admin → Bins.`;
+        setLiveAllocError(msg);
+        showToast(msg, 'error');
+        return;
+      }
+
+      const localResult = {
+        binCode: fallbackBin.code,
+        shelf: fallbackBin.shelf || fallbackBin.shelfLevel || '1',
+        rack: fallbackBin.rack || fallbackBin.rackCode || 'RACK-001',
+        zone: fallbackBin.zone || 'Zone A',
+        score: 84,
+        reason: `API offline — fallback: Bin "${fallbackBin.code}" selected from loaded context bins. You can proceed to assign an operator and dispatch.`,
+        routeDistance: '35',
+        routePath: [`Receiving Dock`, `${fallbackBin.zone || 'Zone A'}`, `${fallbackBin.code}`],
+        storageStatus: 'ALLOCATED',
+        isFallback: true,
+      };
+
+      console.log('[Recommendations] API failed fallback bin allocation result:', localResult);
+      setLiveAllocResult(localResult);
+
+      commitAllocation(
+        receipt,
+        fallbackBin.code,
+        fallbackBin.shelf || fallbackBin.shelfLevel || '1',
+        fallbackBin.rack || fallbackBin.rackCode || 'RACK-001',
+        fallbackBin.zone || 'Zone A',
+        84,
+        localResult.reason
+      );
+
+      showToast(`Backend offline — Bin "${fallbackBin.code}" allocated from local context.`, 'warning');
     } finally {
       setLiveAllocLoading(false);
     }
@@ -275,7 +709,7 @@ export default function RecommendationsPage() {
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-4 right-4 z-50 animate-bounce shadow-lg rounded-xl">
-          <AlertBanner type="success" message={toastMessage} />
+          <AlertBanner type={toastType} message={toastMessage} />
         </div>
       )}
       
@@ -283,7 +717,7 @@ export default function RecommendationsPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 mb-1">
-            <span>Receiving & Inventory Officer</span>
+            <span>Receiving &amp; Inventory Officer</span>
             <ChevronRight className="w-3.5 h-3.5" />
             <span className="text-[#0071C1]">AI Recommendations</span>
           </div>
@@ -391,7 +825,7 @@ export default function RecommendationsPage() {
                                       size="sm"
                                       className="text-[11px] h-8 px-3 font-semibold border-amber-200 hover:bg-amber-50 text-amber-800 flex items-center gap-1"
                                       onClick={() => handleGenerateStorageRecommendation(receipt)}
-                                      disabled={liveRecLoading || liveAllocLoading}
+                                      disabled={liveRecLoading && isActive}
                                     >
                                       {liveRecLoading && isActive ? (
                                         <Loader2 className="w-3 h-3 animate-spin text-amber-600" />
@@ -405,20 +839,20 @@ export default function RecommendationsPage() {
                                       size="sm"
                                       className="text-[11px] h-8 px-3 font-semibold bg-[#0071C1] hover:bg-[#005c9e] text-white flex items-center gap-1"
                                       onClick={() => handleGenerateBinAllocation(receipt)}
-                                      disabled={liveRecLoading || liveAllocLoading}
+                                      disabled={liveAllocLoading && isActive}
                                     >
                                       {liveAllocLoading && isActive ? (
                                         <Loader2 className="w-3 h-3 animate-spin text-white" />
                                       ) : (
                                         <CheckSquare className="w-3.5 h-3.5" />
                                       )}
-                                      Confirm & Allocate Bin
+                                      Confirm &amp; Allocate Bin
                                     </Button>
                                   </div>
                                 </TableCell>
                               </TableRow>
                               
-                              {/* Live Results Panel */}
+                              {/* Live Results Panel — renders whenever this row is active */}
                               {isActive && (
                                 <TableRow>
                                   <TableCell colSpan={5} className="bg-slate-50/50 p-4 border-t border-b border-gray-150">
@@ -435,12 +869,18 @@ export default function RecommendationsPage() {
                                             Querying AI slotting heuristics...
                                           </div>
                                         ) : liveRecError ? (
-                                          <div className="text-xs text-red-705 font-semibold p-2 bg-red-50 border border-red-100 rounded-lg flex items-center gap-1.5 text-left">
+                                          <div className="text-xs text-red-700 font-semibold p-2 bg-red-50 border border-red-100 rounded-lg flex items-center gap-1.5 text-left">
                                             <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
                                             <span>{liveRecError}</span>
                                           </div>
                                         ) : liveRecResult ? (
                                           <div className="space-y-2 text-xs font-semibold text-slate-700 text-left">
+                                            {liveRecResult.isFallback && (
+                                              <div className="flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded font-bold">
+                                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                                Local fallback — backend UUID lookup unavailable
+                                              </div>
+                                            )}
                                             <div className="flex justify-between items-center">
                                               <span>Recommended Zone: <span className="font-bold text-gray-900">{liveRecResult.zone}</span></span>
                                               <Badge variant="success" className="font-mono">{liveRecResult.score}% Confidence</Badge>
@@ -470,12 +910,18 @@ export default function RecommendationsPage() {
                                             Running spatial allocation algorithm...
                                           </div>
                                         ) : liveAllocError ? (
-                                          <div className="text-xs text-red-705 font-semibold p-2 bg-red-50 border border-red-100 rounded-lg flex items-center gap-1.5 text-left">
+                                          <div className="text-xs text-red-700 font-semibold p-2 bg-red-50 border border-red-100 rounded-lg flex items-center gap-1.5 text-left">
                                             <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
                                             <span>{liveAllocError}</span>
                                           </div>
                                         ) : liveAllocResult ? (
                                           <div className="space-y-3 text-xs font-semibold text-slate-700 text-left font-sans">
+                                            {liveAllocResult.isFallback && (
+                                              <div className="flex items-center gap-1 text-[10px] text-blue-700 bg-blue-50 border border-blue-200 px-2 py-1 rounded font-bold">
+                                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                                Local context bin — backend offline or UUID unavailable
+                                              </div>
+                                            )}
                                             <div className="flex justify-between items-center">
                                               <span>Allocated Bin: <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">{liveAllocResult.binCode}</span></span>
                                               <Badge variant="primary" className="font-mono">{liveAllocResult.score}% Fit Score</Badge>
@@ -501,11 +947,22 @@ export default function RecommendationsPage() {
                                                     className="w-full border border-gray-300 rounded-lg px-2 py-1.5 bg-white text-xs font-semibold text-gray-700"
                                                     defaultValue=""
                                                   >
-                                                    <option value="" disabled>Select Operator...</option>
-                                                    {workers.filter(w => w.role === 'WAREHOUSE_OPERATOR' || w.role === 'OPERATOR' || w.role === 'staff' || w.role === 'STAFF').map(w => (
-                                                      <option key={w.id} value={`${w.id}|${w.name}`}>{w.name} ({w.zone || 'Aisle'})</option>
-                                                    ))}
+                                                    {filteredOperators.length === 0 ? (
+                                                      <option value="" disabled>No operators loaded. Check /api/users/ or create operator user.</option>
+                                                    ) : (
+                                                      <>
+                                                        <option value="" disabled>Select Operator...</option>
+                                                        {filteredOperators.map((w, idx) => (
+                                                          <option key={w.id} value={`${w.id}|${w.name}`}>{getOperatorDisplayLabel(w, idx)}</option>
+                                                        ))}
+                                                      </>
+                                                    )}
                                                   </select>
+                                                  {filteredOperators.length === 0 && (
+                                                    <p className="text-[10px] text-red-500 font-semibold mt-1">
+                                                      No operators loaded. Check /api/users/ or create operator user.
+                                                    </p>
+                                                  )}
                                                 </div>
                                                 <div className="text-left">
                                                   <label className="block text-[10px] text-gray-500 font-bold mb-1 uppercase">Priority</label>
@@ -524,18 +981,21 @@ export default function RecommendationsPage() {
                                                 size="sm"
                                                 className="w-full bg-[#0071C1] hover:bg-[#005c9e] text-white py-2 font-bold justify-center"
                                                 onClick={() => {
+                                                  console.log('[Recommendations] Create & Assign Putaway Task clicked', receipt.id);
+
                                                   const opSel = document.getElementById(`operator-select-${receipt.id}`);
                                                   const priSel = document.getElementById(`priority-select-${receipt.id}`);
                                                   const opVal = opSel ? opSel.value : '';
                                                   const priVal = priSel ? priSel.value : 'Medium';
                                                   
                                                   if (!opVal) {
-                                                    alert("Please select a warehouse operator to assign this task.");
+                                                    showToast('Please select a warehouse operator before dispatching.', 'warning');
                                                     return;
                                                   }
+
                                                   const [opId, opName] = opVal.split('|');
                                                   
-                                                  // Construct the custom AI recommendation object
+                                                  // Construct AI recommendation object using real allocated bin
                                                   const customRec = {
                                                     id: `REC-${Date.now()}`,
                                                     inboundId: receipt.id,
@@ -543,36 +1003,40 @@ export default function RecommendationsPage() {
                                                     sku: receipt.sku,
                                                     productName: receipt.productName,
                                                     quantity: receipt.verifiedQuantity || receipt.quantityReceived,
-                                                    zone: liveRecResult?.zone || 'Zone A',
+                                                    zone: liveAllocResult.zone || liveRecResult?.zone || 'Zone A',
                                                     aisle: 'A1',
                                                     rack: liveAllocResult.rack || 'RACK-001',
                                                     shelf: `Level ${liveAllocResult.shelf || 1}`,
-                                                    bin: liveAllocResult.binCode || 'BIN-001',
-                                                    confidence: liveAllocResult.score || 95,
+                                                    bin: liveAllocResult.binCode,
+                                                    confidence: liveAllocResult.score || 87,
                                                     reason: liveAllocResult.reason || 'AI spatial assignment completed.',
-                                                    status: 'PENDING_REVIEW',
+                                                    status: 'RECOMMENDATION_APPROVED',
                                                     createdAt: new Date().toISOString()
                                                   };
                                                   
+                                                  console.log('[Recommendations] Dispatching with customRec:', customRec);
+
                                                   // Push into local aiRecommendations
                                                   setAiRecommendations(prev => [customRec, ...prev]);
                                                   
-                                                  // Call assignPutawayTask
+                                                  // Call assignPutawayTask — advances receipt to ASSIGNED_TO_STAFF
                                                   assignPutawayTask(receipt.id, opId, opName, priVal, customRec);
                                                   
-                                                  showToast(`Putaway task assigned to ${opName} successfully!`);
+                                                  showToast(`Putaway task assigned to ${opName} — Bin: ${liveAllocResult.binCode}`, 'success');
                                                   
                                                   // Clear live state
                                                   setActiveLiveItemId(null);
+                                                  setLiveRecResult(null);
+                                                  setLiveAllocResult(null);
                                                 }}
                                               >
-                                                Create & Assign Putaway Task
+                                                Create &amp; Assign Putaway Task
                                               </Button>
                                             </div>
                                           </div>
                                         ) : (
                                           <div className="text-xs text-gray-400 font-medium py-2 font-semibold">
-                                            Click "Confirm & Allocate Bin" to execute the spatial allocator.
+                                            Click "Confirm &amp; Allocate Bin" to execute the spatial allocator.
                                           </div>
                                         )}
                                       </div>
@@ -695,7 +1159,7 @@ export default function RecommendationsPage() {
                 AI Target Bin Suggestion Tool
               </CardTitle>
               <CardDescription className="text-xs">
-                Calculate the optimal target storage slot using dimensions & inventory metrics.
+                Calculate the optimal target storage slot using dimensions &amp; inventory metrics.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-5 flex-1 flex flex-col justify-between">
@@ -791,7 +1255,7 @@ export default function RecommendationsPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-gray-600 mb-1">Box Box Dimensions (L x W x H in cm)</label>
+                  <label className="block text-gray-600 mb-1">Box Dimensions (L x W x H in cm)</label>
                   <Input value={placementDim} onChange={(e) => setPlacementDim(e.target.value)} placeholder="e.g. 30x30x30" />
                 </div>
 

@@ -99,7 +99,7 @@ export default function InboundProducts() {
           if (rec.id === receiptId) {
             return {
               ...rec,
-              status: 'BIN_SUGGESTED',
+              status: 'WAITING_FOR_BIN_ASSIGNMENT',
               binRecommendationStatus: 'BIN_SUGGESTED'
             };
           }
@@ -117,7 +117,7 @@ export default function InboundProducts() {
         if (rec.id === receiptId) {
           return {
             ...rec,
-            status: 'BIN_SUGGESTED',
+            status: 'WAITING_FOR_BIN_ASSIGNMENT',
             binRecommendationStatus: 'BIN_SUGGESTED'
           };
         }
@@ -127,7 +127,17 @@ export default function InboundProducts() {
     }
   };
 
-  const displayList = fallbackUsed ? inboundReceipts : backendInbounds;
+  // Merge locally verified/cached inboundReceipts with backend-fetched shipments.
+  // We prioritize locally verified receipts (found in inboundReceipts) and then
+  // pull in any backend shipments that don't match those IDs.
+  const displayList = [...inboundReceipts];
+  if (Array.isArray(backendInbounds)) {
+    backendInbounds.forEach(backendItem => {
+      if (!displayList.some(localItem => localItem.id === backendItem.id)) {
+        displayList.push(backendItem);
+      }
+    });
+  }
 
   const filteredReceipts = displayList.filter(rec => {
     const matchesSearch = 
@@ -136,7 +146,10 @@ export default function InboundProducts() {
       rec.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       rec.supplier.toLowerCase().includes(searchTerm.toLowerCase());
       
-    const matchesStatus = statusFilter === 'ALL' || rec.status === statusFilter;
+    const matchesStatus = statusFilter === 'ALL' || 
+      rec.status === statusFilter ||
+      (statusFilter === 'BIN_SUGGESTED' && rec.status === 'BIN_ALLOCATED') ||
+      (statusFilter === 'BIN_ALLOCATED' && rec.status === 'BIN_SUGGESTED');
     
     return matchesSearch && matchesStatus;
   });
@@ -149,7 +162,8 @@ export default function InboundProducts() {
       case 'RECEIVED': return 'info';
       case 'VERIFIED': return 'success';
       case 'WAITING_FOR_BIN_ASSIGNMENT': return 'warning';
-      case 'BIN_SUGGESTED': return 'primary';
+      case 'BIN_SUGGESTED':
+      case 'BIN_ALLOCATED': return 'primary';
       case 'ASSIGNED_TO_STAFF': return 'neutral';
       case 'STORED': return 'success';
       default: return 'outline';
@@ -162,6 +176,7 @@ export default function InboundProducts() {
       case 'VERIFIED': return 'Verified';
       case 'WAITING_FOR_BIN_ASSIGNMENT': return 'Waiting for Bin Assignment';
       case 'BIN_SUGGESTED': return 'Pending Putaway';
+      case 'BIN_ALLOCATED': return 'Pending Putaway (Bin Allocated)';
       case 'ASSIGNED_TO_STAFF': return 'Assigned to Staff';
       case 'STORED': return 'Stored';
       default: return status.replace(/_/g, ' ');

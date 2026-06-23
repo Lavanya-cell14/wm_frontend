@@ -33,18 +33,6 @@ export const sidebarItems = [
     allowedRoles: ['WAREHOUSE_MANAGER'],
   },
   {
-    name: 'Orders',
-    path: '/manager/orders',
-    icon: ArrowUpFromLine,
-    allowedRoles: ['WAREHOUSE_MANAGER'],
-  },
-  {
-    name: 'Routes',
-    path: '/manager/routes',
-    icon: Navigation,
-    allowedRoles: ['WAREHOUSE_MANAGER'],
-  },
-  {
     name: 'Reports',
     path: '/manager/reports',
     icon: FileText,
@@ -54,12 +42,6 @@ export const sidebarItems = [
     name: 'AI Copilot',
     path: '/manager/ai-assistant',
     icon: Bot,
-    allowedRoles: ['WAREHOUSE_MANAGER'],
-  },
-  {
-    name: 'Audit Logs',
-    path: '/manager/audit',
-    icon: ClipboardList,
     allowedRoles: ['WAREHOUSE_MANAGER'],
   },
 
@@ -156,18 +138,6 @@ export const sidebarItems = [
     name: 'Navigation Setup',
     path: '/admin/navigation-setup',
     icon: Map,
-    allowedRoles: ['ADMIN'],
-  },
-  {
-    name: 'Users & Roles',
-    path: '/admin/users',
-    icon: Users,
-    allowedRoles: ['ADMIN'],
-  },
-  {
-    name: 'System Health',
-    path: '/admin/health',
-    icon: Activity,
     allowedRoles: ['ADMIN'],
   },
   {

@@ -145,10 +145,7 @@ export default function Inventory() {
       </div>
 
       {/* KPI Stats - Hover scale transitions applied */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
-          <DashboardStatCard title="Total Stock Units" value={stats.totalStock} icon={Package} />
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
           <DashboardStatCard title="Available Stock" value={stats.availableStock} icon={ShieldCheck} />
         </div>
@@ -173,31 +170,31 @@ export default function Inventory() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
             <div className="space-y-1">
               <label className="font-bold text-gray-500 uppercase tracking-wide">Category</label>
-              <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="w-full border border-gray-200 p-2 rounded-lg font-semibold outline-none focus:border-blue-500">
-                {categories.map(c => <option key={c} value={c}>{c}</option>)}
+              <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="w-full border border-gray-200 p-2 rounded-lg font-semibold outline-none focus:border-blue-500 text-gray-900 bg-white">
+                {categories.map(c => <option key={c} value={c} className="text-gray-900 bg-white">{c}</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <label className="font-bold text-gray-500 uppercase tracking-wide">Warehouse</label>
-              <select value={selectedWarehouse} onChange={(e) => setSelectedWarehouse(e.target.value)} className="w-full border border-gray-200 p-2 rounded-lg font-semibold outline-none focus:border-blue-500">
-                <option value="All">All Warehouses</option>
-                {warehouses.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}
+              <select value={selectedWarehouse} onChange={(e) => setSelectedWarehouse(e.target.value)} className="w-full border border-gray-200 p-2 rounded-lg font-semibold outline-none focus:border-blue-500 text-gray-900 bg-white">
+                <option value="All" className="text-gray-900 bg-white">All Warehouses</option>
+                {warehouses.map(w => <option key={w.id} value={w.name} className="text-gray-900 bg-white">{w.name}</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <label className="font-bold text-gray-500 uppercase tracking-wide">Zone</label>
-              <select value={selectedZone} onChange={(e) => setSelectedZone(e.target.value)} className="w-full border border-gray-200 p-2 rounded-lg font-semibold outline-none focus:border-blue-500">
-                <option value="All">All Zones</option>
-                {zones.map(z => <option key={z.id} value={z.name}>{z.name}</option>)}
+              <select value={selectedZone} onChange={(e) => setSelectedZone(e.target.value)} className="w-full border border-gray-200 p-2 rounded-lg font-semibold outline-none focus:border-blue-500 text-gray-900 bg-white">
+                <option value="All" className="text-gray-900 bg-white">All Zones</option>
+                {zones.map(z => <option key={z.id} value={z.zone_name || z.name || ''} className="text-gray-900 bg-white">{z.zone_name || z.name}</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <label className="font-bold text-gray-500 uppercase tracking-wide">Stock Status</label>
-              <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} className="w-full border border-gray-200 p-2 rounded-lg font-semibold outline-none focus:border-blue-500">
-                <option value="All">All Stock Levels</option>
-                <option value="In Stock">In Stock</option>
-                <option value="Low Stock">Low Stock</option>
-                <option value="Out of Stock">Out of Stock</option>
+              <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} className="w-full border border-gray-200 p-2 rounded-lg font-semibold outline-none focus:border-blue-500 text-gray-900 bg-white">
+                <option value="All" className="text-gray-900 bg-white">All Stock Levels</option>
+                <option value="In Stock" className="text-gray-900 bg-white">In Stock</option>
+                <option value="Low Stock" className="text-gray-900 bg-white">Low Stock</option>
+                <option value="Out of Stock" className="text-gray-900 bg-white">Out of Stock</option>
               </select>
             </div>
           </div>

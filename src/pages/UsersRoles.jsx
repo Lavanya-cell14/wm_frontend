@@ -48,8 +48,7 @@ export default function UsersRoles() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <DashboardStatCard title="Total Users" value={String(filteredUsers.length)} icon={Users} trend={2} trendLabel="new this month" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <DashboardStatCard title="Active Staff" value={String(filteredUsers.filter(u => u.role === 'staff' && u.status === 'active').length)} icon={CheckCircle} />
         <DashboardStatCard title="Pending Invites" value="0" icon={Mail} />
       </div>
@@ -92,7 +91,7 @@ export default function UsersRoles() {
                   <Badge 
                     variant={user.role === 'admin' ? 'primary' : user.role === 'manager' ? 'secondary' : user.role === 'clerk' ? 'warning' : 'default'}
                   >
-                    {user.role === 'clerk' ? 'Inventory Officer' : user.role === 'staff' ? 'Warehouse Operator' : user.role === 'manager' ? 'Warehouse Manager' : user.role === 'admin' ? 'System Admin' : user.role}
+                    {user.role === 'clerk' ? 'Receiving Inventory Officer' : user.role === 'staff' ? 'Warehouse Operator' : user.role === 'manager' ? 'Warehouse Manager' : user.role === 'admin' ? 'Administrator' : user.role}
                   </Badge>
                 </TableCell>
                 <TableCell>

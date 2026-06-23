@@ -23,11 +23,14 @@ export const generateStorageRecommendationApi = async (productId) => {
   return res;
 };
 
-export const generateBinAllocationApi = async (productId) => {
-  console.warn(`[AI Allocation] Request payload:`, { product_id: productId });
+export const generateBinAllocationApi = async (productId, inboundLineId) => {
+  console.warn(`[AI Allocation] Request payload:`, { product_id: productId, inbound_line_id: inboundLineId });
   const res = await apiClient('/api/recommendations/bin-allocation/', {
     method: 'POST',
-    body: JSON.stringify({ product_id: productId })
+    body: JSON.stringify({
+      product_id: productId,
+      inbound_line_id: inboundLineId
+    })
   });
   console.warn(`[AI Allocation] Response:`, res);
   return res;

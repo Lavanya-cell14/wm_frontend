@@ -4,6 +4,16 @@ import { Menu, Search, Bell, User, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
+const mapRoleLabel = (role) => {
+  if (!role) return 'User';
+  const r = role.toUpperCase();
+  if (r === 'ADMIN') return 'Administrator';
+  if (r === 'WAREHOUSE_MANAGER' || r === 'MANAGER') return 'Warehouse Manager';
+  if (r === 'WAREHOUSE_OPERATOR' || r === 'OPERATOR' || r === 'STAFF') return 'Warehouse Operator';
+  if (r === 'RECEIVING_INVENTORY_OFFICER' || r === 'CLERK' || r === 'INVENTORY') return 'Receiving Inventory Officer';
+  return role;
+};
+
 export default function Topbar({ onMenuClick }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -47,7 +57,7 @@ export default function Topbar({ onMenuClick }) {
           </div>
           <div className="hidden sm:flex flex-col items-start mr-2">
             <span className="text-sm font-semibold text-gray-700 leading-tight">{user?.name || 'Admin User'}</span>
-            <span className="text-[11px] text-gray-500 capitalize">{user?.role?.toLowerCase().replaceAll('_', ' ') || 'User'}</span>
+            <span className="text-[11px] text-gray-500">{mapRoleLabel(user?.role)}</span>
           </div>
         </div>
 

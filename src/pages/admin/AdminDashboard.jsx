@@ -124,10 +124,9 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* KPI Cards Grid (Precisely the 6 requested cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      {/* KPI Cards Grid (Precisely the 5 remaining cards) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <StatCard title="Total Warehouses" value={totalWarehouses} icon={Building2} subtitle="Physical active facilities" />
-        <StatCard title="Total Users" value={totalUsers} icon={Users} subtitle="Provisioned security profiles" />
         <StatCard title="Total Products" value={totalProducts} icon={Box} subtitle="Unique registered SKUs" />
         <StatCard title="Total Inventory" value={totalInventory} icon={Layers} subtitle="Aggregated stock units" />
         <StatCard title="Total OCR Documents" value={totalOcr} icon={FileText} subtitle="Processed invoice files" />

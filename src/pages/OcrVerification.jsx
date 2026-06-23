@@ -13,7 +13,7 @@ export default function OcrVerification() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { ocrDocuments, setOcrDocuments, verifyOcrDocument, rejectOcrDocument } = useWarehouse();
+  const { ocrDocuments, setOcrDocuments, verifyOcrDocument, rejectOcrDocument, fetchData } = useWarehouse();
   
   const [selectedDocId, setSelectedDocId] = useState('');
   const [docDetails, setDocDetails] = useState({ document_number: '', supplier: '' });
@@ -142,7 +142,34 @@ export default function OcrVerification() {
     // Call real API
     try {
       setApiOfflineWarning('');
-      await verifyOcrDocumentApi(selectedDocId, items);
+      const formattedPayload = {
+        extracted_data: {
+          document_info: {
+            document_number: docDetails.document_number
+          },
+          party_info: {
+            supplier_name: docDetails.supplier
+          },
+          shipment_info: {
+            delivery_date: new Date().toISOString()
+          },
+          products: items.map(item => ({
+            sku: item.sku,
+            product_name: item.productName,
+            category: item.category,
+            quantity: Number(item.quantity),
+            weight: { value: Number(item.weight || 0.0) },
+            dimensions: {
+              length: Number(item.length || 0.0),
+              width: Number(item.width || 0.0),
+              height: Number(item.height || 0.0)
+            },
+            is_fragile: !!item.isFragile,
+            is_hazardous: item.category === 'Hazardous' || item.storageType === 'HAZARDOUS'
+          }))
+        }
+      };
+      await verifyOcrDocumentApi(selectedDocId, formattedPayload);
       showToast('OCR Document verified and inbound receipt created!', 'success');
     } catch (err) {
       console.error('[OCR Verification] Approval API failed, falling back to local context update:', err);
@@ -152,6 +179,11 @@ export default function OcrVerification() {
 
     // Call context modifier
     verifyOcrDocument(selectedDocId, items, docDetails);
+    
+    // Sync state from backend
+    if (fetchData) {
+      await fetchData();
+    }
     
     // Redirect to inbound receipts
     setTimeout(() => {

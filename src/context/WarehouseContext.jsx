@@ -9,6 +9,15 @@ import { getInboundShipments } from '../services/inboundService';
 import { getAiRecommendationsApi } from '../services/recommendationService';
 import { getMovementsApi } from '../services/movementService';
 import { getUsersApi } from '../services/usersService';
+import { 
+  getAssignedPutawayTasks, 
+  startPutawayTask as startPutawayTaskApi, 
+  confirmPickedFromReceiving as confirmPickedFromReceivingApi, 
+  confirmReachedBin as confirmReachedBinApi, 
+  completePutawayTask as completePutawayTaskApi, 
+  reportPutawayIssue as reportPutawayIssueApi,
+  dispatchPutawayTaskApi
+} from '../services/staffService';
 
 const WarehouseContext = createContext();
 
@@ -143,7 +152,8 @@ export function WarehouseProvider({ children }) {
     const localData = localStorage.getItem('inventory');
     if (localData) {
       try {
-        return JSON.parse(localData);
+        const parsed = JSON.parse(localData);
+        if (Array.isArray(parsed)) return parsed;
       } catch (e) {
         console.error('Failed parsing inventory from localStorage', e);
       }
@@ -157,7 +167,23 @@ export function WarehouseProvider({ children }) {
 
   const [recentScans, setRecentScans] = useState([]);
   const [workers, setWorkers] = useState([]);
-  const [putawayTasks, setPutawayTasks] = useState([]);
+  const [putawayTasks, setPutawayTasks] = useState(() => {
+    const localData = localStorage.getItem('putawayTasks');
+    if (localData) {
+      try {
+        const parsed = JSON.parse(localData);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {
+        console.error('Failed parsing putawayTasks from localStorage', e);
+      }
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('putawayTasks', JSON.stringify(putawayTasks));
+  }, [putawayTasks]);
+
   const [stockAdjustments, setStockAdjustments] = useState([]);
   const [reservations, setReservations] = useState([]);
   const [damagedRecords, setDamagedRecords] = useState([]);
@@ -166,7 +192,8 @@ export function WarehouseProvider({ children }) {
     const localData = localStorage.getItem('ocrDocuments');
     if (localData) {
       try {
-        return JSON.parse(localData);
+        const parsed = JSON.parse(localData);
+        if (Array.isArray(parsed)) return parsed;
       } catch (e) {
         console.error('Failed parsing ocrDocuments from localStorage', e);
       }
@@ -183,7 +210,8 @@ export function WarehouseProvider({ children }) {
     const localData = localStorage.getItem('inboundReceipts');
     if (localData) {
       try {
-        return JSON.parse(localData);
+        const parsed = JSON.parse(localData);
+        if (Array.isArray(parsed)) return parsed;
       } catch (e) {
         console.error('Failed parsing inboundReceipts from localStorage', e);
       }
@@ -295,272 +323,427 @@ export function WarehouseProvider({ children }) {
   const [movements, setMovements] = useState([]);
   const [routes, setRoutes] = useState([]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const [
-          whsRes,
-          zonesRes,
-          binsRes,
-          productsRes,
-          invRes,
-          ordersRes,
-          routesRes,
-          inboundRes,
-          aiRecsRes,
-          movementsRes,
-          usersRes
-        ] = await Promise.all([
-          getWarehouses().catch(e => { console.warn("Failed fetching warehouses:", e); return { results: [] }; }),
-          getZones().catch(e => { console.warn("Failed fetching zones:", e); return { results: [] }; }),
-          getBins().catch(e => { console.warn("Failed fetching bins:", e); return { results: [] }; }),
-          getProducts().catch(e => { console.warn("Failed fetching products:", e); return { results: [] }; }),
-          getInventory().catch(e => { console.warn("Failed fetching inventory:", e); return { results: [] }; }),
-          getOrders().catch(e => { console.warn("Failed fetching orders:", e); return { results: [] }; }),
-          getRoutesApi().catch(e => { console.warn("Failed fetching routes:", e); return { results: [] }; }),
-          getInboundShipments().catch(e => { console.warn("Failed fetching inbound shipments:", e); return { results: [] }; }),
-          getAiRecommendationsApi().catch(e => { console.warn("Failed fetching AI recommendations:", e); return { results: [] }; }),
-          getMovementsApi().catch(e => { console.warn("Failed fetching movements:", e); return { results: [] }; }),
-          getUsersApi().catch(e => { console.warn("Failed fetching users:", e); return { results: [] }; })
-        ]);
+  const fetchData = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [
+        whsRes,
+        zonesRes,
+        binsRes,
+        productsRes,
+        invRes,
+        ordersRes,
+        routesRes,
+        inboundRes,
+        aiRecsRes,
+        movementsRes,
+        usersRes,
+        putawayRes
+      ] = await Promise.all([
+        getWarehouses().catch(e => { console.warn("Failed fetching warehouses:", e); return { results: [] }; }),
+        getZones().catch(e => { console.warn("Failed fetching zones:", e); return { results: [] }; }),
+        getBins().catch(e => { console.warn('[WarehouseContext] Failed fetching /api/bins/ — bins will be empty. Error:', e?.message || e); return { results: [] }; }),
+        getProducts().catch(e => { console.warn("Failed fetching products:", e); return { results: [] }; }),
+        getInventory().catch(e => { console.warn("Failed fetching inventory:", e); return { results: [] }; }),
+        getOrders().catch(e => { console.warn("Failed fetching orders:", e); return { results: [] }; }),
+        getRoutesApi().catch(e => { console.warn("Failed fetching routes:", e); return { results: [] }; }),
+        getInboundShipments().catch(e => { console.warn("Failed fetching inbound shipments:", e); return { results: [] }; }),
+        getAiRecommendationsApi().catch(e => { console.warn("Failed fetching AI recommendations:", e); return { results: [] }; }),
+        getMovementsApi().catch(e => { console.warn("Failed fetching movements:", e); return { results: [] }; }),
+        getUsersApi().catch(e => { console.warn("Failed fetching users:", e); return { results: [] }; }),
+        getAssignedPutawayTasks().catch(e => { console.warn("Failed fetching putaway tasks:", e); return []; })
+      ]);
 
-        if (whsRes?.results?.length > 0) {
-          setWarehouses(whsRes.results);
-        } else {
-          setWarehouses([]);
-        }
-
-        if (zonesRes?.results?.length > 0) {
-          setZones(zonesRes.results);
-        } else {
-          setZones([]);
-        }
-
-        if (binsRes?.results?.length > 0) {
-          setBins(binsRes.results);
-        } else {
-          setBins([]);
-        }
-
-        if (productsRes?.results) {
-          const mappedProducts = productsRes.results.map((p, idx) => {
-            return {
-              sku: p.sku || `SKU-100${idx + 1}`,
-              productId: p.productId || p.id || `PRD-000${idx + 1}`,
-              name: p.name,
-              category: p.category || "Electronics",
-              weight: p.weight || `${p.weightKg || 2.0} kg`,
-              dimensions: p.dimensions || "25x25x25 cm",
-              reorderLevel: p.reorderLevel || p.reorderPoint || 10,
-              unitOfMeasure: p.unitOfMeasure || p.uom || "BOX",
-              quantity: p.quantity || 0,
-              bin: p.bin || `BIN-00${(idx % 4) + 1}`,
-              createdAt: p.createdAt || new Date().toISOString(),
-              updatedAt: p.updatedAt || new Date().toISOString()
-            };
-          });
-          setProducts(mappedProducts);
-        } else {
-          setProducts([]);
-        }
-
-        if (invRes?.results) {
-          const mappedInventory = invRes.results.map((item, idx) => {
-            const sku = item.productId || item.sku;
-            const matchedProd = (productsRes?.results || []).find(p => p.sku === sku || p.productId === sku);
-            const name = item.productName || item.name || (matchedProd ? matchedProd.name : `Product ${sku}`);
-            const category = item.category || (matchedProd ? matchedProd.category : "Electronics");
-            const binId = item.binId || item.bin;
-            
-            return {
-              sku: sku,
-              name: name,
-              category: category,
-              quantity: item.quantity || 0,
-              reserved: item.reservedQuantity || item.reserved || 0,
-              damaged: item.damagedQuantity || item.damaged || 0,
-              availableQuantity: item.availableQuantity || (item.quantity - (item.reservedQuantity || 0)) || 0,
-              reorderLevel: item.reorderLevel || (matchedProd ? matchedProd.reorderLevel : 10),
-              status: item.status || "In Stock",
-              warehouse: item.warehouse || "Central Fulfillment A",
-              zone: item.zone || "Zone A",
-              rack: item.rack || "RACK-001",
-              shelf: item.shelf || "S-01",
-              bin: binId || "BIN-001",
-              weight: item.weight || (matchedProd ? matchedProd.weight : "N/A"),
-              dimensions: item.dimensions || (matchedProd ? matchedProd.dimensions : "N/A"),
-              lastUpdated: item.lastUpdated || new Date().toLocaleDateString()
-            };
-          });
-          setInventory(mappedInventory);
-        } else {
-          setInventory([]);
-        }
-
-        if (usersRes?.results) {
-          const mappedWorkers = usersRes.results.map(w => ({
-            id: w.workerId || w.id,
-            name: w.name || w.username,
-            email: w.email || `${w.id || w.username}@warehouseai.com`,
-            role: w.role || "WAREHOUSE_OPERATOR",
-            warehouse: w.warehouse || "Central Fulfillment A",
-            status: w.status || "Active",
-            lastLogin: w.lastLogin || "Just now",
-            createdAt: w.createdAt || "2026-01-10",
-            efficiency: w.efficiency || `${w.efficiencyScore || 90}%`,
-            zone: w.zoneAssigned || w.zone || "Zone A"
-          }));
-          setWorkers(mappedWorkers);
-        } else {
-          setWorkers([]);
-        }
-
-        if (routesRes?.results) {
-          const mappedRoutes = routesRes.results.map(r => ({
-            id: r.routeId || r.id,
-            from: r.stops && r.stops[0] ? r.stops[0] : (r.from || "Receiving Dock"),
-            to: r.stops && r.stops.length > 0 ? r.stops[r.stops.length - 1] : (r.to || "BIN-001"),
-            distance: r.distance || `${r.distanceMeters || 100}m`,
-            time: r.time || `${Math.round((r.estimatedTimeSec || 300) / 60)} mins`,
-            operator: r.workerId || r.operator || "Unassigned",
-            status: r.status || "Active"
-          }));
-          setRoutes(mappedRoutes);
-        } else {
-          setRoutes([]);
-        }
-
-        if (ordersRes?.results) {
-          const mappedOrders = ordersRes.results.map((o, idx) => {
-            const status = o.status === "CREATED" ? "Pending" : o.status === "PICKING" ? "In Progress" : o.status === "PACKED" ? "Packed" : o.status || "Pending";
-            return {
-              id: o.orderId || o.id,
-              customer: o.customerName || o.customer || "Unknown Customer",
-              dispatchTime: o.dispatchTime || "Today, 20:00",
-              productCount: o.quantity || o.productCount || 1,
-              status,
-              progress: o.progress || (status === "Pending" ? 10 : status === "In Progress" ? 40 : status === "Packed" ? 80 : 100),
-              orderDate: o.orderDate || new Date().toISOString().split('T')[0],
-              createdAt: o.createdAt || new Date().toISOString(),
-              completedAt: o.completedAt || null
-            };
-          });
-          setOrders(mappedOrders);
-        } else {
-          setOrders([]);
-        }
-
-        if (movementsRes?.results) {
-          const mappedMovements = movementsRes.results.map((m, idx) => {
-            return {
-              id: m.movementId || m.id,
-              item: m.productName || m.itemName || `Product ${m.productId || m.sku}`,
-              sku: m.productId || m.sku,
-              from: m.fromBin || m.from,
-              to: m.toBin || m.to,
-              user: m.workerId || m.user || "Warehouse Staff",
-              time: m.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              type: m.type || "Putaway",
-              status: m.status || "Completed",
-              qty: m.quantity || m.qty || 1,
-              movementDate: m.movementDate || new Date().toISOString().split('T')[0],
-              timestamp: m.timestamp || new Date().toISOString()
-            };
-          });
-          setMovements(mappedMovements);
-        } else {
-          setMovements([]);
-        }
-
-        if (inboundRes?.results) {
-          const mappedInbounds = inboundRes.results.map((i, idx) => {
-            const status = i.status === "PENDING" ? "Pending" : i.status === "IN_TRANSIT" ? "In Transit" : "Completed";
-            return {
-              id: i.shipmentId || i.id || `INB-000${idx + 1}`,
-              supplier: i.supplierName || i.supplier || "Global Sourcing",
-              supplierId: i.supplierId || `SUP-00${idx + 1}`,
-              expectedArrival: i.expectedArrival || new Date().toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric', year: 'numeric' }),
-              product: i.productName || i.product || `Product ${i.sku}`,
-              sku: i.sku || `PRD-00${idx + 1}`,
-              quantity: i.quantity || 40,
-              priority: i.priority || "Medium",
-              status,
-              assignedStaff: i.assignedStaff || "Unassigned",
-              createdAt: i.createdAt || new Date().toISOString(),
-              completedAt: i.completedAt || null
-            };
-          });
-          setInboundTasks(mappedInbounds);
-
-          // Sync backend shipments to inboundReceipts for Recommendations page live queue
-          const mappedReceipts = inboundRes.results.map((ship, idx) => {
-            let mappedStatus = 'WAITING_FOR_BIN_ASSIGNMENT';
-            if (ship.status === 'COMPLETED' || ship.status === 'STORED') {
-              mappedStatus = 'STORED';
-            } else if (ship.status === 'IN_PROGRESS' || ship.status === 'IN_TRANSIT') {
-              mappedStatus = 'BIN_SUGGESTED';
-            } else if (ship.status === 'PENDING' || ship.status === 'WAITING_FOR_BIN_ASSIGNMENT') {
-              mappedStatus = 'WAITING_FOR_BIN_ASSIGNMENT';
-            }
-
-            return {
-              id: ship.shipment_code || ship.id || `IR-GEN-${idx}`,
-              documentId: 'OCR-N/A',
-              documentReference: ship.shipment_code || 'REF-GEN',
-              sku: ship.sku || 'SKU-GENERIC',
-              productName: ship.product_name || ship.product || `Shipment from ${ship.supplier_name || 'Supplier'}`,
-              category: ship.category || 'General',
-              quantityReceived: Number(ship.quantity || 50),
-              verifiedQuantity: Number(ship.quantity || 50),
-              supplier: ship.supplier_name || ship.supplier || 'Unknown Supplier',
-              receivedDate: ship.expected_arrival ? ship.expected_arrival.split('T')[0] : new Date().toISOString().split('T')[0],
-              dimensions: ship.dimensions || 'N/A',
-              weight: ship.weight || 'N/A',
-              status: mappedStatus,
-              binRecommendationStatus: mappedStatus === 'WAITING_FOR_BIN_ASSIGNMENT' ? 'WAITING_FOR_BIN_ASSIGNMENT' : 'RECOMMENDATION_APPROVED',
-              bin: ship.bin || 'BIN-001',
-              _rawBackendId: ship.id
-            };
-          });
-          setInboundReceipts(mappedReceipts);
-        } else {
-          setInboundTasks([]);
-        }
-
-        if (aiRecsRes?.results) {
-          const mappedRecs = aiRecsRes.results.map((r, idx) => {
-            return {
-              id: r.recommendationId || r.id || `REC-00${idx + 1}`,
-              title: r.title || "Slotting Optimization",
-              confidence: r.confidencePercent || r.confidence || 92,
-              reason: r.reason || "Underutilized racks re-routing",
-              impact: r.estimatedSavings || r.impact || "10% efficiency increase",
-              priority: r.priority || "Medium",
-              status: r.status || "Active",
-              createdAt: r.createdAt || new Date().toISOString(),
-              updatedAt: r.updatedAt || new Date().toISOString()
-            };
-          });
-          setAiRecommendations(mappedRecs);
-        } else {
-          setAiRecommendations([]);
-        }
-
-      } catch (err) {
-        console.error("Error fetching APIs", err);
-        setError("Failed to synchronize layout and real-time inventory from central backend API.");
-      } finally {
-        setIsLoading(false);
+      if (whsRes?.results?.length > 0) {
+        setWarehouses(whsRes.results);
+      } else {
+        setWarehouses([]);
       }
-    };
 
+      if (zonesRes?.results?.length > 0) {
+        const normalizedZones = zonesRes.results.map(z => ({
+          ...z,
+          id: z.id,
+          name: z.zone_name ?? z.name ?? `Zone ${z.id}`,
+          zone_name: z.zone_name ?? z.name ?? `Zone ${z.id}`,
+        }));
+        setZones(normalizedZones);
+      } else {
+        setZones([]);
+      }
+
+      console.log('[WarehouseContext] raw bins response', binsRes);
+      if (binsRes?.results?.length > 0) {
+        const normalizedBins = binsRes.results.map(b => {
+          const maxCap = Number(b.max_capacity ?? b.maxCapacity ?? 100);
+          const curCap = Number(b.current_capacity ?? b.currentCapacity ?? 0);
+          const isOccupied = b.is_occupied ?? false;
+          
+          const codeVal = b.bin_code ?? b.code ?? b.binCode ?? b.name;
+          
+          let parsed = { zone: null, rack: null, shelf: null };
+          if (codeVal && typeof codeVal === 'string') {
+            const parts = codeVal.split('-');
+            if (parts.length >= 2) {
+              const rackPart = parts[1];
+              if (rackPart && rackPart.length > 0) {
+                const zoneLetter = rackPart.charAt(0).toUpperCase();
+                if (['A', 'B', 'C', 'D', 'E', 'F', 'G'].includes(zoneLetter)) {
+                  parsed.zone = `Zone ${zoneLetter}`;
+                }
+              }
+            }
+            if (parts.length >= 4) {
+              parsed.shelf = parts[3];
+            }
+            if (parts.length >= 3) {
+              parsed.rack = `${parts[0]}-${parts[1]}-${parts[2]}`;
+            } else if (parts.length >= 2) {
+              parsed.rack = `${parts[0]}-${parts[1]}`;
+            }
+          }
+
+          let status = b.status || null;
+          if (!status) {
+            if (isOccupied) status = 'FULL';
+            else if (curCap >= maxCap && maxCap > 0) status = 'FULL';
+            else status = 'Active';
+          }
+
+          return {
+            id:              b.bin_id   ?? b.id   ?? b.binId,
+            code:            codeVal,
+            binCode:         codeVal,
+            shelfId:         b.shelf    ?? b.shelf_id  ?? b.shelfId,
+            rackId:          b.rack_id  ?? b.rackId,
+            zoneId:          b.zone_id  ?? b.zoneId,
+            zone:            b.zone     ?? parsed.zone,
+            rack:            b.rack     ?? b.rack_code ?? parsed.rack,
+            shelf:           b.shelf_level ?? parsed.shelf ?? null,
+            maxCapacity:     maxCap,
+            currentCapacity: curCap,
+            isOccupied:      isOccupied,
+            status:          status,
+            ...b,
+          };
+        });
+        console.log('[WarehouseContext] normalized bins count', normalizedBins.length);
+        setBins(normalizedBins);
+      } else {
+        setBins([]);
+      }
+
+      if (productsRes?.results) {
+        const mappedProducts = productsRes.results.map((p, idx) => {
+          return {
+            sku: p.sku || `SKU-100${idx + 1}`,
+            productId: p.productId || p.id || `PRD-000${idx + 1}`,
+            name: p.name,
+            category: p.category || "Electronics",
+            weight: p.weight || `${p.weightKg || 2.0} kg`,
+            dimensions: p.dimensions || "25x25x25 cm",
+            reorderLevel: p.reorderLevel || p.reorderPoint || 10,
+            unitOfMeasure: p.unitOfMeasure || p.uom || "BOX",
+            quantity: p.quantity || 0,
+            bin: p.bin || `BIN-00${(idx % 4) + 1}`,
+            createdAt: p.createdAt || new Date().toISOString(),
+            updatedAt: p.updatedAt || new Date().toISOString()
+          };
+        });
+        setProducts(mappedProducts);
+      } else {
+        setProducts([]);
+      }
+
+      if (invRes?.results) {
+        const mappedInventory = invRes.results.map((item, idx) => {
+          const sku = item.productId || item.sku;
+          const matchedProd = (productsRes?.results || []).find(p => p.sku === sku || p.productId === sku);
+          const name = item.productName || item.name || (matchedProd ? matchedProd.name : `Product ${sku}`);
+          const category = item.category || (matchedProd ? matchedProd.category : "Electronics");
+          const binId = item.binId || item.bin;
+          
+          return {
+            sku: sku,
+            name: name,
+            category: category,
+            quantity: item.quantity || 0,
+            reserved: item.reservedQuantity || item.reserved || 0,
+            damaged: item.damagedQuantity || item.damaged || 0,
+            availableQuantity: item.availableQuantity || (item.quantity - (item.reservedQuantity || 0)) || 0,
+            reorderLevel: item.reorderLevel || (matchedProd ? matchedProd.reorderLevel : 10),
+            status: item.status || "In Stock",
+            warehouse: item.warehouse || "Central Fulfillment A",
+            zone: item.zone || "Zone A",
+            rack: item.rack || "RACK-001",
+            shelf: item.shelf || "S-01",
+            bin: binId || "BIN-001",
+            weight: item.weight || (matchedProd ? matchedProd.weight : "N/A"),
+            dimensions: item.dimensions || (matchedProd ? matchedProd.dimensions : "N/A"),
+            lastUpdated: item.lastUpdated || new Date().toLocaleDateString()
+          };
+        });
+        setInventory(mappedInventory);
+      } else {
+        setInventory([]);
+      }
+
+      if (usersRes?.results) {
+        const mappedWorkers = usersRes.results.map(w => ({
+          id: w.workerId || w.id,
+          name: w.name || w.username,
+          username: w.username,
+          first_name: w.first_name,
+          last_name: w.last_name,
+          email: w.email || `${w.id || w.username}@warehouseai.com`,
+          role: w.role || "WAREHOUSE_OPERATOR",
+          warehouse: w.warehouse || "Central Fulfillment A",
+          status: w.status || "Active",
+          lastLogin: w.lastLogin || "Just now",
+          createdAt: w.createdAt || "2026-01-10",
+          efficiency: w.efficiency || `${w.efficiencyScore || 90}%`,
+          zone: w.zoneAssigned || w.zone || "Zone A"
+        }));
+        setWorkers(mappedWorkers);
+      } else {
+        setWorkers([]);
+      }
+
+      if (routesRes?.results) {
+        const mappedRoutes = routesRes.results.map(r => ({
+          id: r.routeId || r.id,
+          from: r.stops && r.stops[0] ? r.stops[0] : (r.from || "Receiving Dock"),
+          to: r.stops && r.stops.length > 0 ? r.stops[r.stops.length - 1] : (r.to || "BIN-001"),
+          distance: r.distance || `${r.distanceMeters || 100}m`,
+          time: r.time || `${Math.round((r.estimatedTimeSec || 300) / 60)} mins`,
+          operator: r.workerId || r.operator || "Unassigned",
+          status: r.status || "Active"
+        }));
+        setRoutes(mappedRoutes);
+      } else {
+        setRoutes([]);
+      }
+
+      if (ordersRes?.results) {
+        const mappedOrders = ordersRes.results.map((o, idx) => {
+          const status = o.status === "CREATED" ? "Pending" : o.status === "PICKING" ? "In Progress" : o.status === "PACKED" ? "Packed" : o.status || "Pending";
+          return {
+            id: o.orderId || o.id,
+            customer: o.customerName || o.customer || "Unknown Customer",
+            dispatchTime: o.dispatchTime || "Today, 20:00",
+            productCount: o.quantity || o.productCount || 1,
+            status,
+            progress: o.progress || (status === "Pending" ? 10 : status === "In Progress" ? 40 : status === "Packed" ? 80 : 100),
+            orderDate: o.orderDate || new Date().toISOString().split('T')[0],
+            createdAt: o.createdAt || new Date().toISOString(),
+            completedAt: o.completedAt || null
+          };
+        });
+        setOrders(mappedOrders);
+      } else {
+        setOrders([]);
+      }
+
+      if (movementsRes?.results) {
+        const mappedMovements = movementsRes.results.map((m, idx) => {
+          return {
+            id: m.movementId || m.id,
+            item: m.productName || m.itemName || `Product ${m.productId || m.sku}`,
+            sku: m.productId || m.sku,
+            from: m.fromBin || m.from,
+            to: m.toBin || m.to,
+            user: m.workerId || m.user || "Warehouse Staff",
+            time: m.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            type: m.type || "Putaway",
+            status: m.status || "Completed",
+            qty: m.quantity || m.qty || 1,
+            movementDate: m.movementDate || new Date().toISOString().split('T')[0],
+            timestamp: m.timestamp || new Date().toISOString()
+          };
+        });
+        setMovements(mappedMovements);
+      } else {
+        setMovements([]);
+      }
+
+      if (inboundRes?.results) {
+        const mappedInbounds = inboundRes.results.map((i, idx) => {
+          const status = i.status === "PENDING" ? "Pending" : i.status === "IN_TRANSIT" ? "In Transit" : "Completed";
+          return {
+            id: i.shipmentId || i.id || `INB-000${idx + 1}`,
+            supplier: i.supplierName || i.supplier || "Global Sourcing",
+            supplierId: i.supplierId || `SUP-00${idx + 1}`,
+            expectedArrival: i.expectedArrival || new Date().toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric', year: 'numeric' }),
+            product: i.productName || i.product || `Product ${i.sku}`,
+            sku: i.sku || `PRD-00${idx + 1}`,
+            quantity: i.quantity || 40,
+            priority: i.priority || "Medium",
+            status,
+            assignedStaff: i.assignedStaff || "Unassigned",
+            createdAt: i.createdAt || new Date().toISOString(),
+            completedAt: i.completedAt || null
+          };
+        });
+        setInboundTasks(mappedInbounds);
+
+        const tasksList = Array.isArray(putawayRes) ? putawayRes : (putawayRes?.results || []);
+
+        const mappedReceipts = inboundRes.results.map((ship, idx) => {
+          let mappedStatus = 'WAITING_FOR_BIN_ASSIGNMENT';
+          if (ship.status === 'COMPLETED' || ship.status === 'STORED') {
+            mappedStatus = 'STORED';
+          } else if (ship.status === 'IN_PROGRESS' || ship.status === 'IN_TRANSIT') {
+            mappedStatus = 'BIN_SUGGESTED';
+          } else if (ship.status === 'PENDING' || ship.status === 'WAITING_FOR_BIN_ASSIGNMENT') {
+            mappedStatus = 'WAITING_FOR_BIN_ASSIGNMENT';
+          } else if (ship.status === 'BIN_SUGGESTED' || ship.status === 'BIN_ALLOCATED') {
+            mappedStatus = 'BIN_ALLOCATED';
+          } else {
+            mappedStatus = ship.status;
+          }
+
+          // Check if there is an active putaway task for this inbound receipt
+          const matchedTask = tasksList.find(t => 
+            t.inboundId === ship.id || 
+            t.inboundId === ship._rawBackendId ||
+            (t.sku === ship.sku && t.status !== 'COMPLETED')
+          );
+          
+          let allocatedBin = ship.bin || 'BIN-001';
+          if (matchedTask) {
+            allocatedBin = matchedTask.destinationBin || matchedTask.bin || allocatedBin;
+            if (matchedTask.status === 'COMPLETED') {
+              mappedStatus = 'STORED';
+            } else if (matchedTask.status === 'ASSIGNED') {
+              mappedStatus = 'ASSIGNED_TO_STAFF';
+            } else {
+              mappedStatus = 'IN_PROGRESS';
+            }
+          }
+
+          return {
+            id: ship.shipment_code || ship.id || `IR-GEN-${idx}`,
+            documentId: 'OCR-N/A',
+            documentReference: ship.shipment_code || 'REF-GEN',
+            sku: ship.sku || 'SKU-GENERIC',
+            productName: ship.product_name || ship.product || `Shipment from ${ship.supplier_name || 'Supplier'}`,
+            category: ship.category || 'General',
+            quantityReceived: Number(ship.quantity || 50),
+            verifiedQuantity: Number(ship.quantity || 50),
+            supplier: ship.supplier_name || ship.supplier || 'Unknown Supplier',
+            receivedDate: ship.expected_arrival ? ship.expected_arrival.split('T')[0] : new Date().toISOString().split('T')[0],
+            dimensions: ship.dimensions || 'N/A',
+            weight: ship.weight || 'N/A',
+            status: mappedStatus,
+            binRecommendationStatus: mappedStatus === 'WAITING_FOR_BIN_ASSIGNMENT' ? 'WAITING_FOR_BIN_ASSIGNMENT' : 'RECOMMENDATION_APPROVED',
+            bin: allocatedBin,
+            _rawBackendId: ship.id
+          };
+        });
+        setInboundReceipts(prev => {
+          const merged = [...prev];
+          mappedReceipts.forEach(ship => {
+            const existingIdx = merged.findIndex(r => r.id === ship.id || r._rawBackendId === ship._rawBackendId || r.documentReference === ship.documentReference);
+            if (existingIdx > -1) {
+              const local = merged[existingIdx];
+              const keepLocalStatus = ['BIN_ALLOCATED', 'ASSIGNED_TO_STAFF', 'STORED'].includes(local.status) && ship.status === 'WAITING_FOR_BIN_ASSIGNMENT';
+              merged[existingIdx] = {
+                ...ship,
+                ...local,
+                bin: (ship.bin && ship.bin !== 'BIN-001') ? ship.bin : (local.bin || ship.bin),
+                status: keepLocalStatus ? local.status : ship.status,
+                binRecommendationStatus: keepLocalStatus ? local.binRecommendationStatus : ship.binRecommendationStatus
+              };
+            } else {
+              merged.push(ship);
+            }
+          });
+          return merged;
+        });
+      } else {
+        setInboundTasks([]);
+      }
+
+      if (aiRecsRes?.results) {
+        const mappedRecs = aiRecsRes.results.map((r, idx) => {
+          return {
+            id: r.recommendationId || r.id || `REC-00${idx + 1}`,
+            title: r.title || "Slotting Optimization",
+            confidence: r.confidencePercent || r.confidence || 92,
+            reason: r.reason || "Underutilized racks re-routing",
+            impact: r.estimatedSavings || r.impact || "10% efficiency increase",
+            priority: r.priority || "Medium",
+            status: r.status || "Active",
+            createdAt: r.createdAt || new Date().toISOString(),
+            updatedAt: r.updatedAt || new Date().toISOString()
+          };
+        });
+        setAiRecommendations(prev => {
+          const merged = [...prev];
+          mappedRecs.forEach(rec => {
+            const existingIdx = merged.findIndex(r => r.id === rec.id || r.inboundId === rec.inboundId);
+            if (existingIdx > -1) {
+              merged[existingIdx] = { ...rec, ...merged[existingIdx] };
+            } else {
+              merged.push(rec);
+            }
+          });
+          return merged;
+        });
+      }
+
+      if (putawayRes) {
+        const tasksList = Array.isArray(putawayRes) ? putawayRes : putawayRes.results || [];
+        setPutawayTasks(prev => {
+          const merged = [...prev];
+          tasksList.forEach(task => {
+            const existingIdx = merged.findIndex(t => t.id === task.id || t.inboundId === task.inboundId);
+            if (existingIdx > -1) {
+              merged[existingIdx] = { ...task, ...merged[existingIdx] };
+            } else {
+              merged.push(task);
+            }
+          });
+          return merged;
+        });
+      }
+
+    } catch (err) {
+      console.error("Error fetching APIs", err);
+      setError("Failed to synchronize layout and real-time inventory from central backend API.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, []);
 
 
-  const [aiRecommendations, setAiRecommendations] = useState([]);
+  const [aiRecommendations, setAiRecommendations] = useState(() => {
+    const localData = localStorage.getItem('aiRecommendations');
+    if (localData) {
+      try {
+        const parsed = JSON.parse(localData);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {
+        console.error('Failed parsing aiRecommendations from localStorage', e);
+      }
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aiRecommendations', JSON.stringify(aiRecommendations));
+  }, [aiRecommendations]);
+
+  useEffect(() => {
+    console.log('[FlowState] inboundReceipts', inboundReceipts.map(r => ({ id:r.id, sku:r.sku, status:r.status, bin:r.bin, binCode:r.binCode })));
+    console.log('[FlowState] aiRecommendations', aiRecommendations);
+    console.log('[FlowState] putawayTasks', putawayTasks);
+  }, [inboundReceipts, aiRecommendations, putawayTasks]);
 
   const [auditLogs, setAuditLogs] = useState([]);
 
@@ -1034,7 +1217,13 @@ export function WarehouseProvider({ children }) {
     logAudit(user.email, user.role, "COMPLETE_RECEIVING", "Inbound", `Completed inbound shipment ${taskId}.`);
   };
 
-  const startPutawayTask = (taskId) => {
+  const startPutawayTask = async (taskId) => {
+    try {
+      await startPutawayTaskApi(taskId);
+    } catch (err) {
+      console.error("[WarehouseContext] Failed backend startPutawayTask, falling back:", err);
+    }
+
     setPutawayTasks((prev) =>
       prev.map((task) =>
         task.id === taskId ? { ...task, status: "IN_PROGRESS", startedAt: new Date().toISOString() } : task
@@ -1068,9 +1257,16 @@ export function WarehouseProvider({ children }) {
     }
 
     logAudit("staff@warehouseai.com", "WAREHOUSE_OPERATOR", "START_PUTAWAY", "Putaway", `Started putaway task ${taskId}.`);
+    await fetchData();
   };
 
-  const confirmPickedFromReceiving = (taskId) => {
+  const confirmPickedFromReceiving = async (taskId) => {
+    try {
+      await confirmPickedFromReceivingApi(taskId);
+    } catch (err) {
+      console.error("[WarehouseContext] Failed backend confirmPickedFromReceiving, falling back:", err);
+    }
+
     setPutawayTasks((prev) =>
       prev.map((task) =>
         task.id === taskId ? { ...task, status: "PICKED_FROM_RECEIVING" } : task
@@ -1098,9 +1294,16 @@ export function WarehouseProvider({ children }) {
         ...prev
       ]);
     }
+    await fetchData();
   };
 
-  const confirmReachedBin = (taskId) => {
+  const confirmReachedBin = async (taskId) => {
+    try {
+      await confirmReachedBinApi(taskId);
+    } catch (err) {
+      console.error("[WarehouseContext] Failed backend confirmReachedBin, falling back:", err);
+    }
+
     setPutawayTasks((prev) =>
       prev.map((task) =>
         task.id === taskId ? { ...task, status: "REACHED_BIN" } : task
@@ -1128,9 +1331,20 @@ export function WarehouseProvider({ children }) {
         ...prev
       ]);
     }
+    await fetchData();
   };
 
-  const reportPutawayIssue = (taskId, issueType, description, user) => {
+  const reportPutawayIssue = async (taskId, issueType, description, user) => {
+    try {
+      const payload = {
+        issue_type: issueType,
+        description: description
+      };
+      await reportPutawayIssueApi(taskId, payload);
+    } catch (err) {
+      console.error("[WarehouseContext] Failed backend reportPutawayIssue, falling back:", err);
+    }
+
     setPutawayTasks((prev) =>
       prev.map((task) =>
         task.id === taskId ? { 
@@ -1170,9 +1384,19 @@ export function WarehouseProvider({ children }) {
       ]);
       logAudit(user?.email || "staff@warehouseai.com", "WAREHOUSE_OPERATOR", "REPORT_ISSUE", "Putaway", `Reported issue on task ${taskId}: ${issueType}`);
     }
+    await fetchData();
   };
 
-  const completePutawayTask = (taskId, user) => {
+  const completePutawayTask = async (taskId, user) => {
+    try {
+      const payload = {
+        operator: user?.name || user?.email || "Warehouse Operator"
+      };
+      await completePutawayTaskApi(taskId, payload);
+    } catch (err) {
+      console.error("[WarehouseContext] Failed backend completePutawayTask, falling back:", err);
+    }
+
     const task = putawayTasks.find((putaway) => putaway.id === taskId);
 
     if (!task) return false;
@@ -1237,6 +1461,8 @@ export function WarehouseProvider({ children }) {
     }));
 
     logAudit(user?.email || "staff@warehouseai.com", "WAREHOUSE_OPERATOR", "COMPLETE_PUTAWAY", "Putaway", `Completed putaway task ${taskId}.`);
+    
+    await fetchData();
     return true;
   };
 
@@ -1386,11 +1612,26 @@ export function WarehouseProvider({ children }) {
     logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "GENERATE_AI_RECOMMENDATION", "AI Recommendations", `Generated AI bin recommendation for inbound item ${receipt.productName}.`);
   };
 
-  const assignPutawayTask = (inboundId, staffId, staffName, priority, customRecommendation) => {
+  const assignPutawayTask = async (inboundId, staffId, staffName, priority, customRecommendation) => {
     const receipt = inboundReceipts.find(r => r.id === inboundId);
     if (!receipt) return;
 
     const recommendation = customRecommendation || aiRecommendations.find(r => r.inboundId === inboundId) || {};
+    const targetBinCode = recommendation.bin || recommendation.binCode || 'BIN-002';
+    const targetBin = bins.find(b => b.code === targetBinCode || b.binCode === targetBinCode);
+    const binId = targetBin ? targetBin.id : targetBinCode;
+
+    const payload = {
+      operator: staffName || staffId,
+      inbound_line_id: receipt._rawBackendId || inboundId,
+      destination_bin_id: binId
+    };
+
+    try {
+      await dispatchPutawayTaskApi(payload);
+    } catch (err) {
+      console.error("[WarehouseContext] Failed backend putaway dispatch, falling back:", err);
+    }
 
     const nextPtwId = generateNextId('PTW-', putawayTasks.map(t => t.id));
     const newTask = {
@@ -1403,20 +1644,23 @@ export function WarehouseProvider({ children }) {
       destinationZone: recommendation.zone || 'Zone B',
       destinationRack: recommendation.rack || 'Rack 2',
       destinationShelf: recommendation.shelf || 'Level 1',
-      destinationBin: recommendation.bin || 'BIN-002',
+      destinationBin: targetBinCode,
       assignedStaffId: staffId || 'WRK-003',
       assignedStaffName: staffName || 'Warehouse Staff',
       priority: priority || receipt.priority || "Medium",
       dueTime: "Today, 18:00",
-      routePath: `Receiving Dock -> Aisle 1 -> ${recommendation.zone || 'Zone B'} -> ${recommendation.rack || 'Rack 2'} -> ${recommendation.shelf || 'Level 1'} -> ${recommendation.bin || 'BIN-002'}`,
+      routePath: `Receiving Dock -> Aisle 1 -> ${recommendation.zone || 'Zone B'} -> ${recommendation.rack || 'Rack 2'} -> ${recommendation.shelf || 'Level 1'} -> ${targetBinCode}`,
       status: "ASSIGNED",
       createdAt: new Date().toISOString(),
     };
 
-    setPutawayTasks(prev => [newTask, ...prev]);
+    setPutawayTasks(prev => {
+      const filtered = prev.filter(t => t.inboundId !== inboundId);
+      return [newTask, ...filtered];
+    });
 
     // Transition inbound status to ASSIGNED_TO_STAFF
-    setInboundReceipts(prev => prev.map(r => r.id === inboundId ? { ...r, status: 'ASSIGNED_TO_STAFF' } : r));
+    setInboundReceipts(prev => prev.map(r => r.id === inboundId ? { ...r, status: 'ASSIGNED_TO_STAFF', bin: targetBinCode } : r));
 
     // Log movement task dispatch
     const nextMovId = generateNextId('MOV-', movements.map(m => m.id));
@@ -1427,7 +1671,7 @@ export function WarehouseProvider({ children }) {
         item: receipt.productName,
         sku: receipt.sku,
         from: "Receiving Dock",
-        to: recommendation.bin || 'BIN-002',
+        to: targetBinCode,
         user: staffName,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         type: "PUTAWAY_ASSIGNED",
@@ -1438,6 +1682,8 @@ export function WarehouseProvider({ children }) {
     ]);
 
     logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "TASK_ASSIGNED", "Putaway", `Assigned putaway task for ${receipt.productName} to ${staffName}.`);
+
+    await fetchData();
   };
 
   const addRack = (rack) => {
@@ -1563,6 +1809,7 @@ export function WarehouseProvider({ children }) {
         verifyOcrDocument,
         rejectOcrDocument,
         setAiRecommendations,
+        fetchData,
       }}
     >
       {children}

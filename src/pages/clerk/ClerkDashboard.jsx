@@ -48,7 +48,7 @@ export default function ClerkDashboard() {
   const availableStock = Math.max(0, totalStock - reservedStock - damagedStock);
 
   const pendingAllocations = inboundReceipts.filter(r => 
-    ['WAITING_FOR_BIN_ASSIGNMENT', 'BIN_SUGGESTED', 'ASSIGNED_TO_STAFF', 'IN_PROGRESS'].includes(r.status)
+    ['WAITING_FOR_BIN_ASSIGNMENT', 'BIN_SUGGESTED', 'BIN_ALLOCATED', 'ASSIGNED_TO_STAFF', 'IN_PROGRESS'].includes(r.status)
   ).length;
 
   const lowStockCount = inventory.filter(item => (item.quantity || 0) <= (item.reorderLevel || 0) && (item.quantity || 0) > 0).length;

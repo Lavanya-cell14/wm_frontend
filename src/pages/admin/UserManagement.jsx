@@ -8,6 +8,16 @@ export default function UserManagement() {
   const { user: currentAdmin } = useAuth();
   const { logAudit, workers: usersList, setWorkers: setUsersList, generateNextId } = useWarehouse();
 
+  const mapRoleLabel = (role) => {
+    if (!role) return '';
+    const r = role.toUpperCase();
+    if (r === 'ADMIN') return 'Administrator';
+    if (r === 'MANAGER' || r === 'WAREHOUSE_MANAGER') return 'Warehouse Manager';
+    if (r === 'STAFF' || r === 'OPERATOR' || r === 'WAREHOUSE_OPERATOR') return 'Warehouse Operator';
+    if (r === 'RECEIVING_INVENTORY_OFFICER' || r === 'CLERK' || r === 'INVENTORY') return 'Receiving Inventory Officer';
+    return role;
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('success');
@@ -247,7 +257,7 @@ export default function UserManagement() {
                       {/* Role */}
                       <TableCell>
                         <Badge variant={roleBadge} className="text-[9px] font-bold">
-                          {user.role}
+                          {mapRoleLabel(user.role)}
                         </Badge>
                       </TableCell>
 
