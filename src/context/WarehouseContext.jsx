@@ -323,8 +323,8 @@ export function WarehouseProvider({ children }) {
   const [movements, setMovements] = useState([]);
   const [routes, setRoutes] = useState([]);
 
-  const fetchData = async () => {
-    setIsLoading(true);
+  const fetchData = async (isSilent = false) => {
+    if (!isSilent) setIsLoading(true);
     setError(null);
     try {
       const [
@@ -1257,7 +1257,7 @@ export function WarehouseProvider({ children }) {
     }
 
     logAudit("staff@warehouseai.com", "WAREHOUSE_OPERATOR", "START_PUTAWAY", "Putaway", `Started putaway task ${taskId}.`);
-    await fetchData();
+    await fetchData(true);
   };
 
   const confirmPickedFromReceiving = async (taskId) => {
@@ -1294,7 +1294,7 @@ export function WarehouseProvider({ children }) {
         ...prev
       ]);
     }
-    await fetchData();
+    await fetchData(true);
   };
 
   const confirmReachedBin = async (taskId) => {
@@ -1331,7 +1331,7 @@ export function WarehouseProvider({ children }) {
         ...prev
       ]);
     }
-    await fetchData();
+    await fetchData(true);
   };
 
   const reportPutawayIssue = async (taskId, issueType, description, user) => {
@@ -1384,7 +1384,7 @@ export function WarehouseProvider({ children }) {
       ]);
       logAudit(user?.email || "staff@warehouseai.com", "WAREHOUSE_OPERATOR", "REPORT_ISSUE", "Putaway", `Reported issue on task ${taskId}: ${issueType}`);
     }
-    await fetchData();
+    await fetchData(true);
   };
 
   const completePutawayTask = async (taskId, user) => {
@@ -1462,7 +1462,7 @@ export function WarehouseProvider({ children }) {
 
     logAudit(user?.email || "staff@warehouseai.com", "WAREHOUSE_OPERATOR", "COMPLETE_PUTAWAY", "Putaway", `Completed putaway task ${taskId}.`);
     
-    await fetchData();
+    await fetchData(true);
     return true;
   };
 
@@ -1683,7 +1683,7 @@ export function WarehouseProvider({ children }) {
 
     logAudit("manager@warehouseai.com", "WAREHOUSE_MANAGER", "TASK_ASSIGNED", "Putaway", `Assigned putaway task for ${receipt.productName} to ${staffName}.`);
 
-    await fetchData();
+    await fetchData(true);
   };
 
   const addRack = (rack) => {

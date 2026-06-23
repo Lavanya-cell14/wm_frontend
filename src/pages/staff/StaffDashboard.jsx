@@ -38,18 +38,11 @@ export default function StaffDashboard() {
     ['IN_PROGRESS', 'PICKED_FROM_RECEIVING', 'REACHED_BIN'].includes(t.status)
   ).length;
   const completedTodayCount = putawayTasks.filter(t => t.status === 'COMPLETED').length;
-  const highPriorityTasksCount = putawayTasks.filter(t => t.priority === 'High' && t.status !== 'COMPLETED').length;
-  const delayedTasksCount = putawayTasks.filter(t => t.status === 'DELAYED' || t.issue).length;
-  const avgCompletionTime = completedTodayCount > 0 ? "6.2 mins" : "7.5 mins";
 
   // Active Task
   const activeTask = putawayTasks.find(t => 
     ['IN_PROGRESS', 'PICKED_FROM_RECEIVING', 'REACHED_BIN', 'DELAYED'].includes(t.status)
   );
-
-  const currentActiveRoute = activeTask 
-    ? `${activeTask.destinationBin || activeTask.bin} (${activeTask.destinationZone || activeTask.zone || 'Zone A'})` 
-    : 'None';
 
   const getStepProgressWidth = (status) => {
     if (status === 'IN_PROGRESS') return '25%';
@@ -103,16 +96,12 @@ export default function StaffDashboard() {
         </p>
       </div>
 
-      {/* 8 KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
+      {/* KPI Cards Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <DashboardStatCard title="Assigned Tasks" value={assignedTasksCount} icon={ClipboardList} />
         <DashboardStatCard title="Pending Tasks" value={pendingTasksCount} icon={Clock} />
         <DashboardStatCard title="In Progress Tasks" value={inProgressTasksCount} icon={Play} />
         <DashboardStatCard title="Completed Today" value={completedTodayCount} icon={CheckCircle2} />
-        <DashboardStatCard title="High Priority Tasks" value={highPriorityTasksCount} icon={ShieldAlert} />
-        <DashboardStatCard title="Delayed Tasks" value={delayedTasksCount} icon={AlertTriangle} />
-        <DashboardStatCard title="Avg Completion Time" value={avgCompletionTime} icon={Clock} />
-        <DashboardStatCard title="Current Active Route" value={currentActiveRoute} icon={Navigation} />
       </div>
 
       {/* Main Grid */}

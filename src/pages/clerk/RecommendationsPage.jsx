@@ -588,7 +588,7 @@ export default function RecommendationsPage() {
 
       showToast(`Bin "${apiResult.binCode}" allocated successfully!`);
       if (fetchData) {
-        await fetchData();
+        await fetchData(true);
       }
     } catch (err) {
       console.error("[Recommendations] Bin allocation API failed, using local context fallback:", err);

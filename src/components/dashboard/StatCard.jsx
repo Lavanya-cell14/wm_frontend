@@ -6,8 +6,8 @@ export default function StatCard({ title, value, icon: Icon, trend, trendLabel }
   const isNegative = trend && trend < 0;
 
   return (
-    <Card className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 border border-gray-150 bg-white select-none group">
-      <CardContent className="p-6">
+    <Card className="h-full flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-300 border border-gray-150 bg-white select-none group">
+      <CardContent className="p-6 flex flex-col justify-between flex-1">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
             {Icon && <Icon className="text-[#0071C1] w-5 h-5" />}

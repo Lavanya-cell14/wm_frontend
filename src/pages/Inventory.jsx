@@ -91,8 +91,10 @@ export default function Inventory() {
 
   // Filter logic
   const filteredInventory = inventory.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          item.sku.toLowerCase().includes(searchQuery.toLowerCase());
+    const name = item.name || '';
+    const sku = item.sku || '';
+    const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          sku.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCat = selectedCategory === 'All' || item.category === selectedCategory;
     const matchesWh = selectedWarehouse === 'All' || item.warehouse === selectedWarehouse;
     const matchesZone = selectedZone === 'All' || item.zone === selectedZone;

@@ -2,18 +2,18 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../context/WarehouseContext';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, DashboardStatCard, Pagination, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
-import { 
-  Package, Box, Building2, LayoutGrid, CheckCircle2, TrendingUp, AlertTriangle, 
-  ArrowDownToLine, Activity, Lightbulb, Clock, Layers, 
+import {
+  Package, Box, Building2, LayoutGrid, CheckCircle2, TrendingUp, AlertTriangle,
+  ArrowDownToLine, Activity, Lightbulb, Clock, Layers,
   Map, UserCheck, ShieldAlert, Cpu, Sparkles, Navigation, User, ArrowRight, Bot, BarChart3, Calendar
 } from 'lucide-react';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { 
+  const {
     isLoading, inventory = [], bins = [], ocrDocuments = [], putawayTasks = [], inboundReceipts = [], zones = []
   } = useWarehouse();
-  
+
   const [tasksPage, setTasksPage] = useState(1);
   const tasksPageSize = 5;
 
@@ -32,15 +32,8 @@ export default function Dashboard() {
   const totalBinsCount = bins.length;
   const storageUtilizationStr = totalBinsCount > 0 ? ((occupiedBinsCount / totalBinsCount) * 100).toFixed(1) : '0.0';
   const pendingOcrCount = ocrDocuments.filter(doc => doc.status === 'VERIFICATION_PENDING' || doc.status === 'OCR_UPLOADED').length;
-  
-  const completedAllocationsCount = inboundReceipts.filter(r => r.status === 'STORED' || r.status === 'COMPLETED').length;
-  const completedTasksCount = putawayTasks.filter(t => t.status === 'COMPLETED').length;
-  const activeTasksCount = putawayTasks.filter(t => ['IN_PROGRESS', 'PICKED_FROM_RECEIVING', 'REACHED_BIN', 'DELAYED'].includes(t.status)).length;
 
-  // Overview metrics breakdown
-  const availableStock = totalInventoryCount;
-  const allocatedStock = 0;
-  const storedStockCount = putawayTasks.filter(t => t.status === 'COMPLETED').reduce((sum, t) => sum + (t.quantity || 0), 0);
+  const completedAllocationsCount = inboundReceipts.filter(r => r.status === 'STORED' || r.status === 'COMPLETED').length;
 
   const approvedOcrDocs = ocrDocuments.filter(doc => doc.status === 'VERIFIED' || doc.status === 'PROCESSED').length;
   const rejectedOcrDocs = ocrDocuments.filter(doc => doc.status === 'REJECTED' || doc.status === 'ERROR').length;
@@ -63,7 +56,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 select-none animate-in fade-in duration-200">
-      
+
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
@@ -75,61 +68,18 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* 8 Executive KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4">
+      {/* Executive KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <DashboardStatCard title="Total Inventory" value={totalInventoryCount} icon={Box} />
-        <DashboardStatCard title="Storage Utilization" value={`${storageUtilizationStr}%`} icon={Layers} />
-        <DashboardStatCard title="Occupied Bins" value={occupiedBinsCount} icon={LayoutGrid} />
-        <DashboardStatCard title="Available Bins" value={availableBinsCount} icon={CheckCircle2} />
         <DashboardStatCard title="Pending OCR Reviews" value={pendingOcrCount} icon={ShieldAlert} />
         <DashboardStatCard title="Completed Allocations" value={completedAllocationsCount} icon={UserCheck} />
-        <DashboardStatCard title="Storage Tasks Completed" value={completedTasksCount} icon={CheckCircle2} />
-        <DashboardStatCard title="Active Storage Tasks" value={activeTasksCount} icon={Activity} />
       </div>
 
       {/* Main Sections Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Left Side: Operations Breakdown & OCR Allocations */}
         <div className="lg:col-span-2 space-y-6">
-          
-          {/* Section 1: Warehouse Operations Overview */}
-          <Card className="border border-gray-150 shadow-xs">
-            <CardHeader className="bg-slate-50/40 border-b border-gray-100 pb-3 flex justify-between items-center">
-              <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-[#0071C1]" />
-                Warehouse Operations Overview
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs font-semibold text-gray-700">
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                  <span className="text-gray-400 block text-[9px] uppercase tracking-wider mb-1">Total Stocked Inventory</span>
-                  <span className="text-lg font-bold text-slate-900">{totalInventoryCount} Units</span>
-                </div>
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                  <span className="text-gray-400 block text-[9px] uppercase tracking-wider mb-1">Available Stock</span>
-                  <span className="text-lg font-bold text-emerald-700">{availableStock} Units</span>
-                </div>
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                  <span className="text-gray-400 block text-[9px] uppercase tracking-wider mb-1">Allocated / Reserved</span>
-                  <span className="text-lg font-bold text-amber-700">{allocatedStock} Units</span>
-                </div>
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                  <span className="text-gray-400 block text-[9px] uppercase tracking-wider mb-1">Stored Stock Today</span>
-                  <span className="text-lg font-bold text-blue-800">{storedStockCount} Units</span>
-                </div>
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                  <span className="text-gray-400 block text-[9px] uppercase tracking-wider mb-1">Occupied Bin Count</span>
-                  <span className="text-lg font-bold text-red-700">{occupiedBinsCount} Bins</span>
-                </div>
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                  <span className="text-gray-400 block text-[9px] uppercase tracking-wider mb-1">Empty / Available Bins</span>
-                  <span className="text-lg font-bold text-green-700">{availableBinsCount} Bins</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Section 2: OCR & Allocation Monitoring Summary */}
           <Card className="border border-gray-150 shadow-xs">
@@ -165,11 +115,85 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
+          {/* Section 3: Storage Task Progress (Read-only table) */}
+          <Card className="border border-gray-150 shadow-xs">
+            <CardHeader className="bg-slate-50/40 border-b border-gray-100 pb-3">
+              <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-emerald-600" />
+                Storage Task Progress
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {putawayTasks.length === 0 ? (
+                <div className="p-12 text-center text-gray-400 font-bold text-xs">
+                  No active storage tasks recorded.
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Task ID</TableHead>
+                      <TableHead>Product / SKU</TableHead>
+                      <TableHead>Assigned Operator</TableHead>
+                      <TableHead>Destination Bin</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Updated Time</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedTasks.map((task) => (
+                      <TableRow key={task.id} className="hover:bg-slate-50/20 text-xs font-semibold">
+                        <TableCell className="font-bold text-gray-900 font-mono">{task.id}</TableCell>
+                        <TableCell>
+                          <div className="font-bold text-gray-900">{task.product}</div>
+                          <div className="text-[10px] text-gray-400 font-mono mt-0.5">{task.sku}</div>
+                        </TableCell>
+                        <TableCell className="text-gray-700">{task.assignedStaffName || 'Warehouse Operator'}</TableCell>
+                        <TableCell>
+                          <span className="font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 font-bold">
+                            {task.destinationBin || task.bin || 'BIN-002'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={task.priority === 'High' ? 'error' : 'warning'}>{task.priority || 'Medium'}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={task.status === 'COMPLETED' ? 'success' : 'primary'} className="uppercase text-[9px] font-bold">
+                            {task.status.replace(/_/g, ' ')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right text-gray-500 text-[10.5px]">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                            {new Date(task.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          {totalTasksPages > 1 && (
+            <div className="px-4 mt-2">
+              <Pagination
+                currentPage={activeTasksPage}
+                totalPages={totalTasksPages}
+                totalItems={putawayTasks.length}
+                pageSize={tasksPageSize}
+                onPageChange={(p) => setTasksPage(p)}
+              />
+            </div>
+          )}
+
         </div>
 
         {/* Right Side: Digital Twin Preview & AI Assistant Preview */}
         <div className="space-y-6">
-          
+
           {/* Section 4: Digital Twin Preview */}
           <Card className="border border-gray-150">
             <CardHeader className="bg-slate-50 border-b border-gray-100 pb-3">
@@ -199,8 +223,8 @@ export default function Dashboard() {
                 <span>Last Telemetry Sync:</span>
                 <span className="text-gray-400 font-mono text-[10px]">Just now</span>
               </div>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="w-full justify-center text-[10.5px] py-2 mt-2 font-bold bg-[#F4FCFF] border-blue-150 text-blue-700 hover:bg-blue-50"
                 onClick={() => navigate('/manager/digital-twin')}
               >
@@ -219,10 +243,10 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent className="p-4 space-y-3">
               <p className="text-[10px] text-gray-400 font-medium">Quickly query warehouse operations telemetry using natural language commands:</p>
-              
+
               <div className="grid grid-cols-2 gap-1.5">
                 {suggestedQuestions.slice(0, 4).map((q, idx) => (
-                  <Button 
+                  <Button
                     key={idx}
                     onClick={() => navigate('/manager/ai-assistant')}
                     className="text-left px-2 py-1.5 border border-gray-100 rounded-lg bg-gray-50 text-[10px] text-gray-600 font-bold hover:border-blue-200 hover:bg-blue-50/20 truncate"
@@ -232,7 +256,7 @@ export default function Dashboard() {
                 ))}
               </div>
 
-              <Button 
+              <Button
                 className="w-full justify-center text-[10.5px] py-2 mt-2 font-bold bg-[#0071C1] text-white hover:bg-[#005c9e] flex items-center gap-1"
                 onClick={() => navigate('/manager/ai-assistant')}
               >
@@ -245,80 +269,6 @@ export default function Dashboard() {
         </div>
 
       </div>
-
-      {/* Section 3: Storage Task Progress (Read-only table) */}
-      <Card className="border border-gray-150 shadow-xs mt-6">
-        <CardHeader className="bg-slate-50/40 border-b border-gray-100 pb-3">
-          <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
-            <Activity className="w-5 h-5 text-emerald-600" />
-            Storage Task Progress (Read-only)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {putawayTasks.length === 0 ? (
-            <div className="p-12 text-center text-gray-400 font-bold text-xs">
-              No active storage tasks recorded.
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Task ID</TableHead>
-                  <TableHead>Product / SKU</TableHead>
-                  <TableHead>Assigned Operator</TableHead>
-                  <TableHead>Destination Bin</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Updated Time</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedTasks.map((task) => (
-                  <TableRow key={task.id} className="hover:bg-slate-50/20 text-xs font-semibold">
-                    <TableCell className="font-bold text-gray-900 font-mono">{task.id}</TableCell>
-                    <TableCell>
-                      <div className="font-bold text-gray-900">{task.product}</div>
-                      <div className="text-[10px] text-gray-400 font-mono mt-0.5">{task.sku}</div>
-                    </TableCell>
-                    <TableCell className="text-gray-700">{task.assignedStaffName || 'Warehouse Operator'}</TableCell>
-                    <TableCell>
-                      <span className="font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 font-bold">
-                        {task.destinationBin || task.bin || 'BIN-002'}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={task.priority === 'High' ? 'error' : 'warning'}>{task.priority || 'Medium'}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={task.status === 'COMPLETED' ? 'success' : 'primary'} className="uppercase text-[9px] font-bold">
-                        {task.status.replace(/_/g, ' ')}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right text-gray-500 text-[10.5px]">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                        {new Date(task.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      {totalTasksPages > 1 && (
-        <div className="px-4 mt-2">
-          <Pagination
-            currentPage={activeTasksPage}
-            totalPages={totalTasksPages}
-            totalItems={putawayTasks.length}
-            pageSize={tasksPageSize}
-            onPageChange={(p) => setTasksPage(p)}
-          />
-        </div>
-      )}
 
     </div>
   );

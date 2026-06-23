@@ -26,6 +26,8 @@ export default function OcrVerification() {
 
   // Get initial document ID from location state or fallback to first VERIFICATION_PENDING doc
   useEffect(() => {
+    if (selectedDocId) return; // Already editing a document, do not overwrite user session edits!
+    
     const pendingDocs = ocrDocuments.filter(d => d.status === 'VERIFICATION_PENDING');
     let docId = location.state?.documentId;
     
@@ -43,7 +45,7 @@ export default function OcrVerification() {
     if (docId) {
       handleSelectDocument(docId);
     }
-  }, [location.state, ocrDocuments]);
+  }, [location.state, ocrDocuments, selectedDocId]);
 
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -182,7 +184,7 @@ export default function OcrVerification() {
     
     // Sync state from backend
     if (fetchData) {
-      await fetchData();
+      await fetchData(true);
     }
     
     // Redirect to inbound receipts

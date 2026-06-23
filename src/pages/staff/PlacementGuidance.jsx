@@ -94,7 +94,7 @@ export default function PlacementGuidance() {
     setShowCompletionModal(false);
     showToast(`Storage completed! Task ${activeTask.id} marked as Stored/Completed.`);
     setTimeout(() => {
-      navigate('/operator/completed-tasks');
+      navigate('/operator/dashboard');
     }, 1000);
   };
 

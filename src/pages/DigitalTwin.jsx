@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useWarehouse } from '../context/WarehouseContext';
 import { AlertBanner, Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Map, Layers, Navigation, Box, HelpCircle, ShieldAlert, Sparkles, LayoutGrid, MonitorPlay, Network, Radio } from 'lucide-react';
@@ -80,6 +80,11 @@ export default function DigitalTwin() {
     { id: 2, type: 'Traffic', text: 'Aisle A1 (Zone A) path congested due to active picking', time: '5m ago' }
   ]);
 
+  const binsRef = useRef(bins);
+  useEffect(() => {
+    binsRef.current = bins;
+  }, [bins]);
+
   useEffect(() => {
     let active = true;
     const fetchTwinData = async () => {
@@ -101,10 +106,11 @@ export default function DigitalTwin() {
         }
       } catch (err) {
         console.warn("[DigitalTwin] Failed to fetch live twin telemetry, using local stubs:", err);
+        const currentBins = binsRef.current || [];
         setTelemetry({
           utilizationRate: 64,
-          occupiedBins: bins.filter(b => b.status === 'FULL').length || 4,
-          totalBins: bins.length || 10,
+          occupiedBins: currentBins.filter(b => b.status === 'FULL').length || 4,
+          totalBins: currentBins.length || 10,
           activePaths: 3
         });
         setGraphSummary({ nodes: 3, edges: 2 });
@@ -175,7 +181,7 @@ export default function DigitalTwin() {
       if (wsOccupancy) wsOccupancy.close();
       if (wsAlerts) wsAlerts.close();
     };
-  }, [bins]);
+  }, []);
 
   const toggleLayer = (layer) => {
     setActiveLayers(prev => ({ ...prev, [layer]: !prev[layer] }));

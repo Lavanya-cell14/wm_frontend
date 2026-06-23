@@ -29,7 +29,6 @@ import PutawayTasks from './pages/staff/PutawayTasks';
 import MovementTracking from './pages/staff/MovementTracking';
 import ActiveTask from './pages/staff/ActiveTask';
 import RouteGuidance from './pages/staff/RouteGuidance';
-import CompletedTasks from './pages/staff/CompletedTasks';
 import PlacementGuidance from './pages/staff/PlacementGuidance';
 
 // Clerk Pages
@@ -114,7 +113,6 @@ function App() {
             <Route path="/operator/storage-tasks" element={<PutawayTasks />} />
             <Route path="/operator/navigation" element={<RouteGuidance />} />
             <Route path="/operator/placement-guidance" element={<PlacementGuidance />} />
-            <Route path="/operator/completed-tasks" element={<CompletedTasks />} />
             <Route path="/operator/active" element={<ActiveTask />} />
             
             {/* Internal / Secondary operator routes */}
@@ -127,7 +125,7 @@ function App() {
             <Route path="/staff/putaway" element={<Navigate to="/operator/storage-tasks" replace />} />
             <Route path="/staff/active" element={<Navigate to="/operator/active" replace />} />
             <Route path="/staff/route-guidance" element={<Navigate to="/operator/navigation" replace />} />
-            <Route path="/staff/completed" element={<Navigate to="/operator/completed-tasks" replace />} />
+            <Route path="/staff/completed" element={<Navigate to="/operator/dashboard" replace />} />
             <Route path="/staff/scanner" element={<Navigate to="/operator/scanner" replace />} />
             <Route path="/staff/inbound" element={<Navigate to="/operator/inbound" replace />} />
             <Route path="/staff/movements" element={<Navigate to="/operator/movements" replace />} />

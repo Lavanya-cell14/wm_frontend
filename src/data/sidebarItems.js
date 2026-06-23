@@ -114,12 +114,6 @@ export const sidebarItems = [
     icon: Layers,
     allowedRoles: ['WAREHOUSE_OPERATOR'],
   },
-  {
-    name: 'Completed Tasks',
-    path: '/operator/completed-tasks',
-    icon: CheckSquare,
-    allowedRoles: ['WAREHOUSE_OPERATOR'],
-  },
 
   // ─── ADMIN ────────────────────────────────────────────────────────────────
   {

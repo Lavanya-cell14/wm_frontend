@@ -22,6 +22,32 @@ const getAuthHeaders = () => {
   if (token) {
     return { 'Authorization': `Bearer ${token}` };
   }
+
+  // Attach mock headers for local development based on current route/path
+  if (typeof window !== 'undefined' && window.location) {
+    const path = window.location.pathname;
+    let email = 'manager@warehouseai.com';
+    let role = 'WAREHOUSE_MANAGER';
+    
+    if (path.startsWith('/admin')) {
+      email = 'admin@warehouseai.com';
+      role = 'ADMIN';
+    } else if (path.startsWith('/manager')) {
+      email = 'manager@warehouseai.com';
+      role = 'WAREHOUSE_MANAGER';
+    } else if (path.startsWith('/operator') || path.startsWith('/staff')) {
+      email = 'staff@warehouseai.com';
+      role = 'WAREHOUSE_OPERATOR';
+    } else if (path.startsWith('/inventory')) {
+      email = 'inventory@warehouseai.com';
+      role = 'RECEIVING_INVENTORY_OFFICER';
+    }
+    
+    return {
+      'X-Mock-User-Email': email,
+      'X-Mock-User-Role': role,
+    };
+  }
   return {};
 };
 

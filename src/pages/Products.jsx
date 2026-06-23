@@ -19,8 +19,10 @@ export default function Products() {
   }, [searchQuery, selectedCategory]);
 
   const filteredProducts = products.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          item.sku.toLowerCase().includes(searchQuery.toLowerCase());
+    const name = item.name || '';
+    const sku = item.sku || '';
+    const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          sku.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCat = selectedCategory === 'All' || item.category === selectedCategory;
     return matchesSearch && matchesCat;
   });

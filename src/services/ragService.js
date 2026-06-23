@@ -14,14 +14,12 @@ export const askRag = async (query) => {
   console.warn(`[RAG Service] POST question to RAG Server: ${RAG_API_BASE_URL}/api/ai/analyze`);
   
   const payload = {
-    complaintId: 1,
     title: query,
     description: query,
-    vehicleId: 'WH001',
-    vehicleModel: 'WMS-Model',
-    aiAttemptCount: 1,
+    warehouseId: 'WH001',
+    attemptCount: 1,
     userId: 1,
-    serviceHistory: [],
+    auditTrail: [],
   };
 
   const response = await fetch(`${RAG_API_BASE_URL}/api/ai/analyze`, {
