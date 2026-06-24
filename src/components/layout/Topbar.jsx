@@ -1,7 +1,8 @@
 import React from 'react';
-import { Button, Input } from 'shared-ui';
-import { Menu, Search, Bell, User, LogOut } from 'lucide-react';
+import { Button } from 'shared-ui';
+import { Menu, Bell, User, LogOut, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 
 const mapRoleLabel = (role) => {
@@ -16,6 +17,7 @@ const mapRoleLabel = (role) => {
 
 export default function Topbar({ onMenuClick }) {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -32,18 +34,22 @@ export default function Topbar({ onMenuClick }) {
         >
           <Menu className="w-5 h-5 text-gray-600" />
         </Button>
-        
-        <div className="hidden sm:flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus-within:ring-2 focus-within:ring-[#56A8F0] focus-within:border-[#56A8F0] transition-all">
-          <Search className="w-4 h-4 text-gray-400 mr-2" />
-          <Input 
-            type="text" 
-            placeholder="Search..." 
-            className="bg-transparent border-none focus:ring-0 text-sm w-48 text-gray-700 outline-none"
-          />
-        </div>
       </div>
+
       
       <div className="flex items-center gap-3 sm:gap-4">
+        <Button 
+          onClick={toggleTheme}
+          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+        >
+          {theme === 'light' ? (
+            <Moon className="w-5 h-5 text-gray-600" />
+          ) : (
+            <Sun className="w-5 h-5 text-yellow-400" />
+          )}
+        </Button>
+
         <Button className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
           <Bell className="w-5 h-5 text-gray-600" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>

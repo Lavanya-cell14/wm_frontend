@@ -27,16 +27,6 @@ export default function WarehouseSetupLanding() {
   // Cards configuration for each physical layout component
   const setupCards = [
     {
-      title: 'Warehouses',
-      description: 'Manage physical warehouse facilities, addresses, and overall capacity properties.',
-      count: warehouses.length,
-      countLabel: 'Warehouses',
-      icon: Building2,
-      path: '/admin/warehouses',
-      color: 'from-blue-500 to-cyan-500',
-      bgColor: 'bg-blue-50 text-blue-600 border-blue-100',
-    },
-    {
       title: 'Zone Groups',
       description: 'Group warehouse zones by custom temperature rules, security level, or ambient controls.',
       count: 2, // Mocked value matching ZoneGroupList configuration

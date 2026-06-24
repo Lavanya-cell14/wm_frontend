@@ -344,12 +344,7 @@ export default function ZoneGroupList() {
                 </div>
               </div>
 
-              <div className="bg-slate-50 border border-gray-100 p-3 rounded-xl">
-                <div className="text-gray-400 font-bold uppercase tracking-wider mb-1">Parent Warehouse</div>
-                <div className="font-bold text-slate-800 text-xs font-mono truncate" title={selectedZg.warehouse}>
-                  {selectedZg.warehouse || '—'}
-                </div>
-              </div>
+
 
               <div className="p-3 bg-white border border-gray-100 rounded-xl">
                 <div className="text-gray-400 font-bold uppercase tracking-wider mb-1">
@@ -405,18 +400,7 @@ export default function ZoneGroupList() {
                 </select>
               </div>
             </div>
-            <div>
-              <label className="block text-gray-700 mb-1">Parent Warehouse *</label>
-              <select 
-                value={zgWarehouse} 
-                onChange={(e) => setZgWarehouse(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg p-2.5 bg-white font-medium text-xs text-gray-700"
-              >
-                {warehousesList.map(w => (
-                  <option key={w.id} value={w.id}>{w.warehouse_name}</option>
-                ))}
-              </select>
-            </div>
+
             <div>
               <label className="block text-gray-700 mb-1">Description</label>
               <Input value={zgDescription} onChange={(e) => setZgDescription(e.target.value)} placeholder="e.g. Temp range 15 to 25 deg C" />
@@ -462,18 +446,7 @@ export default function ZoneGroupList() {
                 </select>
               </div>
             </div>
-            <div>
-              <label className="block text-gray-700 mb-1">Parent Warehouse *</label>
-              <select 
-                value={zgWarehouse} 
-                onChange={(e) => setZgWarehouse(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg p-2.5 bg-white font-medium text-xs text-gray-700"
-              >
-                {warehousesList.map(w => (
-                  <option key={w.id} value={w.id}>{w.warehouse_name || w.name}</option>
-                ))}
-              </select>
-            </div>
+
             <div>
               <label className="block text-gray-700 mb-1">Description</label>
               <Input value={zgDescription} onChange={(e) => setZgDescription(e.target.value)} />

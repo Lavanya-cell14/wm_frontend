@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from 'shared-ui';
 import { NavLink } from 'react-router-dom';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Menu } from 'lucide-react';
 import { sidebarItems } from '../../data/sidebarItems';
 import { useAuth } from '../../context/AuthContext';
 
@@ -19,18 +19,30 @@ export default function Sidebar({ onMobileClose, isCollapsed = false, onToggleCo
                 Warehouse<span className="text-blue-300">AI</span>
               </div>
             ) : (
-              <div className="text-white font-black text-xl mx-auto font-mono text-center tracking-wider animate-in fade-in duration-200">
+              <div className="text-white font-black text-xl mx-auto font-mono text-center tracking-wider animate-in fade-in duration-200 lg:hidden">
                 W<span className="text-blue-300">A</span>
               </div>
             )}
             
+            {onToggleCollapse && (
+              <button
+                onClick={onToggleCollapse}
+                className={`hidden lg:flex items-center justify-center p-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all border border-white/15 shadow-sm w-9 h-9 ${
+                  isCollapsed ? 'mx-auto' : 'ml-3'
+                } focus:outline-none`}
+                title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+              >
+                <Menu className="w-5 h-5 text-white" />
+              </button>
+            )}
+
             {onMobileClose && (
-              <Button 
+              <button 
                 onClick={onMobileClose}
-                className="ml-auto p-2 bg-black/15 hover:bg-black/25 rounded-xl transition-colors lg:hidden flex items-center justify-center min-w-[40px] min-h-[40px]"
+                className="ml-auto p-2 bg-black/15 hover:bg-black/25 rounded-xl transition-colors lg:hidden flex items-center justify-center w-9 h-9 focus:outline-none"
               >
                 <ChevronLeft className="text-white w-5 h-5" />
-              </Button>
+              </button>
             )}
           </div>
         </div>
@@ -89,21 +101,6 @@ export default function Sidebar({ onMobileClose, isCollapsed = false, onToggleCo
               <span>Operational</span>
             </div>
           </div>
-        )}
-
-        {/* Collapsible toggle chevron button on desktop */}
-        {onToggleCollapse && (
-          <Button
-            onClick={onToggleCollapse}
-            className="w-10 h-10 mx-auto hidden lg:flex items-center justify-center bg-black/10 hover:bg-black/20 text-white rounded-xl transition-all border border-white/5 shadow-inner"
-            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-          >
-            {isCollapsed ? (
-              <ChevronRight className="w-4 h-4 text-white" />
-            ) : (
-              <ChevronLeft className="w-4 h-4 text-white" />
-            )}
-          </Button>
         )}
       </div>
     </aside>

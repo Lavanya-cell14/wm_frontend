@@ -5,5 +5,485 @@
 @layer base {
   body {
     @apply bg-[#F4FCFF] text-gray-900 font-sans;
+    transition-property: background-color, border-color, color;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
+  }
+  
+  /* Apply smooth transition to themed elements */
+  *, *::before, *::after {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
   }
 }
+
+/* Global Dark Mode Overrides */
+.dark body {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+/* Header & Main Page Match */
+.dark header,
+.dark main,
+.dark .bg-\[\#F4FCFF\],
+.dark .bg-gray-150 {
+  background-color: #0f172a !important;
+}
+
+/* Cards & Containers Popout (Slate-800) */
+.dark .bg-white,
+.dark .modal-content,
+.dark [role="dialog"],
+.dark div.bg-white.rounded-2xl {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+/* Card Headers & Specific Grey Areas (Lighter or Structured Card Accents) */
+.dark .bg-slate-50,
+.dark .bg-slate-50\/40,
+.dark .bg-gray-50,
+.dark .bg-gray-50\/50,
+.dark .bg-slate-50\/50 {
+  background-color: #111827 !important;
+  border-color: #1e293b !important;
+}
+
+/* Sidebar Specific Gradient override */
+.dark aside {
+  background: linear-gradient(to bottom, #090d16, #111827) !important;
+  box-shadow: 20px 0 60px rgba(9, 13, 22, 0.5) !important;
+}
+
+/* Secondary Backgrounds */
+.dark .bg-gray-100,
+.dark .bg-slate-100,
+.dark .bg-blue-50 {
+  background-color: #0f172a !important;
+}
+
+.dark .bg-gray-200,
+.dark .bg-slate-200 {
+  background-color: #334155 !important;
+}
+
+/* Text Colors */
+.dark .text-gray-955,
+.dark .text-gray-950,
+.dark .text-slate-955,
+.dark .text-slate-950,
+.dark .text-gray-900,
+.dark .text-gray-850,
+.dark .text-gray-800,
+.dark .text-gray-700,
+.dark .text-slate-800,
+.dark .text-slate-900,
+.dark .text-slate-700,
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6,
+.dark span.font-semibold,
+.dark font {
+  color: #f8fafc !important;
+}
+
+.dark .text-gray-600,
+.dark .text-gray-500,
+.dark .text-slate-600,
+.dark .text-slate-650,
+.dark .text-slate-505,
+.dark .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+
+/* Input, Forms and Dropdowns */
+.dark input,
+.dark select,
+.dark textarea,
+.dark .bg-gray-50 input,
+.dark .bg-gray-50 select {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* Borders */
+.dark .border-gray-200,
+.dark .border-gray-150,
+.dark .border-gray-100,
+.dark .border-slate-200,
+.dark .border-slate-100,
+.dark .border,
+.dark .border-b,
+.dark .border-t,
+.dark .border-r,
+.dark .border-l {
+  border-color: #1e293b !important;
+}
+
+/* Tables */
+.dark th {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+.dark td {
+  border-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+.dark tr:hover {
+  background-color: rgba(30, 41, 59, 0.5) !important;
+}
+
+/* Buttons (secondary/hover) */
+.dark .bg-gray-100:hover,
+.dark .bg-slate-100:hover,
+.dark .hover\:bg-gray-100:hover,
+.dark .hover\:bg-slate-100:hover {
+  background-color: #1e293b !important;
+}
+
+.dark .hover\:bg-red-50:hover {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+}
+
+/* Icons adjustment (making sure they have good contrast) */
+.dark .text-gray-600 svg,
+.dark .text-gray-500 svg,
+.dark .text-gray-400 svg,
+.dark svg.text-gray-600,
+.dark svg.text-gray-500,
+.dark svg.text-gray-400 {
+  color: #94a3b8 !important;
+}
+
+/* Modals */
+.dark [role="dialog"],
+.dark .modal-content,
+.dark .modal,
+.dark div.bg-white.rounded-2xl {
+  background-color: #131d30 !important;
+  border-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+/* Custom UI specifics */
+.dark .text-blue-600,
+.dark .text-primary {
+  color: #56A8F0 !important;
+}
+
+.dark .bg-blue-100 {
+  background-color: rgba(86, 168, 240, 0.15) !important;
+  color: #56A8F0 !important;
+}
+
+/* Suggested query buttons in AI Copilot */
+.dark .bg-blue-50\/50,
+.dark .hover\:bg-blue-50:hover,
+.dark button.bg-blue-50,
+.dark .bg-blue-50\/50 {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+/* Color Grading overrides for cards, badges, text, and borders in Dark Mode */
+
+/* Indigo system (Pending OCR, suggestions, received) */
+/* Indigo system (Pending OCR, suggestions, received) */
+.dark .bg-indigo-50,
+.dark .bg-indigo-50\/30,
+.dark .bg-indigo-50\/50,
+.dark .bg-indigo-100\/50,
+.dark .bg-indigo-100\/60,
+.dark .bg-indigo-500 {
+  background-color: rgba(99, 102, 241, 0.15) !important;
+}
+.dark .border-indigo-100,
+.dark .border-indigo-150,
+.dark .border-indigo-200,
+.dark .border-indigo-600 {
+  border-color: rgba(129, 140, 248, 0.3) !important;
+}
+.dark .text-indigo-600,
+.dark .text-indigo-700,
+.dark .text-indigo-800,
+.dark .text-indigo-900 {
+  color: #a5b4fc !important;
+}
+.dark .text-indigo-950 {
+  color: #e0e7ff !important;
+}
+
+/* Green / Emerald system (Approved Docs, In Stock, Available, success) */
+.dark .bg-green-50,
+.dark .bg-green-50\/30,
+.dark .bg-green-50\/50,
+.dark .bg-green-100,
+.dark .bg-green-100\/50,
+.dark .bg-emerald-50,
+.dark .bg-emerald-50\/30,
+.dark .bg-emerald-50\/50,
+.dark .bg-emerald-100\/50 {
+  background-color: rgba(34, 197, 94, 0.15) !important;
+}
+.dark .border-green-100,
+.dark .border-green-150,
+.dark .border-green-200,
+.dark .border-emerald-100,
+.dark .border-emerald-150,
+.dark .border-emerald-200 {
+  border-color: rgba(52, 211, 153, 0.3) !important;
+}
+.dark .text-green-600,
+.dark .text-green-700,
+.dark .text-green-800,
+.dark .text-green-900,
+.dark .text-emerald-600,
+.dark .text-emerald-700,
+.dark .text-emerald-800,
+.dark .text-emerald-900 {
+  color: #86efac !important;
+}
+.dark .text-green-950,
+.dark .text-emerald-950 {
+  color: #ecfdf5 !important;
+}
+
+/* Red system (Rejected Docs, Out of Stock, Full, error) */
+.dark .bg-red-50,
+.dark .bg-red-50\/30,
+.dark .bg-red-50\/50,
+.dark .bg-red-100\/50 {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+}
+.dark .border-red-100,
+.dark .border-red-150,
+.dark .border-red-200 {
+  border-color: rgba(248, 113, 113, 0.3) !important;
+}
+.dark .text-red-600,
+.dark .text-red-700,
+.dark .text-red-800,
+.dark .text-red-900 {
+  color: #fca5a5 !important;
+}
+.dark .text-red-950 {
+  color: #fee2e2 !important;
+}
+
+/* Blue system (Completed Allocations, In Transit, default badge, text-primary, bg-blue-100) */
+.dark .bg-blue-50,
+.dark .bg-blue-50\/30,
+.dark .bg-blue-50\/50,
+.dark .bg-blue-100,
+.dark .bg-blue-100\/50 {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+}
+.dark .border-blue-100,
+.dark .border-blue-150,
+.dark .border-blue-200 {
+  border-color: rgba(96, 165, 250, 0.3) !important;
+}
+.dark .text-blue-600,
+.dark .text-blue-700,
+.dark .text-blue-800,
+.dark .text-blue-900 {
+  color: #93c5fd !important;
+}
+.dark .text-blue-950 {
+  color: #eff6ff !important;
+}
+
+/* Amber / Yellow system (Active Allocations, Low Stock, Warning) */
+.dark .bg-amber-50,
+.dark .bg-amber-50\/30,
+.dark .bg-amber-50\/50,
+.dark .bg-amber-100\/50,
+.dark .bg-\[\#FFD815\] {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+}
+.dark .border-amber-100,
+.dark .border-amber-150,
+.dark .border-amber-200,
+.dark .border-\[\#FFD815\] {
+  border-color: rgba(251, 191, 36, 0.3) !important;
+}
+.dark .text-amber-600,
+.dark .text-amber-700,
+.dark .text-amber-800,
+.dark .text-amber-900 {
+  color: #fcd34d !important;
+}
+.dark .text-amber-950 {
+  color: #fffbeb !important;
+}
+
+/* Purple system (Shipped) */
+.dark .bg-purple-100\/50 {
+  background-color: rgba(168, 85, 247, 0.15) !important;
+}
+.dark .border-purple-100,
+.dark .border-purple-150,
+.dark .border-purple-200 {
+  border-color: rgba(192, 132, 252, 0.3) !important;
+}
+.dark .text-purple-600,
+.dark .text-purple-700,
+.dark .text-purple-800,
+.dark .text-purple-900 {
+  color: #d8b4fe !important;
+}
+.dark .text-purple-955,
+.dark .text-purple-950 {
+  color: #f3e8ff !important;
+}
+
+/* Gray system (secondary, fallback) */
+.dark .bg-gray-100\/50 {
+  background-color: rgba(148, 163, 184, 0.15) !important;
+}
+.dark .border-gray-100,
+.dark .border-gray-150,
+.dark .border-gray-200 {
+  border-color: rgba(148, 163, 184, 0.3) !important;
+}
+.dark .text-gray-600,
+.dark .text-gray-700,
+.dark .text-gray-850,
+.dark .text-gray-800 {
+  color: #cbd5e1 !important;
+}
+
+/* Digital Twin Legend & Bins specific overrides for Dark Mode */
+.dark .bg-white\/90 {
+  background-color: rgba(30, 41, 59, 0.9) !important;
+}
+.dark .text-\[\#0071C1\] {
+  color: #56A8F0 !important;
+}
+.dark .border-\[\#0071C1\] {
+  border-color: rgba(86, 168, 240, 0.4) !important;
+}
+.dark .bg-\[\#0071C1\] {
+  background-color: #0284c7 !important;
+}
+.dark .bg-slate-200 {
+  background-color: #475569 !important; /* slate-600 */
+}
+.dark .border-slate-350 {
+  border-color: #64748b !important; /* slate-500 */
+}
+
+/* Admin Activity Items styles */
+.admin-activity-item {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+.admin-activity-item:hover {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+.admin-activity-tag {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+.admin-activity-details {
+  color: #64748b !important;
+}
+
+.admin-activity-user {
+  color: #0071C1 !important;
+}
+
+/* Dark theme overrides for Admin Activity Items */
+.dark .admin-activity-item {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+.dark .admin-activity-item:hover {
+  background-color: #334155 !important;
+  border-color: #475569 !important;
+}
+
+.dark .admin-activity-tag {
+  background-color: #0f172a !important;
+  color: #cbd5e1 !important;
+}
+
+.dark .admin-activity-details {
+  color: #94a3b8 !important;
+}
+
+.dark .admin-activity-user {
+  color: #56A8F0 !important;
+}
+
+/* Administrative Quick Actions Styles */
+.quick-actions-card {
+  background: linear-gradient(to bottom, #ffffff, #f8fafc) !important;
+  border-color: #e2e8f0 !important;
+}
+
+.quick-actions-header {
+  background-color: rgba(248, 250, 252, 0.3) !important;
+  border-color: #e2e8f0 !important;
+}
+
+.quick-actions-title {
+  color: #0f172a !important;
+}
+
+.quick-actions-btn {
+  border-color: #cbd5e1 !important;
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+}
+
+.quick-actions-btn:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* Dark Mode Overrides for Quick Actions */
+.dark .quick-actions-card {
+  background: linear-gradient(to bottom, #1e293b, #131d30) !important;
+  border-color: #334155 !important;
+}
+
+.dark .quick-actions-header {
+  background-color: rgba(17, 24, 39, 0.3) !important;
+  border-color: #334155 !important;
+}
+
+.dark .quick-actions-title {
+  color: #f8fafc !important;
+}
+
+.dark .quick-actions-btn {
+  border-color: #475569 !important;
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+.dark .quick-actions-btn:hover {
+  background-color: #334155 !important;
+}
+
+
+
+
+
+

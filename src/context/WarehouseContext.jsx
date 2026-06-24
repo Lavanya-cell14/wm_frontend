@@ -9,6 +9,7 @@ import { getInboundShipments } from '../services/inboundService';
 import { getAiRecommendationsApi } from '../services/recommendationService';
 import { getMovementsApi } from '../services/movementService';
 import { getUsersApi } from '../services/usersService';
+import { getAuditLogsApi } from '../services/auditLogService';
 import { 
   getAssignedPutawayTasks, 
   startPutawayTask as startPutawayTaskApi, 
@@ -18,6 +19,7 @@ import {
   reportPutawayIssue as reportPutawayIssueApi,
   dispatchPutawayTaskApi
 } from '../services/staffService';
+
 
 const WarehouseContext = createContext();
 
@@ -143,6 +145,7 @@ export const validateId = (id, prefix, existingIds) => {
 export function WarehouseProvider({ children }) {
   const { user } = useAuth();
   const [warehouses, setWarehouses] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
   const [zones, setZones] = useState([]);
   const [racks, setRacks] = useState([]);
   const [shelves, setShelves] = useState([]);
@@ -339,7 +342,8 @@ export function WarehouseProvider({ children }) {
         aiRecsRes,
         movementsRes,
         usersRes,
-        putawayRes
+        putawayRes,
+        auditLogsRes
       ] = await Promise.all([
         getWarehouses().catch(e => { console.warn("Failed fetching warehouses:", e); return { results: [] }; }),
         getZones().catch(e => { console.warn("Failed fetching zones:", e); return { results: [] }; }),
@@ -352,7 +356,8 @@ export function WarehouseProvider({ children }) {
         getAiRecommendationsApi().catch(e => { console.warn("Failed fetching AI recommendations:", e); return { results: [] }; }),
         getMovementsApi().catch(e => { console.warn("Failed fetching movements:", e); return { results: [] }; }),
         getUsersApi().catch(e => { console.warn("Failed fetching users:", e); return { results: [] }; }),
-        getAssignedPutawayTasks().catch(e => { console.warn("Failed fetching putaway tasks:", e); return []; })
+        getAssignedPutawayTasks().catch(e => { console.warn("Failed fetching putaway tasks:", e); return []; }),
+        getAuditLogsApi().catch(e => { console.warn("Failed fetching audit logs:", e); return { results: [] }; })
       ]);
 
       if (whsRes?.results?.length > 0) {
@@ -709,6 +714,23 @@ export function WarehouseProvider({ children }) {
         });
       }
 
+      if (auditLogsRes) {
+        const logsList = Array.isArray(auditLogsRes) ? auditLogsRes : (auditLogsRes.results || []);
+        const mappedLogs = logsList.map((log, index) => {
+          return {
+            id: log.id || `LOG-${Date.now()}-${index}`,
+            timestamp: log.action_time || new Date().toISOString(),
+            user: log.user || "admin@warehouseai.com",
+            role: "ADMIN",
+            action: log.action_type || "ACTION",
+            module: log.table_name || "System",
+            details: `${log.action_type} on table ${log.table_name} (ID: ${log.record_id || 'N/A'})`,
+            status: "Success"
+          };
+        });
+        setAuditLogs(mappedLogs);
+      }
+
     } catch (err) {
       console.error("Error fetching APIs", err);
       setError("Failed to synchronize layout and real-time inventory from central backend API.");
@@ -745,7 +767,6 @@ export function WarehouseProvider({ children }) {
     console.log('[FlowState] putawayTasks', putawayTasks);
   }, [inboundReceipts, aiRecommendations, putawayTasks]);
 
-  const [auditLogs, setAuditLogs] = useState([]);
 
   const [kpis, setKpis] = useState({
     scannedToday: 0,
