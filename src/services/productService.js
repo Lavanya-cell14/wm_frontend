@@ -13,6 +13,13 @@ export const getProductById = async (productId) => {
   return await apiClient(`/api/products/${productId}/`);
 };
 
+export const getProductBySkuApi = async (sku) => {
+  const data = await apiClient(`/api/products/?sku=${encodeURIComponent(sku)}`);
+  const normalized = normalizeResponse(data);
+  const results = normalized.results || normalized || [];
+  return results[0] || null;
+};
+
 export const createProductApi = async (payload) => {
   return await apiClient('/api/products/', {
     method: 'POST',

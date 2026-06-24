@@ -439,7 +439,7 @@ export function WarehouseProvider({ children }) {
           return {
             sku: p.sku || `SKU-100${idx + 1}`,
             productId: p.productId || p.id || `PRD-000${idx + 1}`,
-            name: p.name,
+            name: p.product_name || p.name || p.productName || `Product ${p.sku}`,
             category: p.category || "Electronics",
             weight: p.weight || `${p.weightKg || 2.0} kg`,
             dimensions: p.dimensions || "25x25x25 cm",
@@ -628,6 +628,7 @@ export function WarehouseProvider({ children }) {
             documentReference: ship.shipment_code || 'REF-GEN',
             sku: ship.sku || 'SKU-GENERIC',
             productName: ship.product_name || ship.product || `Shipment from ${ship.supplier_name || 'Supplier'}`,
+            productId: ship.productId || null,
             category: ship.category || 'General',
             quantityReceived: Number(ship.quantity || 50),
             verifiedQuantity: Number(ship.quantity || 50),

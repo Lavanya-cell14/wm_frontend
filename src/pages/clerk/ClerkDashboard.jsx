@@ -14,8 +14,11 @@ import {
   Package,
   Layers,
   Sparkles,
-  ClipboardList
+  ClipboardList,
+  ChevronRight,
+  Loader2
 } from 'lucide-react';
+import { processOcrDocument, uploadOcrDocumentDjangoApi, normalizeOcrResponse } from '../../services/ocrService';
 
 export default function ClerkDashboard() {
   const navigate = useNavigate();
@@ -24,14 +27,130 @@ export default function ClerkDashboard() {
     inventory = [], 
     ocrDocuments = [], 
     inboundReceipts = [],
-    aiRecommendations = []
+    aiRecommendations = [],
+    addOcrDocument,
+    setOcrDocuments
   } = useWarehouse();
 
   const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState('success');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = React.useRef(null);
 
-  const showToast = (msg) => {
+  const showToast = (msg, type = 'success') => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 3000);
+    setToastType(type);
+    setTimeout(() => setToastMessage(''), 4000);
+  };
+
+  const handleCardClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    showToast(`Uploading ${file.name}...`, 'info');
+
+    let backendDocId = null;
+    
+    // 1. Optional Django sync
+    try {
+      const djangoRes = await uploadOcrDocumentDjangoApi(file);
+      if (djangoRes?.document_id) {
+        backendDocId = djangoRes.document_id;
+      }
+    } catch (err) {
+      console.warn("[Dashboard Upload] Django sync failed, continuing locally:", err);
+    }
+
+    const tempId = backendDocId || `OCR-${Math.floor(100 + Math.random() * 900)}`;
+
+    // 2. OCR Extraction
+    try {
+      const res = await processOcrDocument(file);
+      
+      // 3. Normalization
+      const normalized = normalizeOcrResponse(res, { fileName: file.name, id: tempId });
+      
+      // 4. Construct OCR Document object
+      const newDoc = {
+        id: tempId,
+        fileName: file.name,
+        fileObject: file,
+        documentType: normalized.documentType || 'Invoice',
+        supplierName: normalized.supplierName || 'Unknown Supplier',
+        uploadedAt: new Date().toISOString(),
+        uploadedBy: user?.email || 'inventory@warehouseai.com',
+        status: 'VERIFICATION_PENDING',
+        confidenceScore: normalized.confidenceScore || 95,
+        extractedItems: normalized.mappedItems || [],
+        warnings: 0,
+        warningsList: []
+      };
+
+      addOcrDocument(newDoc);
+      showToast("OCR manifest processed successfully!", "success");
+      
+      // Redirect to verification form with the new doc id
+      setTimeout(() => {
+        navigate('/inventory/ocr-review', { state: { documentId: tempId } });
+      }, 1200);
+
+    } catch (err) {
+      console.error("[Dashboard Upload] OCR extraction failed:", err);
+      
+      // Fallback manual review
+      const fallbackItems = [
+        {
+          id: `EXT-${Date.now()}-fallback`,
+          sku: '',
+          productName: file.name.split('.')[0].replace(/[-_]/g, ' '),
+          category: 'General',
+          quantity: 1,
+          uom: 'BOX',
+          length: '',
+          width: '',
+          height: '',
+          weight: '',
+          batchNumber: `BAT-${Math.floor(1000 + Math.random() * 9000)}`,
+          expiryDate: '2028-12-31',
+          confidenceScore: 50,
+          validationStatus: 'Warning',
+          storageType: 'GENERAL',
+          isFragile: false,
+          isStackable: true
+        }
+      ];
+
+      const fallbackDoc = {
+        id: tempId,
+        fileName: file.name,
+        fileObject: file,
+        documentType: 'Invoice',
+        supplierName: 'MANUAL_REVIEW',
+        uploadedAt: new Date().toISOString(),
+        uploadedBy: user?.email || 'inventory@warehouseai.com',
+        status: 'VERIFICATION_PENDING',
+        confidenceScore: 50,
+        extractedItems: fallbackItems,
+        warnings: 1,
+        warningsList: [`Extraction failed: ${err.message}. Ready for manual review.`]
+      };
+
+      addOcrDocument(fallbackDoc);
+      showToast("Extraction failed. Document marked for Manual Review.", "warning");
+      
+      setTimeout(() => {
+        navigate('/inventory/ocr-review', { state: { documentId: tempId } });
+      }, 1200);
+    } finally {
+      setUploading(false);
+    }
   };
 
   // Calculations for KPIs
@@ -96,250 +215,178 @@ export default function ClerkDashboard() {
       </div>
 
       {/* Main content grids */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        
-        {/* Left Column (OCR summary, Recent OCR, Product Summary) */}
-        <div className="xl:col-span-2 space-y-6">
-          
-          {/* Section 1: OCR Processing Summary & Product Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* OCR Summary */}
-            <Card className="border border-gray-100 shadow-sm">
-              <CardHeader className="bg-slate-50 border-b border-gray-100 pb-3">
-                <CardTitle className="text-sm font-bold text-gray-800">OCR Processing Summary</CardTitle>
-                <CardDescription>Intake documents state metrics.</CardDescription>
-              </CardHeader>
-              <CardContent className="p-4 grid grid-cols-2 gap-3 text-center text-xs font-bold text-slate-800">
-                <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
-                  <div className="text-sm font-black">{ocrProcessing + ocrUploaded}</div>
-                  <div className="text-[9px] text-gray-400 font-bold uppercase mt-0.5">Processing</div>
-                </div>
-                <div className="p-2.5 bg-amber-50 border border-amber-100 rounded-xl text-amber-700">
-                  <div className="text-sm font-black">{pendingReviews}</div>
-                  <div className="text-[9px] text-amber-500 font-bold uppercase mt-0.5">Review Required</div>
-                </div>
-                <div className="p-2.5 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700">
-                  <div className="text-sm font-black">{approvedDocs}</div>
-                  <div className="text-[9px] text-emerald-500 font-bold uppercase mt-0.5">Approved</div>
-                </div>
-                <div className="p-2.5 bg-rose-50 border border-rose-100 rounded-xl text-rose-700">
-                  <div className="text-sm font-black">{rejectedDocs}</div>
-                  <div className="text-[9px] text-rose-500 font-bold uppercase mt-0.5">Rejected</div>
-                </div>
-                <div className="p-2.5 bg-blue-50 border border-blue-100 rounded-xl text-blue-700 col-span-2">
-                  <div className="text-sm font-black">{completedDocs}</div>
-                  <div className="text-[9px] text-blue-500 font-bold uppercase mt-0.5">Completed (Fully Stored)</div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Product & Inventory Summary */}
-            <Card className="border border-gray-100 shadow-sm">
-              <CardHeader className="bg-slate-50 border-b border-gray-100 pb-3">
-                <CardTitle className="text-sm font-bold text-gray-800">Product & Inventory Summary</CardTitle>
-                <CardDescription>Consolidated stock ledger balances.</CardDescription>
-              </CardHeader>
-              <CardContent className="p-4 grid grid-cols-2 gap-3 text-center text-xs font-bold text-slate-800">
-                <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
-                  <div className="text-sm font-black">{totalProducts}</div>
-                  <div className="text-[9px] text-gray-400 font-bold uppercase mt-0.5">Total Products</div>
-                </div>
-                <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
-                  <div className="text-sm font-black">{totalStock}</div>
-                  <div className="text-[9px] text-gray-400 font-bold uppercase mt-0.5">Total Inventory</div>
-                </div>
-                <div className="p-2.5 bg-amber-50 border border-amber-100 rounded-xl text-amber-700 col-span-2 sm:col-span-1">
-                  <div className="text-sm font-black">{lowStockCount}</div>
-                  <div className="text-[9px] text-amber-500 font-bold uppercase mt-0.5">Low Stock</div>
-                </div>
-                <div className="p-2.5 bg-rose-50 border border-rose-100 rounded-xl text-rose-700 col-span-2 sm:col-span-1">
-                  <div className="text-sm font-black">{outOfStockCount}</div>
-                  <div className="text-[9px] text-rose-500 font-bold uppercase mt-0.5">Out of Stock</div>
-                </div>
-              </CardContent>
-            </Card>
-
-          </div>
-
-          {/* Section 2: Recent OCR Documents Table */}
-          <Card className="border border-gray-100 shadow-sm overflow-hidden">
+      <div className="space-y-6">
+        {/* Row of 3 Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+          {/* OCR Processing Summary */}
+          <Card className="border border-gray-100 shadow-sm h-full flex flex-col">
             <CardHeader className="bg-slate-50 border-b border-gray-100 pb-3">
-              <CardTitle className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
-                <FileText className="w-4.5 h-4.5 text-[#0071C1]" />
-                Recent OCR Documents
-              </CardTitle>
-              <CardDescription>Intake filings parser pipeline ledger.</CardDescription>
+              <CardTitle className="text-sm font-bold text-gray-800">OCR Processing Summary</CardTitle>
+              <CardDescription>Intake documents state metrics.</CardDescription>
             </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Document Name</TableHead>
-                    <TableHead>Document Type</TableHead>
-                    <TableHead className="text-center">Confidence Score</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Upload Date</TableHead>
-                    <TableHead>Uploaded By</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {ocrDocuments.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-6 text-gray-500">No documents uploaded.</TableCell>
-                    </TableRow>
-                  ) : (
-                    ocrDocuments.slice(0, 4).map((doc) => (
-                      <TableRow key={doc.id}>
-                        <TableCell>
-                          <div className="font-bold text-gray-900 text-xs">{doc.fileName}</div>
-                          <div className="text-[9px] text-gray-400 font-mono">{doc.id}</div>
-                        </TableCell>
-                        <TableCell className="text-gray-500 text-xs font-semibold">{doc.documentType || 'Invoice'}</TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant={doc.confidenceScore >= 90 ? 'success' : 'warning'} className="text-[10px] font-bold">
-                            {doc.confidenceScore}%
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={
-                            doc.status === 'VERIFIED' ? 'success' : 
-                            doc.status === 'REJECTED' ? 'error' : 'warning'
-                          } className="text-[9px] uppercase font-bold">
-                            {doc.status === 'VERIFIED' ? 'Approved' : doc.status === 'REJECTED' ? 'Rejected' : 'Review Required'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-gray-500 text-xs">{new Date(doc.uploadedAt).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-gray-400 font-mono text-[10px] truncate max-w-[100px]">{doc.uploadedBy}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-        </div>
-
-        {/* Right Column (Quick Actions & Recommendations/Allocations Previews) */}
-        <div className="space-y-6">
-          
-          {/* Quick Actions Shortcuts */}
-          <Card className="border border-gray-150 shadow-sm bg-gradient-to-b from-[#F9FCFF] to-white">
-            <CardHeader className="border-b border-gray-100 pb-3">
-              <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-blue-500 animate-pulse" />
-                Officer Quick Links
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-2">
-              <Button className="w-full text-xs justify-center" onClick={() => navigate('/inventory/ocr-center')}>OCR Processing Hub</Button>
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" className="text-xs justify-center" onClick={() => navigate('/inventory/products')}>Products Catalog</Button>
-                <Button variant="outline" className="text-xs justify-center" onClick={() => navigate('/inventory/inventory')}>Stock Balances</Button>
+            <CardContent className="p-4 grid grid-cols-2 gap-3 text-center text-xs font-bold text-slate-800 flex-grow">
+              <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+                <div className="text-sm font-black">{ocrProcessing + ocrUploaded}</div>
+                <div className="text-[9px] text-gray-400 font-bold uppercase mt-0.5">Processing</div>
+              </div>
+              <div className="p-2.5 bg-amber-50 border border-amber-100 rounded-xl text-amber-700">
+                <div className="text-sm font-black">{pendingReviews}</div>
+                <div className="text-[9px] text-amber-500 font-bold uppercase mt-0.5">Review Required</div>
+              </div>
+              <div className="p-2.5 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700">
+                <div className="text-sm font-black">{approvedDocs}</div>
+                <div className="text-[9px] text-emerald-500 font-bold uppercase mt-0.5">Approved</div>
+              </div>
+              <div className="p-2.5 bg-rose-50 border border-rose-100 rounded-xl text-rose-700">
+                <div className="text-sm font-black">{rejectedDocs}</div>
+                <div className="text-[9px] text-rose-500 font-bold uppercase mt-0.5">Rejected</div>
+              </div>
+              <div className="p-2.5 bg-blue-50 border border-blue-100 rounded-xl text-blue-700 col-span-2">
+                <div className="text-sm font-black">{completedDocs}</div>
+                <div className="text-[9px] text-blue-500 font-bold uppercase mt-0.5">Completed (Fully Stored)</div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Section 4: Recommendation Monitor Preview */}
-          <Card className="border border-gray-100 shadow-sm">
+          {/* Product & Inventory Summary */}
+          <Card className="border border-gray-100 shadow-sm h-full flex flex-col">
             <CardHeader className="bg-slate-50 border-b border-gray-100 pb-3">
-              <CardTitle className="text-sm font-bold text-gray-800">Recommendation Monitor Preview</CardTitle>
-              <CardDescription>Latest placement slotting suggestions.</CardDescription>
+              <CardTitle className="text-sm font-bold text-gray-800">Product & Inventory Summary</CardTitle>
+              <CardDescription>Consolidated stock ledger balances.</CardDescription>
             </CardHeader>
-            <CardContent className="p-0 overflow-x-auto">
-              <Table className="min-w-full divide-y divide-gray-100 text-left text-xs">
-                <TableHeader className="bg-slate-50 text-slate-500 font-bold uppercase text-[9px]">
-                  <TableRow>
-                    <TableHead className="p-3">Product</TableHead>
-                    <TableHead className="p-3">Zone/ZG</TableHead>
-                    <TableHead className="p-3 text-center">Score</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="divide-y divide-gray-100">
-                  {aiRecommendations.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={3} className="text-center py-4 text-gray-500">No proposals recorded.</TableCell>
-                    </TableRow>
-                  ) : (
-                    aiRecommendations.slice(0, 3).map((rec) => {
-                      const recommendedZg = rec.zone === 'Zone D' ? 'Cold Storage' : 'Ambient';
-                      return (
-                        <TableRow key={rec.id} className="hover:bg-slate-50/10">
-                          <TableCell className="p-3">
-                            <div className="font-bold text-gray-900 text-[11px] truncate max-w-[120px]">{rec.productName}</div>
-                            <div className="text-[9px] text-gray-400 font-mono">{rec.sku}</div>
-                          </TableCell>
-                          <TableCell className="p-3 text-gray-500 font-semibold text-[11px]">{rec.zone} ({recommendedZg})</TableCell>
-                          <TableCell className="p-3 text-center">
-                            <Badge variant={rec.confidence >= 90 ? 'success' : 'warning'} className="font-mono font-bold text-[9px]">
-                              {rec.confidence}%
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
+            <CardContent className="p-4 grid grid-cols-2 gap-3 text-center text-xs font-bold text-slate-800 flex-grow">
+              <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+                <div className="text-sm font-black">{totalProducts}</div>
+                <div className="text-[9px] text-gray-400 font-bold uppercase mt-0.5">Total Products</div>
+              </div>
+              <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+                <div className="text-sm font-black">{totalStock}</div>
+                <div className="text-[9px] text-gray-400 font-bold uppercase mt-0.5">Total Inventory</div>
+              </div>
+              <div className="p-2.5 bg-amber-50 border border-amber-100 rounded-xl text-amber-700 col-span-2 sm:col-span-1">
+                <div className="text-sm font-black">{lowStockCount}</div>
+                <div className="text-[9px] text-amber-500 font-bold uppercase mt-0.5">Low Stock</div>
+              </div>
+              <div className="p-2.5 bg-rose-50 border border-rose-100 rounded-xl text-rose-700 col-span-2 sm:col-span-1">
+                <div className="text-sm font-black">{outOfStockCount}</div>
+                <div className="text-[9px] text-rose-500 font-bold uppercase mt-0.5">Out of Stock</div>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Section 5: Allocation Monitor Preview */}
-          <Card className="border border-gray-100 shadow-sm">
-            <CardHeader className="bg-slate-50 border-b border-gray-100 pb-3">
-              <CardTitle className="text-sm font-bold text-gray-800">Allocation Monitor Preview</CardTitle>
-              <CardDescription>Real-time slotting transit stages.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0 overflow-x-auto">
-              <Table className="min-w-full divide-y divide-gray-100 text-left text-xs">
-                <TableHeader className="bg-slate-50 text-slate-500 font-bold uppercase text-[9px]">
-                  <TableRow>
-                    <TableHead className="p-3">Product</TableHead>
-                    <TableHead className="p-3">Bin Code</TableHead>
-                    <TableHead className="p-3">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="divide-y divide-gray-100">
-                  {inboundReceipts.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={3} className="text-center py-4 text-gray-500">No active allocations.</TableCell>
-                    </TableRow>
-                  ) : (
-                    inboundReceipts.slice(0, 3).map((r) => {
-                      const rec = aiRecommendations.find(a => a.inboundId === r.id) || {};
-                      const bin = r.bin || rec.bin || 'Pending';
-                      
-                      let statusLabel = 'Allocated';
-                      let statusVariant = 'primary';
-                      if (r.status === 'STORED') {
-                        statusLabel = 'Stored';
-                        statusVariant = 'success';
-                      } else if (r.status === 'IN_PROGRESS' || r.status === 'ASSIGNED_TO_STAFF') {
-                        statusLabel = 'In Progress';
-                        statusVariant = 'warning';
-                      }
+          {/* Upload Manifest Card */}
+          <Card 
+            className="border border-gray-150 shadow-sm relative overflow-hidden cursor-pointer hover:shadow-md transition-all duration-200 h-full flex flex-col"
+            style={{ borderTop: '4px solid #3b82f6' }}
+            onClick={handleCardClick}
+          >
+            <CardContent className="p-5 flex-grow flex flex-col justify-between">
+              {/* Hidden File Input */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp"
+              />
+              
+              <div>
+                {/* Top Row: Icon on Left, Total Count on Right */}
+                <div className="flex justify-between items-start mb-4">
+                  <div className="p-3 bg-blue-50 rounded-xl text-[#0071C1] flex items-center justify-center">
+                    {uploading ? (
+                      <Loader2 className="w-6 h-6 animate-spin text-[#0071C1]" />
+                    ) : (
+                      <UploadCloud className="w-6 h-6 text-[#0071C1]" />
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-slate-800 leading-none">{todayUploads}</div>
+                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Total</div>
+                  </div>
+                </div>
 
-                      return (
-                        <TableRow key={r.id} className="hover:bg-slate-50/10">
-                          <TableCell className="p-3">
-                            <div className="font-bold text-gray-900 text-[11px] truncate max-w-[120px]">{r.productName}</div>
-                            <div className="text-[9px] text-gray-400 font-mono">{r.sku}</div>
-                          </TableCell>
-                          <TableCell className="p-3 font-mono text-[11px] text-blue-700 font-bold">{bin}</TableCell>
-                          <TableCell className="p-3">
-                            <Badge variant={statusVariant} className="text-[9px] font-bold uppercase">{statusLabel}</Badge>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
+                {/* Middle: Title & Description */}
+                <div className="space-y-1.5">
+                  <h3 className="text-lg font-bold text-slate-800 tracking-tight">Upload Manifest</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Upload new inbound invoices, cargo packing slips, or bills of lading to extract data.
+                  </p>
+                </div>
+              </div>
+
+              {/* Bottom: Configure Queue Link */}
+              <div className="mt-5 pt-1">
+                <span 
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent triggering the file upload input
+                    navigate('/inventory/inbound');
+                  }}
+                  className="inline-flex items-center text-xs font-semibold text-[#0071C1] hover:text-blue-700 hover:underline gap-1 transition-colors cursor-pointer"
+                >
+                  Configure Queue <ChevronRight className="w-3.5 h-3.5" />
+                </span>
+              </div>
             </CardContent>
           </Card>
-
         </div>
+
+        {/* Recent OCR Documents (Full Width) */}
+        <Card className="border border-gray-100 shadow-sm overflow-hidden">
+          <CardHeader className="bg-slate-50 border-b border-gray-100 pb-3">
+            <CardTitle className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
+              <FileText className="w-4.5 h-4.5 text-[#0071C1]" />
+              Recent OCR Documents
+            </CardTitle>
+            <CardDescription>Intake filings parser pipeline ledger.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Document Name</TableHead>
+                  <TableHead>Document Type</TableHead>
+                  <TableHead className="text-center">Confidence Score</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Upload Date</TableHead>
+                  <TableHead>Uploaded By</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ocrDocuments.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-6 text-gray-500">No documents uploaded.</TableCell>
+                  </TableRow>
+                ) : (
+                  ocrDocuments.slice(0, 4).map((doc) => (
+                    <TableRow key={doc.id}>
+                      <TableCell>
+                        <div className="font-bold text-gray-900 text-xs">{doc.fileName}</div>
+                        <div className="text-[9px] text-gray-400 font-mono">{doc.id}</div>
+                      </TableCell>
+                      <TableCell className="text-gray-500 text-xs font-semibold">{doc.documentType || 'Invoice'}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant={doc.confidenceScore >= 90 ? 'success' : 'warning'} className="text-[10px] font-bold">
+                          {doc.confidenceScore}%
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={
+                          doc.status === 'VERIFIED' ? 'success' : 
+                          doc.status === 'REJECTED' ? 'error' : 'warning'
+                        } className="text-[9px] uppercase font-bold">
+                          {doc.status === 'VERIFIED' ? 'Approved' : doc.status === 'REJECTED' ? 'Rejected' : 'Review Required'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-gray-500 text-xs">{new Date(doc.uploadedAt).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-gray-400 font-mono text-[10px] truncate max-w-[100px]">{doc.uploadedBy}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
 
       </div>
     </div>

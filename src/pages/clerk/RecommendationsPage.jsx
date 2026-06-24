@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { 
   Card, 
@@ -20,6 +21,7 @@ import {
   SearchFilterBar,
   AlertBanner
 } from 'shared-ui';
+import SharedKeyValueCard from '../../components/shared/SharedKeyValueCard';
 import { Lightbulb, ChevronRight, Eye, Info, Sparkles, Filter, Settings, Cpu, HelpCircle, AlertTriangle, Loader2, CheckSquare } from 'lucide-react';
 import { 
   getRecommendationsApi, 
@@ -30,8 +32,10 @@ import {
   completeBinAllocationApi
 } from '../../services/recommendationService';
 import { getBins } from '../../services/warehouseStructureService';
+import { getProductBySkuApi } from '../../services/productService';
 
 export default function RecommendationsPage() {
+  const navigate = useNavigate();
   const { 
     aiRecommendations = [], 
     inboundReceipts = [], 
@@ -255,14 +259,17 @@ export default function RecommendationsPage() {
         setRecommendations(mapped);
         setFallbackUsed(false);
       } else {
-        setRecommendations(aiRecommendations);
-        setFallbackUsed(true);
+        const msg = 'No recommendations returned from API.';
+        setApiError(msg);
+        setRecommendations([]);
+        setFallbackUsed(false);
       }
     } catch (err) {
-      console.warn("API Error - falling back locally:", err);
-      setApiError("Recommendations API offline. Showing cached results.");
-      setRecommendations(aiRecommendations);
-      setFallbackUsed(true);
+      console.warn('API Error - recommendations fetch failed:', err);
+      const msg = 'Recommendations API unavailable.';
+      setApiError(msg);
+      setRecommendations([]);
+      setFallbackUsed(false);
     } finally {
       setLoading(false);
     }
@@ -375,7 +382,7 @@ export default function RecommendationsPage() {
   const handleGenerateStorageRecommendation = async (receipt) => {
     console.log('[Recommendations] Suggest Storage Slot clicked', receipt);
 
-    // Open the results panel immediately regardless of UUID availability
+    // Open the results panel immediately
     setActiveLiveItemId(receipt.id);
     setLiveRecLoading(true);
     setLiveRecError(null);
@@ -384,54 +391,50 @@ export default function RecommendationsPage() {
     setLiveAllocError(null);
 
     const loadedBins = await ensureBinsLoaded();
-    const productUuid = getProductUuidForSku(receipt.sku);
+    let productUuid = receipt.productId || getProductUuidForSku(receipt.sku);
+
+    if (!productUuid && receipt.sku) {
+      try {
+        console.log(`[Recommendations] Product UUID not found locally for SKU "${receipt.sku}". Fetching from backend...`);
+        const backendProd = await getProductBySkuApi(receipt.sku);
+        if (backendProd) {
+          productUuid = backendProd.productId || backendProd.id;
+          console.log(`[Recommendations] Resolved SKU "${receipt.sku}" to UUID "${productUuid}" via backend.`);
+        }
+      } catch (err) {
+        console.warn(`[Recommendations] Backend SKU lookup failed for "${receipt.sku}":`, err);
+      }
+    }
 
     if (!productUuid) {
-      console.warn(`[Recommendations] Product UUID not found for SKU "${receipt.sku}" — using local context fallback for storage recommendation.`);
-      
-      // Local fallback: derive zone suggestion from receipt data
-      const fallbackBin = pickFallbackBin(loadedBins);
-      const fallbackZone = fallbackBin?.zone || receipt.storageZone || 'Zone A';
-      const fallbackZoneGroup = fallbackZone === 'Zone D' ? 'Cold Storage ZG' : 'Ambient Storage ZG';
-
-      setLiveRecResult({
-        zoneGroup: fallbackZoneGroup,
-        zone: fallbackZone,
-        score: 88,
-        reason: `Local fallback: Product SKU "${receipt.sku}" is not yet registered in the product catalog. Storage zone "${fallbackZone}" selected from available bin inventory. Confirm & Allocate will assign a real bin from context.`,
-        isFallback: true,
-      });
+      const msg = 'Backend UUID missing. Please refresh inbound data.';
+      console.warn(`[Recommendations] ${msg}`);
+      setLiveRecError(msg);
       setLiveRecLoading(false);
-      showToast(`Product UUID not found for SKU "${receipt.sku}". Showing local fallback recommendation.`, 'warning');
+      showToast(msg, 'error');
       return;
     }
 
     try {
       const res = await generateStorageRecommendationApi(productUuid);
-      setLiveRecResult({
+      const result = {
         zoneGroup: res.zone_group || 'N/A',
         zone: res.zone || 'N/A',
         score: res.recommendation_score ? Math.round(Number(res.recommendation_score) * 100) : 95,
         reason: res.recommendation_reason || 'AI dynamic slotting layout verified.',
-        version: res.recommendation_version || 'v1'
-      });
+        orientation: res.selected_orientation || '-',
+        maxUnits: res.max_units || '-',
+        utilizationScore: res.utilization_score || '-',
+        version: res.recommendation_version || 'v1',
+        isFallback: false,
+      };
+      setLiveRecResult(result);
       showToast('Storage recommendation fetched successfully!');
     } catch (err) {
-      console.error("[Recommendations] Storage recommendation API failed, using local fallback:", err);
-
-      // Local fallback on API failure
-      const fallbackBin = pickFallbackBin(loadedBins);
-      const fallbackZone = fallbackBin?.zone || 'Zone A';
-      const fallbackZoneGroup = fallbackZone === 'Zone D' ? 'Cold Storage ZG' : 'Ambient Storage ZG';
-
-      setLiveRecResult({
-        zoneGroup: fallbackZoneGroup,
-        zone: fallbackZone,
-        score: 85,
-        reason: `Backend API offline. Local fallback: Selected zone "${fallbackZone}" from available bin inventory. You can proceed with Confirm & Allocate Bin to assign a physical slot.`,
-        isFallback: true,
-      });
-      showToast('Backend offline — showing local fallback recommendation.', 'warning');
+      console.error('[Recommendations] Storage recommendation API failed:', err);
+      const msg = 'Backend recommendation API unavailable.';
+      setLiveRecError(msg);
+      showToast(msg, 'error');
     } finally {
       setLiveRecLoading(false);
     }
@@ -510,62 +513,41 @@ export default function RecommendationsPage() {
     setLiveRecResult(null);
     setLiveRecError(null);
 
-    const loadedBins = await ensureBinsLoaded();
-    const productUuid = getProductUuidForSku(receipt.sku);
+    // Ensure bins are loaded (needed for UI rendering later)
+    await ensureBinsLoaded();
 
-    if (!productUuid) {
-      console.warn(`[Recommendations] Product UUID not found for SKU "${receipt.sku}" — using local context bin fallback.`);
-
-      // Use a real bin from context
-      const fallbackBin = pickFallbackBin(loadedBins);
-
-      if (!fallbackBin) {
-        const msg = `No available bins found in context. Please ensure bins are loaded (Admin → Bins).`;
-        console.error('[Recommendations]', msg);
-        setLiveAllocError(msg);
-        setLiveAllocLoading(false);
-        showToast(msg, 'error');
-        return;
+    // Resolve product UUID – try local cache then backend lookup
+    let productUuid = receipt.productId || getProductUuidForSku(receipt.sku);
+    if (!productUuid && receipt.sku) {
+      try {
+        console.log(`[Recommendations] Product UUID not found locally for SKU "${receipt.sku}". Fetching from backend...`);
+        const backendProd = await getProductBySkuApi(receipt.sku);
+        if (backendProd) {
+          productUuid = backendProd.productId || backendProd.id;
+          console.log(`[Recommendations] Resolved SKU "${receipt.sku}" to UUID "${productUuid}" via backend.`);
+        }
+      } catch (err) {
+        console.warn(`[Recommendations] Backend SKU lookup failed for "${receipt.sku}":`, err);
       }
+    }
 
-      const localResult = {
-        binCode: fallbackBin.code,
-        shelf: fallbackBin.shelf || fallbackBin.shelfLevel || '1',
-        rack: fallbackBin.rack || fallbackBin.rackCode || 'RACK-001',
-        zone: fallbackBin.zone || 'Zone A',
-        score: 87,
-        reason: `Local context fallback: Bin "${fallbackBin.code}" selected from loaded warehouse inventory. Product SKU "${receipt.sku}" not in product catalog — bin allocation performed using real bin data from context.`,
-        routeDistance: '35',
-        routePath: [`Receiving Dock`, `${fallbackBin.zone || 'Zone A'}`, `${fallbackBin.code}`],
-        storageStatus: 'ALLOCATED',
-        isFallback: true,
-      };
-
-      console.log('[Recommendations] Local fallback bin allocation result:', localResult);
-      setLiveAllocResult(localResult);
+    // If we still don't have a UUID, abort with a clear message
+    if (!productUuid) {
+      const msg = 'Backend UUID missing. Please refresh inbound data.';
+      console.warn(`[Recommendations] ${msg}`);
+      setLiveAllocError(msg);
       setLiveAllocLoading(false);
-
-      commitAllocation(
-        receipt,
-        fallbackBin.code,
-        fallbackBin.shelf || fallbackBin.shelfLevel || '1',
-        fallbackBin.rack || fallbackBin.rackCode || 'RACK-001',
-        fallbackBin.zone || 'Zone A',
-        87,
-        localResult.reason
-      );
-
-      showToast(`Bin "${fallbackBin.code}" allocated from local context. Select operator below and dispatch.`, 'success');
+      showToast(msg, 'error');
       return;
     }
 
-    // --- Backend API path ---
+    // Call the real backend allocation endpoint
     try {
       const res = await generateBinAllocationApi(productUuid, receipt._rawBackendId || receipt.id);
       const apiResult = {
         binCode: res.bin?.code || 'N/A',
-        shelf: res.shelf?.number || 'N/A',
         rack: res.rack?.code || 'N/A',
+        shelf: res.shelf?.number || 'N/A',
         zone: res.zone || 'Zone A',
         score: res.allocation_score ? Math.round(Number(res.allocation_score) * 100) : 95,
         reason: res.allocation_reason || 'AI spatial assignment completed.',
@@ -576,6 +558,7 @@ export default function RecommendationsPage() {
       };
       setLiveAllocResult(apiResult);
 
+      // Commit allocation to local state
       commitAllocation(
         receipt,
         apiResult.binCode,
@@ -586,23 +569,42 @@ export default function RecommendationsPage() {
         apiResult.reason
       );
 
-      showToast(`Bin "${apiResult.binCode}" allocated successfully!`);
+      showToast(`Bin "${apiResult.binCode}" allocated successfully! Redirecting to Allocations...`);
       if (fetchData) {
-        await fetchData(true);
+        fetchData(true).catch(e => console.warn('fetchData background refresh error:', e));
       }
+      setTimeout(() => {
+        navigate('/inventory/allocations');
+      }, 1500);
     } catch (err) {
-      console.error("[Recommendations] Bin allocation API failed, using local context fallback:", err);
-
+      console.error('[Recommendations] Bin allocation API failed:', err);
+      const msg = 'Backend recommendation API unavailable.';
+      setLiveAllocError(msg);
+      showToast(msg, 'error');
+      // Attempt fallback using available bins
+      const loadedBins = await ensureBinsLoaded();
+      // Resolve product UUID if needed
+      let productUuid = receipt.productId || getProductUuidForSku(receipt.sku);
+      if (!productUuid && receipt.sku) {
+        try {
+          console.log(`[Recommendations] Product UUID not found locally for SKU "${receipt.sku}". Fetching from backend...`);
+          const backendProd = await getProductBySkuApi(receipt.sku);
+          if (backendProd) {
+            productUuid = backendProd.productId || backendProd.id;
+            console.log(`[Recommendations] Successfully resolved SKU "${receipt.sku}" to UUID "${productUuid}" via backend.`);
+          }
+        } catch (err) {
+          console.warn(`[Recommendations] Backend SKU lookup failed for "${receipt.sku}":`, err);
+        }
+      }
       // Local fallback on API failure
       const fallbackBin = pickFallbackBin(loadedBins);
-
       if (!fallbackBin) {
-        const msg = `Bin allocation API offline and no bins found in context. Please check Admin → Bins.`;
-        setLiveAllocError(msg);
-        showToast(msg, 'error');
+        const noBinMsg = `Bin allocation API offline and no bins found in context. Please check Admin → Bins.`;
+        setLiveAllocError(noBinMsg);
+        showToast(noBinMsg, 'error');
         return;
       }
-
       const localResult = {
         binCode: fallbackBin.code,
         shelf: fallbackBin.shelf || fallbackBin.shelfLevel || '1',
@@ -615,10 +617,8 @@ export default function RecommendationsPage() {
         storageStatus: 'ALLOCATED',
         isFallback: true,
       };
-
       console.log('[Recommendations] API failed fallback bin allocation result:', localResult);
       setLiveAllocResult(localResult);
-
       commitAllocation(
         receipt,
         fallbackBin.code,
@@ -628,8 +628,10 @@ export default function RecommendationsPage() {
         84,
         localResult.reason
       );
-
-      showToast(`Backend offline — Bin "${fallbackBin.code}" allocated from local context.`, 'warning');
+      showToast(`Backend offline — Bin "${fallbackBin.code}" allocated from local context. Redirecting to Allocations...`, 'warning');
+      setTimeout(() => {
+        navigate('/inventory/allocations');
+      }, 1500);
     } finally {
       setLiveAllocLoading(false);
     }
@@ -875,11 +877,8 @@ export default function RecommendationsPage() {
                                           </div>
                                         ) : liveRecResult ? (
                                           <div className="space-y-2 text-xs font-semibold text-slate-700 text-left">
-                                            {liveRecResult.isFallback && (
-                                              <div className="flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded font-bold">
-                                                <AlertTriangle className="w-3 h-3 shrink-0" />
-                                                Local fallback — backend UUID lookup unavailable
-                                              </div>
+                                            
+  
                                             )}
                                             <div className="flex justify-between items-center">
                                               <span>Recommended Zone: <span className="font-bold text-gray-900">{liveRecResult.zone}</span></span>
@@ -916,12 +915,7 @@ export default function RecommendationsPage() {
                                           </div>
                                         ) : liveAllocResult ? (
                                           <div className="space-y-3 text-xs font-semibold text-slate-700 text-left font-sans">
-                                            {liveAllocResult.isFallback && (
-                                              <div className="flex items-center gap-1 text-[10px] text-blue-700 bg-blue-50 border border-blue-200 px-2 py-1 rounded font-bold">
-                                                <AlertTriangle className="w-3 h-3 shrink-0" />
-                                                Local context bin — backend offline or UUID unavailable
-                                              </div>
-                                            )}
+
                                             <div className="flex justify-between items-center">
                                               <span>Allocated Bin: <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">{liveAllocResult.binCode}</span></span>
                                               <Badge variant="primary" className="font-mono">{liveAllocResult.score}% Fit Score</Badge>
@@ -1055,97 +1049,6 @@ export default function RecommendationsPage() {
             </CardContent>
           </Card>
 
-          {/* Search Toolbar */}
-          <div className="space-y-3">
-            <SearchFilterBar 
-              searchPlaceholder="Search recommendations by SKU, title, or bin..." 
-              searchValue={searchQuery}
-              onSearchChange={setSearchQuery} 
-            />
-          </div>
-
-          {loading && (
-            <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border-b border-blue-100 text-xs text-blue-700 font-semibold">
-              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-              Loading recommendations from WMS AI...
-            </div>
-          )}
-
-          {!loading && apiError && (
-            <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-100 text-xs text-amber-800 font-semibold rounded-xl">
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-              {apiError}
-            </div>
-          )}
-
-          {/* Recommendations Table */}
-          <Card className="border border-gray-100 shadow-sm overflow-hidden">
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Recommended Zone Group</TableHead>
-                    <TableHead>Recommended Zone</TableHead>
-                    <TableHead className="text-center">Recommendation Score</TableHead>
-                    <TableHead>Recommendation Reason</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedRecs.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-12 text-gray-500 font-semibold text-xs">
-                        No active storage recommendations found.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    paginatedRecs.map((rec) => {
-                      const recommendedZg = rec.zone === 'Zone D' ? 'Cold Storage ZG' : 'Ambient Storage ZG';
-                      return (
-                        <TableRow key={rec.id} className="hover:bg-slate-50/20 transition-colors">
-                          <TableCell>
-                            <div className="font-bold text-gray-900 text-xs">{rec.productName}</div>
-                            <div className="text-[10px] text-gray-400 font-mono mt-0.5">{rec.sku}</div>
-                          </TableCell>
-                          <TableCell className="text-xs font-semibold text-slate-700">{recommendedZg}</TableCell>
-                          <TableCell className="text-xs text-slate-700 font-semibold">{rec.zone} &bull; Bin {rec.bin}</TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant={rec.confidence >= 90 ? 'success' : 'warning'} className="text-[10px] font-bold font-mono">
-                              {rec.confidence}%
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-xs font-medium text-gray-500 max-w-xs truncate" title={rec.reason}>
-                            {rec.reason}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-[11px] h-7 px-2.5 font-bold"
-                              onClick={() => setSelectedRec(rec)}
-                            >
-                              <Eye className="w-3.5 h-3.5 mr-1" />
-                              Inspect
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-              <div className="p-4 border-t border-gray-100">
-                <Pagination 
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  totalItems={filteredRecs.length}
-                  pageSize={pageSize}
-                  onPageChange={setCurrentPage}
-                />
-              </div>
-            </CardContent>
-          </Card>
         </>
       ) : (
         /* Allocation tools: Suggest Bin & 3D Simulation */

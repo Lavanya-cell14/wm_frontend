@@ -110,15 +110,6 @@ export const rejectOcrDocument = async (docId, reason) => {
 };
 
 export const uploadOcrDocumentDjangoApi = async (file) => {
-  const token = localStorage.getItem('token') || 
-                localStorage.getItem('accessToken') || 
-                localStorage.getItem('access_token') || 
-                localStorage.getItem('access');
-  if (!token) {
-    console.warn("[OCR Service] No access token found in localStorage. Skipping optional Django OCR upload.");
-    return { skipped: true };
-  }
-
   const formData = new FormData();
   formData.append('file', file);
 

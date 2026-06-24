@@ -53,12 +53,6 @@ export const sidebarItems = [
     allowedRoles: ['RECEIVING_INVENTORY_OFFICER'],
   },
   {
-    name: 'OCR Center',
-    path: '/inventory/ocr-center',
-    icon: UploadCloud,
-    allowedRoles: ['RECEIVING_INVENTORY_OFFICER'],
-  },
-  {
     name: 'Inbound Queue',
     path: '/inventory/inbound',
     icon: ArrowDownToLine,

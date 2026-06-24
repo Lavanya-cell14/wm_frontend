@@ -199,12 +199,16 @@ export default function OcrUpload() {
     }, 90000);
 
     // 1. Optional Django/backend sync try/catch
+    let backendDocId = null;
     try {
       console.log("[OCR] Optional backend sync started");
       console.warn("[OCR Upload] Saving file to Django BE via /api/ocr/upload/");
       const djangoRes = await uploadOcrDocumentDjangoApi(activeDoc.fileObject);
       if (djangoRes?.skipped) {
         showToast("Backend login token missing. Django OCR sync skipped.", "warning");
+      } else if (djangoRes?.document_id) {
+        backendDocId = djangoRes.document_id;
+        console.log("[OCR] Saved to Django backend. Received UUID:", backendDocId);
       }
     } catch (djangoErr) {
       console.error("[OCR] Optional backend sync failed:", djangoErr);
@@ -281,6 +285,7 @@ export default function OcrUpload() {
         d.id === activeFileId 
           ? {
               ...d,
+              id: backendDocId || d.id,
               status: 'VERIFICATION_PENDING',
               confidenceScore: 50,
               extractedItems: fallbackItems,
@@ -295,7 +300,10 @@ export default function OcrUpload() {
           : d
       ));
 
-      localStorage.setItem('latestProcessedDocId', activeFileId);
+      localStorage.setItem('latestProcessedDocId', backendDocId || activeFileId);
+      if (backendDocId) {
+        setActiveFileId(backendDocId);
+      }
       showToast('OCR response normalization failed. Document marked for Manual Review.', 'warning');
       setProcessing(false);
       setProcessingStartTime(null);
@@ -307,7 +315,7 @@ export default function OcrUpload() {
       d.id === activeFileId 
         ? {
             ...d,
-            id: d.id, // Keep the uploaded ID (e.g. OCR-117)
+            id: backendDocId || d.id, // Keep the uploaded ID (e.g. OCR-117) or use backend UUID
             documentNumber: normalized.documentNumber, // Attach normalized document number (e.g. INV-2026-1001)
             status: 'VERIFICATION_PENDING',
             confidenceScore: normalized.confidenceScore,
@@ -324,7 +332,10 @@ export default function OcrUpload() {
     ));
     
     console.log("[OCR Flow] Final document status after mapping: VERIFICATION_PENDING");
-    localStorage.setItem('latestProcessedDocId', activeFileId);
+    localStorage.setItem('latestProcessedDocId', backendDocId || activeFileId);
+    if (backendDocId) {
+      setActiveFileId(backendDocId);
+    }
 
     showToast('OCR analysis completed successfully! Ready for verification.');
 

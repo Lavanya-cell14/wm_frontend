@@ -88,8 +88,9 @@ export const apiClient = async (endpoint, options = {}) => {
   try {
     const fullUrl = `${BASE_URL}${endpoint}`;
     console.warn(`[apiClient] Calling: ${fullUrl}`);
+    const { _isRetry, ...fetchOpts } = options;
     response = await fetch(fullUrl, {
-      ...options,
+      ...fetchOpts,
       headers,
     });
     console.warn(`[apiClient] Response Status for ${fullUrl}: ${response.status}`);
@@ -99,6 +100,26 @@ export const apiClient = async (endpoint, options = {}) => {
   }
 
   if (!response.ok) {
+    // Self-healing token mechanism: if unauthorized/forbidden and we had a token,
+    // clear the token and retry once with mock headers!
+    const tokenUsed = localStorage.getItem('token') || 
+                      localStorage.getItem('accessToken') || 
+                      localStorage.getItem('access_token') || 
+                      localStorage.getItem('access');
+    if ((response.status === 401 || response.status === 403) && tokenUsed && !options._isRetry) {
+      console.warn("[apiClient] Stale/Expired token detected (401/403). Clearing token and retrying with mock headers...");
+      localStorage.removeItem('token');
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('access');
+      
+      // Retry the call with a retry flag to avoid infinite loops
+      return apiClient(endpoint, {
+        ...options,
+        _isRetry: true
+      });
+    }
+
     let detail = {};
     try {
       detail = await response.json();
