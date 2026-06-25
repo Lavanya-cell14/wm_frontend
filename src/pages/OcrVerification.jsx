@@ -13,7 +13,7 @@ export default function OcrVerification() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { ocrDocuments, setOcrDocuments, verifyOcrDocument, rejectOcrDocument, fetchData } = useWarehouse();
+  const { ocrDocuments, setOcrDocuments, verifyOcrDocument, rejectOcrDocument, fetchInboundData, fetchInventoryData } = useWarehouse();
   
   const [selectedDocId, setSelectedDocId] = useState('');
   const [docDetails, setDocDetails] = useState({ document_number: '', supplier: '' });
@@ -192,8 +192,11 @@ export default function OcrVerification() {
     verifyOcrDocument(selectedDocId, items, docDetails);
     
     // Sync state from backend
-    if (fetchData) {
-      await fetchData(true);
+    if (fetchInboundData) {
+      await fetchInboundData(true);
+    }
+    if (fetchInventoryData) {
+      await fetchInventoryData(true);
     }
     
     // Redirect to recommendations page

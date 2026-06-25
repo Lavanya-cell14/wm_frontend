@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
@@ -18,7 +18,7 @@ import {
   ChevronRight,
   Loader2
 } from 'lucide-react';
-import { processOcrDocument, uploadOcrDocumentDjangoApi, normalizeOcrResponse } from '../../services/ocrService';
+import { uploadOcrDocumentDjangoApi, fetchOcrDocumentApi, normalizeOcrResponse } from '../../services/ocrService';
 
 export default function ClerkDashboard() {
   const navigate = useNavigate();
@@ -57,29 +57,41 @@ export default function ClerkDashboard() {
     showToast(`Uploading ${file.name}...`, 'info');
 
     let backendDocId = null;
-    
-    // 1. Optional Django sync
+    const tempId = `OCR-${Math.floor(100 + Math.random() * 900)}`;
+
+    // 1. Upload to Django backend — Django proxies to OCR service via OCR_SERVICE_URL
+    let res = null;
     try {
       const djangoRes = await uploadOcrDocumentDjangoApi(file);
       if (djangoRes?.document_id) {
         backendDocId = djangoRes.document_id;
+        console.log("[Dashboard Upload] Django upload succeeded. Doc ID:", backendDocId);
+
+        // 2. Fetch extracted data from Django backend
+        const docDetails = await fetchOcrDocumentApi(backendDocId);
+        if (docDetails?.extracted_json) {
+          res = docDetails.extracted_json;
+        } else {
+          throw new Error("Django backend returned no extracted data. Check OCR service logs.");
+        }
+      } else {
+        throw new Error("Django backend did not return a document ID.");
       }
     } catch (err) {
-      console.warn("[Dashboard Upload] Django sync failed, continuing locally:", err);
+      console.warn("[Dashboard Upload] Django OCR pipeline failed, using manual review fallback:", err);
+      res = null;
     }
 
-    const tempId = backendDocId || `OCR-${Math.floor(100 + Math.random() * 900)}`;
+    const usedId = backendDocId || tempId;
 
-    // 2. OCR Extraction
+    // 3. Normalization
     try {
-      const res = await processOcrDocument(file);
-      
-      // 3. Normalization
-      const normalized = normalizeOcrResponse(res, { fileName: file.name, id: tempId });
+      if (!res) throw new Error("No OCR data returned from backend.");
+      const normalized = normalizeOcrResponse(res, { fileName: file.name, id: usedId });
       
       // 4. Construct OCR Document object
       const newDoc = {
-        id: tempId,
+        id: usedId,
         fileName: file.name,
         fileObject: file,
         documentType: normalized.documentType || 'Invoice',
@@ -96,9 +108,9 @@ export default function ClerkDashboard() {
       addOcrDocument(newDoc);
       showToast("OCR manifest processed successfully!", "success");
       
-      // Redirect to verification form with the new doc id
+      // Redirect to verification form with the backend doc id
       setTimeout(() => {
-        navigate('/inventory/ocr-review', { state: { documentId: tempId } });
+        navigate('/inventory/ocr-review', { state: { documentId: usedId } });
       }, 1200);
 
     } catch (err) {
@@ -128,7 +140,7 @@ export default function ClerkDashboard() {
       ];
 
       const fallbackDoc = {
-        id: tempId,
+        id: usedId,
         fileName: file.name,
         fileObject: file,
         documentType: 'Invoice',
@@ -146,36 +158,55 @@ export default function ClerkDashboard() {
       showToast("Extraction failed. Document marked for Manual Review.", "warning");
       
       setTimeout(() => {
-        navigate('/inventory/ocr-review', { state: { documentId: tempId } });
+        navigate('/inventory/ocr-review', { state: { documentId: usedId } });
       }, 1200);
     } finally {
       setUploading(false);
     }
   };
 
-  // Calculations for KPIs
-  const todayUploads = ocrDocuments.length;
-  const pendingReviews = ocrDocuments.filter(d => d.status === 'VERIFICATION_PENDING').length;
-  const approvedDocs = ocrDocuments.filter(d => d.status === 'VERIFIED').length;
-  const rejectedDocs = ocrDocuments.filter(d => d.status === 'REJECTED').length;
-  const completedDocs = inboundReceipts.filter(r => r.status === 'STORED').length;
-  
-  const totalProducts = inventory.length;
-  const totalStock = inventory.reduce((sum, item) => sum + (item.quantity || 0), 0);
-  const reservedStock = inventory.reduce((sum, item) => sum + (item.reserved || 0), 0);
-  const damagedStock = inventory.reduce((sum, item) => sum + (item.damaged || 0), 0);
-  const availableStock = Math.max(0, totalStock - reservedStock - damagedStock);
+  // Calculations for KPIs memoized with useMemo
+  const kpis = useMemo(() => {
+    const todayUploads = ocrDocuments.length;
+    const pendingReviews = ocrDocuments.filter(d => d.status === 'VERIFICATION_PENDING').length;
+    const approvedDocs = ocrDocuments.filter(d => d.status === 'VERIFIED').length;
+    const rejectedDocs = ocrDocuments.filter(d => d.status === 'REJECTED').length;
+    const completedDocs = inboundReceipts.filter(r => r.status === 'STORED').length;
+    
+    const totalProducts = inventory.length;
+    const totalStock = inventory.reduce((sum, item) => sum + (item.quantity || 0), 0);
+    const reservedStock = inventory.reduce((sum, item) => sum + (item.reserved || 0), 0);
+    const damagedStock = inventory.reduce((sum, item) => sum + (item.damaged || 0), 0);
+    const availableStock = Math.max(0, totalStock - reservedStock - damagedStock);
 
-  const pendingAllocations = inboundReceipts.filter(r => 
-    ['WAITING_FOR_BIN_ASSIGNMENT', 'BIN_SUGGESTED', 'BIN_ALLOCATED', 'ASSIGNED_TO_STAFF', 'IN_PROGRESS'].includes(r.status)
-  ).length;
+    const pendingAllocations = inboundReceipts.filter(r => 
+      ['WAITING_FOR_BIN_ASSIGNMENT', 'BIN_SUGGESTED', 'BIN_ALLOCATED', 'ASSIGNED_TO_STAFF', 'IN_PROGRESS'].includes(r.status)
+    ).length;
 
-  const lowStockCount = inventory.filter(item => (item.quantity || 0) <= (item.reorderLevel || 0) && (item.quantity || 0) > 0).length;
-  const outOfStockCount = inventory.filter(item => (item.quantity || 0) === 0).length;
+    const lowStockCount = inventory.filter(item => (item.quantity || 0) <= (item.reorderLevel || 0) && (item.quantity || 0) > 0).length;
+    const outOfStockCount = inventory.filter(item => (item.quantity || 0) === 0).length;
 
-  // OCR summary state counts
-  const ocrProcessing = ocrDocuments.filter(d => d.status === 'OCR_PROCESSING').length;
-  const ocrUploaded = ocrDocuments.filter(d => d.status === 'OCR_UPLOADED').length;
+    const ocrProcessing = ocrDocuments.filter(d => d.status === 'OCR_PROCESSING').length;
+    const ocrUploaded = ocrDocuments.filter(d => d.status === 'OCR_UPLOADED').length;
+
+    return {
+      todayUploads,
+      pendingReviews,
+      approvedDocs,
+      rejectedDocs,
+      completedDocs,
+      totalProducts,
+      totalStock,
+      reservedStock,
+      damagedStock,
+      availableStock,
+      pendingAllocations,
+      lowStockCount,
+      outOfStockCount,
+      ocrProcessing,
+      ocrUploaded
+    };
+  }, [inventory, ocrDocuments, inboundReceipts]);
 
   return (
     <div className="space-y-6">
@@ -207,11 +238,11 @@ export default function ClerkDashboard() {
 
       {/* KPI Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <StatCard title="Today's Uploads" value={todayUploads} icon={UploadCloud} subtitle="Manifest files added" />
-        <StatCard title="Pending Reviews" value={pendingReviews} icon={CheckSquare} subtitle="Awaiting officer confirm" />
-        <StatCard title="Approved Docs" value={approvedDocs} icon={FileText} subtitle="Receipts generated" />
-        <StatCard title="Rejected Docs" value={rejectedDocs} icon={AlertTriangle} subtitle="Quarantined filings" />
-        <StatCard title="Completed Docs" value={completedDocs} icon={FileText} subtitle="Manifests stored" />
+        <StatCard title="Today's Uploads" value={kpis.todayUploads} icon={UploadCloud} subtitle="Manifest files added" />
+        <StatCard title="Pending Reviews" value={kpis.pendingReviews} icon={CheckSquare} subtitle="Awaiting officer confirm" />
+        <StatCard title="Approved Docs" value={kpis.approvedDocs} icon={FileText} subtitle="Receipts generated" />
+        <StatCard title="Rejected Docs" value={kpis.rejectedDocs} icon={AlertTriangle} subtitle="Quarantined filings" />
+        <StatCard title="Completed Docs" value={kpis.completedDocs} icon={FileText} subtitle="Manifests stored" />
       </div>
 
       {/* Main content grids */}
@@ -226,23 +257,23 @@ export default function ClerkDashboard() {
             </CardHeader>
             <CardContent className="p-4 grid grid-cols-2 gap-3 text-center text-xs font-bold text-slate-800 flex-grow">
               <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
-                <div className="text-sm font-black">{ocrProcessing + ocrUploaded}</div>
+                <div className="text-sm font-black">{kpis.ocrProcessing + kpis.ocrUploaded}</div>
                 <div className="text-[9px] text-gray-400 font-bold uppercase mt-0.5">Processing</div>
               </div>
               <div className="p-2.5 bg-amber-50 border border-amber-100 rounded-xl text-amber-700">
-                <div className="text-sm font-black">{pendingReviews}</div>
+                <div className="text-sm font-black">{kpis.pendingReviews}</div>
                 <div className="text-[9px] text-amber-500 font-bold uppercase mt-0.5">Review Required</div>
               </div>
               <div className="p-2.5 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700">
-                <div className="text-sm font-black">{approvedDocs}</div>
+                <div className="text-sm font-black">{kpis.approvedDocs}</div>
                 <div className="text-[9px] text-emerald-500 font-bold uppercase mt-0.5">Approved</div>
               </div>
               <div className="p-2.5 bg-rose-50 border border-rose-100 rounded-xl text-rose-700">
-                <div className="text-sm font-black">{rejectedDocs}</div>
+                <div className="text-sm font-black">{kpis.rejectedDocs}</div>
                 <div className="text-[9px] text-rose-500 font-bold uppercase mt-0.5">Rejected</div>
               </div>
               <div className="p-2.5 bg-blue-50 border border-blue-100 rounded-xl text-blue-700 col-span-2">
-                <div className="text-sm font-black">{completedDocs}</div>
+                <div className="text-sm font-black">{kpis.completedDocs}</div>
                 <div className="text-[9px] text-blue-500 font-bold uppercase mt-0.5">Completed (Fully Stored)</div>
               </div>
             </CardContent>
@@ -256,19 +287,19 @@ export default function ClerkDashboard() {
             </CardHeader>
             <CardContent className="p-4 grid grid-cols-2 gap-3 text-center text-xs font-bold text-slate-800 flex-grow">
               <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
-                <div className="text-sm font-black">{totalProducts}</div>
+                <div className="text-sm font-black">{kpis.totalProducts}</div>
                 <div className="text-[9px] text-gray-400 font-bold uppercase mt-0.5">Total Products</div>
               </div>
               <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
-                <div className="text-sm font-black">{totalStock}</div>
+                <div className="text-sm font-black">{kpis.totalStock}</div>
                 <div className="text-[9px] text-gray-400 font-bold uppercase mt-0.5">Total Inventory</div>
               </div>
               <div className="p-2.5 bg-amber-50 border border-amber-100 rounded-xl text-amber-700 col-span-2 sm:col-span-1">
-                <div className="text-sm font-black">{lowStockCount}</div>
+                <div className="text-sm font-black">{kpis.lowStockCount}</div>
                 <div className="text-[9px] text-amber-500 font-bold uppercase mt-0.5">Low Stock</div>
               </div>
               <div className="p-2.5 bg-rose-50 border border-rose-100 rounded-xl text-rose-700 col-span-2 sm:col-span-1">
-                <div className="text-sm font-black">{outOfStockCount}</div>
+                <div className="text-sm font-black">{kpis.outOfStockCount}</div>
                 <div className="text-[9px] text-rose-500 font-bold uppercase mt-0.5">Out of Stock</div>
               </div>
             </CardContent>
@@ -301,7 +332,7 @@ export default function ClerkDashboard() {
                     )}
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-slate-800 leading-none">{todayUploads}</div>
+                    <div className="text-2xl font-bold text-slate-800 leading-none">{kpis.todayUploads}</div>
                     <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Total</div>
                   </div>
                 </div>

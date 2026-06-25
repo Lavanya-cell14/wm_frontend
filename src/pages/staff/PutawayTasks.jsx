@@ -4,6 +4,21 @@ import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
 import SharedKeyValueCard from '../../components/shared/SharedKeyValueCard';
 import { ClipboardList, Play, CheckCircle2, Navigation, MapPin, Box, ArrowRight, Hourglass, Sparkles, Clock, X, Eye } from 'lucide-react';
+import { 
+  Badge, 
+  Card, 
+  CardContent, 
+  Table, 
+  TableHeader, 
+  TableBody, 
+  TableRow, 
+  TableHead, 
+  TableCell, 
+  Button, 
+  Modal, 
+  Pagination, 
+  AlertBanner 
+} from 'shared-ui';
 
 export default function PutawayTasks() {
   const navigate = useNavigate();

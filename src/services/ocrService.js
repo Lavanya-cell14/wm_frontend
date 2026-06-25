@@ -1,72 +1,57 @@
 /**
  * OCR Inbound Document Processing Service
- * 
- * Configured with environment variables for OCR server and Django BE.
+ *
+ * All OCR requests are routed through the Django backend.
+ * The Django backend calls the OCR service using OCR_SERVICE_URL (env var).
+ * The frontend must NEVER call the OCR service directly.
+ *
+ * Correct flow:
+ *   Frontend (localhost:5173)
+ *   → Django Backend (localhost:8000)  [/api/ocr/upload/]
+ *   → OCR Service (ngrok URL, set via OCR_SERVICE_URL on backend)
+ *   → Django saves extracted data to Neon DB
+ *   → Frontend fetches extracted data from Django [/api/ocr/documents/:id/]
  */
-
-const OCR_API_BASE_URL = import.meta.env.VITE_OCR_API_BASE_URL || 'http://127.0.0.1:8001';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
 /**
- * Extracts invoice/manifest details from a document file.
- * Hits OCR FastAPI server on port 8001.
+ * Processes a document through the Django backend OCR pipeline.
+ * Django will forward the file to the OCR service (configured via OCR_SERVICE_URL env var).
+ * Returns the extracted_json from the backend, or throws on failure.
  */
-export const processOcrDocument = async (file, options = {}) => {
+export const processOcrDocument = async (file) => {
   // Validate file is a real File or Blob object
   if (!(file instanceof File || file instanceof Blob)) {
     console.error("[OCR Service] Invalid file object passed:", file);
     throw new Error("Please re-select this file before processing. Browser cannot restore uploaded file after refresh.");
   }
 
-  const formData = new FormData();
-  formData.append("file", file, file.name || "upload.pdf");
-
-  // Add console log: file constructor name, file name, file size, Array.from(formData.keys())
   console.log(
-    "[OCR Service Log] File constructor name:", file.constructor.name,
-    "File name:", file.name || "unknown",
-    "File size:", file.size || 0,
-    "FormData keys:", Array.from(formData.keys())
+    "[OCR Service] Routing via Django backend. File:", file.name || "unknown",
+    "Size:", file.size || 0
   );
 
-  console.warn(`[OCR Service] POST file to OCR Server: ${OCR_API_BASE_URL}/api/v1/ocr/extract`);
-  const { headers, ...fetchOptions } = options;
-  const response = await fetch(`${OCR_API_BASE_URL}/api/v1/ocr/extract`, {
-    method: 'POST',
-    body: formData,
-    headers: {
-      'ngrok-skip-browser-warning': 'true',
-      'Accept': 'application/json',
-      ...(headers || {})
-    },
-    ...fetchOptions
-  });
+  // Step 1: Upload file to Django backend — Django handles OCR extraction internally
+  console.warn("[OCR Service] POST file to Django BE: /api/ocr/upload/");
+  const djangoRes = await uploadOcrDocumentDjangoApi(file);
 
-  if (!response.ok) {
-    throw new Error(`OCR service extraction failed with status: ${response.status}`);
+  if (!djangoRes?.document_id) {
+    throw new Error("Django backend failed to return a document ID after upload.");
   }
 
-  const contentType = response.headers.get("content-type") || "";
-  if (!contentType.includes("application/json")) {
-    const text = await response.text();
-    console.warn("[OCR Service] Received non-JSON response from OCR API:", text.slice(0, 200));
-    return { 
-      non_json_response: true, 
-      raw_text: text, 
-      status: response.status 
-    };
+  const backendDocId = djangoRes.document_id;
+  console.log("[OCR Service] Django upload succeeded. Document ID:", backendDocId);
+
+  // Step 2: Fetch the fully extracted data from Django backend
+  console.warn(`[OCR Service] GET extracted data from Django BE: /api/ocr/documents/${backendDocId}/`);
+  const docDetails = await fetchOcrDocumentApi(backendDocId);
+
+  if (!docDetails?.extracted_json) {
+    throw new Error("Django backend processed the document but returned no extracted data. Check backend OCR logs.");
   }
 
-  try {
-    return await response.json();
-  } catch (jsonErr) {
-    console.error("[OCR Service] JSON parsing failed:", jsonErr);
-    return {
-      json_parse_error: true,
-      error_message: jsonErr.message,
-      status: response.status
-    };
-  }
+  console.log("[OCR Service] Extraction succeeded via Django backend.");
+  // Return in the same shape callers expect
+  return { ...docDetails.extracted_json, _backendDocId: backendDocId };
 };
 
 import { apiClient } from './apiClient';
@@ -117,6 +102,22 @@ export const uploadOcrDocumentDjangoApi = async (file) => {
     method: 'POST',
     body: formData,
   });
+};
+
+export const fetchOcrDocumentApi = async (docId) => {
+  console.warn(`[OCR Service] GET document details from Django BE: /api/ocr/documents/${docId}/`);
+  return await apiClient(`/api/ocr/documents/${docId}/`);
+};
+
+/**
+ * Fetches the paginated list of all OCR documents from the Django backend.
+ * Returns normalized { results, count } shape.
+ */
+export const getOcrDocuments = async (page = 1) => {
+  const data = await apiClient(`/api/ocr/documents/?page=${page}`);
+  if (Array.isArray(data)) return { results: data, count: data.length };
+  if (data && Array.isArray(data.results)) return data;
+  return { results: [], count: 0 };
 };
 
 export const normalizeOcrResponse = (res, activeDoc) => {

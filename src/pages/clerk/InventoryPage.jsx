@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { 
   Card, 
@@ -51,7 +51,16 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
 
+  const [searchVal, setSearchVal] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchVal);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchVal]);
   const [stockFilter, setStockFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -120,34 +129,48 @@ export default function InventoryPage() {
 
   const inventory = inventoryList;
 
-  // Calculate global inventory counts
-  const totalStockCount = inventory.reduce((sum, item) => sum + (item.quantity || 0), 0);
-  const allocatedStockCount = inventory.reduce((sum, item) => sum + (item.reserved || 0), 0);
-  const availableStockCount = Math.max(0, totalStockCount - allocatedStockCount - inventory.reduce((sum, item) => sum + (item.damaged || 0), 0));
-  const lowStockCount = inventory.filter(item => (item.quantity || 0) <= (item.reorderLevel || 0) && (item.quantity || 0) > 0).length;
-  const outOfStockCount = inventory.filter(item => (item.quantity || 0) === 0).length;
+  // Calculate global inventory counts (memoized)
+  const stats = useMemo(() => {
+    const totalStockCount = inventory.reduce((sum, item) => sum + (item.quantity || 0), 0);
+    const allocatedStockCount = inventory.reduce((sum, item) => sum + (item.reserved || 0), 0);
+    const availableStockCount = Math.max(0, totalStockCount - allocatedStockCount - inventory.reduce((sum, item) => sum + (item.damaged || 0), 0));
+    const lowStockCount = inventory.filter(item => (item.quantity || 0) <= (item.reorderLevel || 0) && (item.quantity || 0) > 0).length;
+    const outOfStockCount = inventory.filter(item => (item.quantity || 0) === 0).length;
 
-  // Filter list of inventory items
-  const filteredInventory = inventory.filter(p => {
-    const matchesSearch = 
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      p.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.bin.toLowerCase().includes(searchQuery.toLowerCase());
-      
-    if (stockFilter === 'LOW') {
-      return matchesSearch && (p.quantity || 0) <= (p.reorderLevel || 0) && (p.quantity || 0) > 0;
-    }
-    if (stockFilter === 'OUT') {
-      return matchesSearch && (p.quantity || 0) === 0;
-    }
-    if (stockFilter === 'RESERVED') {
-      return matchesSearch && (p.reserved || 0) > 0;
-    }
-    return matchesSearch;
-  });
+    return {
+      totalStockCount,
+      allocatedStockCount,
+      availableStockCount,
+      lowStockCount,
+      outOfStockCount
+    };
+  }, [inventory]);
+
+  // Filter list of inventory items (memoized)
+  const filteredInventory = useMemo(() => {
+    return inventory.filter(p => {
+      const matchesSearch = 
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        p.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.bin.toLowerCase().includes(searchQuery.toLowerCase());
+        
+      if (stockFilter === 'LOW') {
+        return matchesSearch && (p.quantity || 0) <= (p.reorderLevel || 0) && (p.quantity || 0) > 0;
+      }
+      if (stockFilter === 'OUT') {
+        return matchesSearch && (p.quantity || 0) === 0;
+      }
+      if (stockFilter === 'RESERVED') {
+        return matchesSearch && (p.reserved || 0) > 0;
+      }
+      return matchesSearch;
+    });
+  }, [inventory, searchQuery, stockFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredInventory.length / pageSize));
-  const paginatedInventory = filteredInventory.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paginatedInventory = useMemo(() => {
+    return filteredInventory.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  }, [filteredInventory, currentPage, pageSize]);
 
   return (
     <div className="space-y-6">
@@ -191,11 +214,11 @@ export default function InventoryPage() {
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard title="Available Stock" value={availableStockCount} icon={Box} subtitle="Ready for allocations" />
-        <StatCard title="Allocated Stock" value={allocatedStockCount} icon={Package} subtitle="Committed to active orders" />
-        <StatCard title="Stored Stock" value={totalStockCount} icon={Box} subtitle="Physically present in bins" />
-        <StatCard title="Low Stock Items" value={lowStockCount} icon={AlertTriangle} subtitle="Requires procurement action" />
-        <StatCard title="Out of Stock" value={outOfStockCount} icon={AlertTriangle} subtitle="Completely depleted SKUs" />
+        <StatCard title="Available Stock" value={stats.availableStockCount} icon={Box} subtitle="Ready for allocations" />
+        <StatCard title="Allocated Stock" value={stats.allocatedStockCount} icon={Package} subtitle="Committed to active orders" />
+        <StatCard title="Stored Stock" value={stats.totalStockCount} icon={Box} subtitle="Physically present in bins" />
+        <StatCard title="Low Stock Items" value={stats.lowStockCount} icon={AlertTriangle} subtitle="Requires procurement action" />
+        <StatCard title="Out of Stock" value={stats.outOfStockCount} icon={AlertTriangle} subtitle="Completely depleted SKUs" />
       </div>
 
       {/* Filters Toolbar */}
@@ -204,8 +227,8 @@ export default function InventoryPage() {
           <div className="relative flex-1 w-full">
             <SearchFilterBar 
               searchPlaceholder="Search inventory by SKU, name, or bin..." 
-              searchValue={searchQuery}
-              onSearchChange={setSearchQuery} 
+              searchValue={searchVal}
+              onSearchChange={setSearchVal} 
             />
           </div>
 

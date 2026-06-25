@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Bot, Send, User, Sparkles, Box, Search, PackageSearch, Navigation, Map, ShieldAlert, Cpu, Settings2 } from 'lucide-react';
 import { Badge, Button, Card, CardContent, Input } from 'shared-ui';
+import ErrorBoundary from '../components/shared/ErrorBoundary';
 import { askRag } from '../services/ragService';
 import { queryAiCopilotApi } from '../services/recommendationService';
 
@@ -108,6 +109,10 @@ export default function AiCopilot() {
         </div>
       </div>
 
+      <ErrorBoundary
+        title="AI Assistant Interface Failed"
+        message="An unexpected error occurred while rendering the AI assistant chat view. You can reload the chat component to try again."
+      >
       <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-h-0">
         {/* Chat Area */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/30">
@@ -201,6 +206,7 @@ export default function AiCopilot() {
           </div>
         </div>
       </div>
+      </ErrorBoundary>
     </div>
   );
 }

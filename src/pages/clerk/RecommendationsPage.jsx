@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { 
@@ -45,7 +45,10 @@ export default function RecommendationsPage() {
     assignPutawayTask,
     setAiRecommendations,
     setInboundReceipts,
-    fetchData,
+    fetchInboundData,
+    fetchPutawayTasks,
+    fetchInventoryData,
+    fetchUsers,
   } = useWarehouse();
 
   const mapRoleLabel = (role) => {
@@ -71,8 +74,8 @@ export default function RecommendationsPage() {
     return `Operator ${idx + 1} — Warehouse Operator`;
   };
 
-  // Robust operator list selection
-  const getFilteredOperators = () => {
+  // Robust operator list selection memoized
+  const filteredOperators = useMemo(() => {
     // 1. First priority: users with role WAREHOUSE_OPERATOR or OPERATOR
     let ops = workers.filter(w => w.role === 'WAREHOUSE_OPERATOR' || w.role === 'OPERATOR');
     
@@ -100,9 +103,7 @@ export default function RecommendationsPage() {
       return ops;
     }
     return filteredOps;
-  };
-
-  const filteredOperators = getFilteredOperators();
+  }, [workers]);
   
   // Tab state: 'monitor' | 'allocation-tools'
   const [activeTab, setActiveTab] = useState('monitor');
@@ -274,6 +275,12 @@ export default function RecommendationsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (fetchUsers) fetchUsers(true);
+    if (fetchInboundData) fetchInboundData(true);
+    if (fetchPutawayTasks) fetchPutawayTasks(true);
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'monitor') {
@@ -570,9 +577,9 @@ export default function RecommendationsPage() {
       );
 
       showToast(`Bin "${apiResult.binCode}" allocated successfully! Redirecting to Allocations...`);
-      if (fetchData) {
-        fetchData(true).catch(e => console.warn('fetchData background refresh error:', e));
-      }
+      if (fetchInboundData) fetchInboundData(true).catch(e => console.warn('fetchInboundData refresh error:', e));
+      if (fetchPutawayTasks) fetchPutawayTasks(true).catch(e => console.warn('fetchPutawayTasks refresh error:', e));
+      if (fetchInventoryData) fetchInventoryData(true).catch(e => console.warn('fetchInventoryData refresh error:', e));
       setTimeout(() => {
         navigate('/inventory/allocations');
       }, 1500);
@@ -637,8 +644,8 @@ export default function RecommendationsPage() {
     }
   };
 
-  // Handlers for Tools
-  const handleSuggestBin = async (e) => {
+  // Handlers for Tools memoized with useCallback
+  const handleSuggestBin = useCallback(async (e) => {
     if (e) e.preventDefault();
     setSuggestLoading(true);
     setSuggestResult(null);
@@ -665,9 +672,9 @@ export default function RecommendationsPage() {
     } finally {
       setSuggestLoading(false);
     }
-  };
+  }, [suggestSku, suggestWeight, suggestZone, suggestQty]);
 
-  const handleSimulatePlacement = async (e) => {
+  const handleSimulatePlacement = useCallback(async (e) => {
     if (e) e.preventDefault();
     setPlacementLoading(true);
     setPlacementResult(null);
@@ -694,14 +701,16 @@ export default function RecommendationsPage() {
     } finally {
       setPlacementLoading(false);
     }
-  };
+  }, [placementBin, placementSku, placementQty, placementDim]);
 
-  // Filter list
-  const filteredRecs = recommendations.filter(rec => 
-    (rec.productName || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (rec.sku || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (rec.bin || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter list memoized with useMemo
+  const filteredRecs = useMemo(() => {
+    return recommendations.filter(rec => 
+      (rec.productName || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (rec.sku || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (rec.bin || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [recommendations, searchQuery]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRecs.length / pageSize));
   const paginatedRecs = filteredRecs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -879,7 +888,7 @@ export default function RecommendationsPage() {
                                           <div className="space-y-2 text-xs font-semibold text-slate-700 text-left">
                                             
   
-                                            )}
+                                         
                                             <div className="flex justify-between items-center">
                                               <span>Recommended Zone: <span className="font-bold text-gray-900">{liveRecResult.zone}</span></span>
                                               <Badge variant="success" className="font-mono">{liveRecResult.score}% Confidence</Badge>

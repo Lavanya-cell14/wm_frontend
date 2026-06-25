@@ -3,6 +3,7 @@ import { useWarehouse } from '../context/WarehouseContext';
 import { AlertBanner, Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'shared-ui';
 import { Map, Layers, Navigation, Box, HelpCircle, ShieldAlert, Sparkles, LayoutGrid, MonitorPlay, Network, Radio } from 'lucide-react';
 import WarehouseScene from '../three/WarehouseScene';
+import ErrorBoundary from '../components/shared/ErrorBoundary';
 import { getTwinSummaryApi, getTwinOccupancyApi } from '../services/digitalTwinService';
 import { getLayoutGraphApi } from '../services/layoutService';
 import { subscribeOccupancyFeed, subscribeAlertsFeed } from '../services/websocketService';
@@ -415,13 +416,18 @@ export default function DigitalTwin() {
             <CardContent className="p-0">
               {viewMode === '3d' ? (
                 <div className="p-4 bg-slate-900">
-                  <WarehouseScene 
-                    zones={zones} 
-                    bins={bins} 
-                    inventory={inventory} 
-                    selectedBinCode={selectedBin?.code} 
-                    onBinClick={handleBinClickFrom3d} 
-                  />
+                  <ErrorBoundary
+                    title="3D Warehouse Map Failed"
+                    message="The WebGL 3D Canvas could not be rendered, possibly due to unsupported hardware acceleration or a GPU context crash. You can try reloading the component."
+                  >
+                    <WarehouseScene 
+                      zones={zones} 
+                      bins={bins} 
+                      inventory={inventory} 
+                      selectedBinCode={selectedBin?.code} 
+                      onBinClick={handleBinClickFrom3d} 
+                    />
+                  </ErrorBoundary>
                 </div>
               ) : (
                 <div className="p-6 bg-slate-950 min-h-[450px] flex items-center justify-center relative">
