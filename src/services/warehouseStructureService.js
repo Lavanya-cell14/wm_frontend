@@ -32,6 +32,14 @@ export const getWarehouseById = async (warehouseId) => {
   return await apiClient(`/api/warehouses/${warehouseId}/`);
 };
 
+/**
+ * GET /api/warehouses/{warehouse_id}/cad-layout/
+ * Returns CAD spatial layout data for a specific warehouse.
+ */
+export const getWarehouseCadLayout = async (warehouseId) => {
+  return await apiClient(`/api/warehouses/${warehouseId}/cad-layout/`);
+};
+
 // ---------------------------------------------------------------------------
 // ZONE GROUPS
 // ---------------------------------------------------------------------------
