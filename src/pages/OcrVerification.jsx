@@ -191,13 +191,11 @@ export default function OcrVerification() {
     // Call context modifier
     verifyOcrDocument(selectedDocId, items, docDetails);
     
-    // Sync state from backend
-    if (fetchInboundData) {
-      await fetchInboundData(true);
-    }
-    if (fetchInventoryData) {
-      await fetchInventoryData(true);
-    }
+    // Sync state from backend concurrently
+    await Promise.all([
+      fetchInboundData ? fetchInboundData(true) : Promise.resolve(),
+      fetchInventoryData ? fetchInventoryData(true) : Promise.resolve()
+    ]);
     
     // Redirect to recommendations page
     setTimeout(() => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { Badge, Button, Card, CardContent, SearchFilterBar, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Modal, Input, Pagination } from 'shared-ui';
 import { Building2, Plus, MapPin, X, AlertTriangle, Loader2, Edit, Trash2, Layers, Network, Eye } from 'lucide-react';
@@ -337,22 +337,27 @@ export default function WarehouseList() {
   };
 
   // Searching & Pagination
-  const filtered = (activeTab === 'facilities' ? warehouses : spatialEntities).filter(item => {
-    if (activeTab === 'facilities') {
-      return (
-        (item.warehouse_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (item.address || '').toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    } else {
-      return (
-        (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (item.entity_type || '').toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-  });
+  const filtered = useMemo(() => {
+    return (activeTab === 'facilities' ? warehouses : spatialEntities).filter(item => {
+      if (activeTab === 'facilities') {
+        return (
+          (item.warehouse_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (item.address || '').toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      } else {
+        return (
+          (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (item.entity_type || '').toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }
+    });
+  }, [activeTab, warehouses, spatialEntities, searchQuery]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const pagedList = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  
+  const pagedList = useMemo(() => {
+    return filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  }, [filtered, currentPage, pageSize]);
 
   return (
     <div className="space-y-6">

@@ -86,7 +86,7 @@ function buildZoneBounds(bins, positions) {
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
-export default function WarehouseScene({ 
+function WarehouseScene({ 
   zones = [], 
   bins = [], 
   inventory = [], 
@@ -104,6 +104,7 @@ export default function WarehouseScene({
   const binMeshesRef = useRef([]);
   const pulseGroupRef = useRef([]);
   const onBinClickRef = useRef(onBinClick);
+  const triggerRenderRef = useRef(null);
 
   useEffect(() => {
     onBinClickRef.current = onBinClick;
@@ -149,12 +150,9 @@ export default function WarehouseScene({
     controlsRef.current = controls;
 
     // 5. Lighting — significantly brighter for demo clarity
-
-    // Strong ambient so shadows don't go pure black
     const ambientLight = new THREE.AmbientLight('#d4e8ff', 0.75);
     scene.add(ambientLight);
 
-    // Key directional light (sun)
     const dirLight = new THREE.DirectionalLight('#ffffff', 1.4);
     dirLight.position.set(50, 90, 60);
     dirLight.castShadow = true;
@@ -170,21 +168,17 @@ export default function WarehouseScene({
     dirLight.shadow.bias = -0.0003;
     scene.add(dirLight);
 
-    // Fill light from opposite side to reduce harsh shadows
     const fillLight = new THREE.DirectionalLight('#7fb8ff', 0.6);
     fillLight.position.set(-40, 50, -30);
     scene.add(fillLight);
 
-    // Hemisphere (sky/ground) for natural-feeling ambient gradient
     const hemiLight = new THREE.HemisphereLight('#b8d4f0', '#1e293b', 0.55);
     scene.add(hemiLight);
 
-    // Grid Floor — lighter grid lines
     const gridHelper = new THREE.GridHelper(300, 60, '#1e3a5f', '#162032');
     gridHelper.position.y = -0.05;
     scene.add(gridHelper);
 
-    // Concrete floor plane — slightly lighter
     const floorGeo = new THREE.PlaneGeometry(400, 400);
     const floorMat = new THREE.MeshStandardMaterial({ 
       color: '#0c1828', 
@@ -210,7 +204,6 @@ export default function WarehouseScene({
     const handlePointerUp = (event) => {
       if (!onBinClickRef.current) return;
 
-      // Avoid triggering click during camera orbit/pan drag operations
       const deltaX = Math.abs(event.clientX - pointerStartX);
       const deltaY = Math.abs(event.clientY - pointerStartY);
       if (deltaX > 6 || deltaY > 6) return;
@@ -232,23 +225,37 @@ export default function WarehouseScene({
     renderer.domElement.addEventListener('pointerdown', handlePointerDown);
     renderer.domElement.addEventListener('pointerup', handlePointerUp);
 
-    // Animation Loop
+    // Animation & On-demand Render Loop
     let clock = new THREE.Clock();
     let animFrameId;
+    let needsRender = true;
+
+    const triggerRender = () => {
+      needsRender = true;
+    };
+    triggerRenderRef.current = triggerRender;
+    controls.addEventListener('change', triggerRender);
 
     const animate = () => {
       animFrameId = requestAnimationFrame(animate);
       
       const elapsed = clock.getElapsedTime();
+      const isPulsing = pulseGroupRef.current.length > 0;
 
       // Make the selected bin pulse visually
-      pulseGroupRef.current.forEach(mesh => {
-        const pulse = 1.0 + Math.sin(elapsed * 5.0) * 0.1;
-        mesh.scale.set(pulse, pulse, pulse);
-      });
+      if (isPulsing) {
+        pulseGroupRef.current.forEach(mesh => {
+          const pulse = 1.0 + Math.sin(elapsed * 5.0) * 0.1;
+          mesh.scale.set(pulse, pulse, pulse);
+        });
+      }
 
-      controls.update();
-      renderer.render(scene, camera);
+      const controlsActive = controls.update();
+
+      if (controlsActive || isPulsing || needsRender) {
+        renderer.render(scene, camera);
+        needsRender = false;
+      }
     };
 
     animate();
@@ -261,6 +268,7 @@ export default function WarehouseScene({
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
+      triggerRender();
     };
 
     const resizeObserver = new ResizeObserver(() => handleResize());
@@ -275,6 +283,7 @@ export default function WarehouseScene({
         renderer.domElement.removeEventListener('pointerup', handlePointerUp);
         mountRef.current.removeChild(renderer.domElement);
       }
+      controls.removeEventListener('change', triggerRender);
       gridHelper.dispose();
       floorGeo.dispose();
       floorMat.dispose();
@@ -289,37 +298,33 @@ export default function WarehouseScene({
     const controls = controlsRef.current;
     if (!scene || !camera || !controls) return;
 
-    // 1. Clear old layoutGroup if it exists
+    // 1. Clear old layoutGroup if it exists, disposing of unique resources exactly once
     if (layoutGroupRef.current) {
       scene.remove(layoutGroupRef.current);
       
-      // Recursively dispose of geometries and materials in the old group
+      const uniqueGeometries = new Set();
+      const uniqueMaterials = new Set();
+
       layoutGroupRef.current.traverse((child) => {
-        if (child.isMesh) {
-          if (child.geometry) child.geometry.dispose();
-          if (child.material) {
-            if (Array.isArray(child.material)) {
-              child.material.forEach((mat) => mat.dispose());
-            } else {
-              child.material.dispose();
-            }
-          }
-        } else if (child.isLineSegments) {
-          if (child.geometry) child.geometry.dispose();
-          if (child.material) child.material.dispose();
-        } else if (child.isSprite) {
-          if (child.material) {
-            if (child.material.map) child.material.map.dispose();
-            child.material.dispose();
+        if (child.geometry) uniqueGeometries.add(child.geometry);
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach((mat) => uniqueMaterials.add(mat));
+          } else {
+            uniqueMaterials.add(child.material);
           }
         }
       });
+
+      uniqueGeometries.forEach((g) => g.dispose());
+      uniqueMaterials.forEach((m) => m.dispose());
       layoutGroupRef.current = null;
     }
 
     if (!Array.isArray(bins) || bins.length === 0) {
       binMeshesRef.current = [];
       pulseGroupRef.current = [];
+      if (triggerRenderRef.current) triggerRenderRef.current();
       return;
     }
 
@@ -346,18 +351,44 @@ export default function WarehouseScene({
     const binMeshes = [];
 
     const colors = {
-      empty: '#475569',      // Slate-600 — slightly lighter than before for visibility
-      occupied: '#22d3ee',   // Cyan-400 — brighter pop for occupied bins
-      full: '#f87171',       // Red-400 — bright red for over-capacity
-      highlight: '#fbbf24',  // Amber-400 (glowing/pulse)
+      empty: '#475569',
+      occupied: '#22d3ee',
+      full: '#f87171',
+      highlight: '#fbbf24',
     };
 
-    // Draw Zones — more visible colors
+    // Shared geometry and materials for Bins to optimize draw calls and memory overhead
+    const binGeo = new THREE.BoxGeometry(BIN_W, BIN_H, BIN_D);
+    const binMaterials = {
+      empty: new THREE.MeshStandardMaterial({ color: colors.empty, roughness: 0.6, metalness: 0.1 }),
+      occupied: new THREE.MeshStandardMaterial({ color: colors.occupied, roughness: 0.6, metalness: 0.1 }),
+      full: new THREE.MeshStandardMaterial({ color: colors.full, roughness: 0.6, metalness: 0.1 }),
+      highlight: new THREE.MeshStandardMaterial({ color: colors.highlight, roughness: 0.6, metalness: 0.1 }),
+    };
+
+    // Shared column geometry and material to reuse across all racks support poles
+    const columnGeo = new THREE.CylinderGeometry(0.14, 0.14, 10, 8);
+    const columnMat = new THREE.MeshStandardMaterial({ 
+      color: '#94a3b8',
+      metalness: 0.92, 
+      roughness: 0.15,
+    });
+
+    // Shared support material
+    const supportMat = new THREE.MeshStandardMaterial({ 
+      color: '#64748b',
+      metalness: 0.85, 
+      roughness: 0.25,
+      emissive: '#1e293b',
+      emissiveIntensity: 0.2,
+    });
+
+    // Draw Zones
     const zoneColorMap = {
-      'Zone A': '#38bdf8',   // Sky-400
-      'Zone B': '#c084fc',   // Purple-400
-      'Zone C': '#fb923c',   // Orange-400
-      'Zone D': '#4ade80',   // Green-400
+      'Zone A': '#38bdf8',
+      'Zone B': '#c084fc',
+      'Zone C': '#fb923c',
+      'Zone D': '#4ade80',
     };
     const PAD = 2.0;
 
@@ -396,7 +427,7 @@ export default function WarehouseScene({
         color: zColor,
         roughness: 0.4,
         transparent: true,
-        opacity: 0.22,   // more visible zone floor
+        opacity: 0.22,
         emissive: zColor,
         emissiveIntensity: 0.04,
       });
@@ -412,12 +443,11 @@ export default function WarehouseScene({
       line.position.copy(zoneMesh.position);
       layoutGroup.add(line);
 
-      // Zone label sprite — larger and clearer
+      // Zone label sprite
       const canvas = document.createElement('canvas');
       canvas.width = 256;
       canvas.height = 80;
       const ctx = canvas.getContext('2d');
-      // Background pill
       ctx.fillStyle = `${zColor}33`;
       ctx.roundRect(4, 4, 248, 72, 12);
       ctx.fill();
@@ -452,14 +482,8 @@ export default function WarehouseScene({
         statusKey = 'full';
       }
 
-      const binGeo = new THREE.BoxGeometry(BIN_W, BIN_H, BIN_D);
-      const binMat = new THREE.MeshStandardMaterial({
-        color: colors[statusKey],
-        roughness: 0.6,
-        metalness: 0.1,
-      });
-
-      const binMesh = new THREE.Mesh(binGeo, binMat);
+      // Reuse the shared geometry and material cache
+      const binMesh = new THREE.Mesh(binGeo, binMaterials[statusKey]);
       binMesh.position.set(bX, bY, bZ);
       binMesh.castShadow = true;
       binMesh.receiveShadow = true;
@@ -497,14 +521,8 @@ export default function WarehouseScene({
       const shelfW = (maxX - minX) + pad * 2;
       const shelfD = (maxZ - minZ) + pad * 2;
 
+      // Unique geometry for support beams as widths/depths differ, but reuse supportMat
       const supportGeo = new THREE.BoxGeometry(shelfW, 0.12, shelfD);
-      const supportMat = new THREE.MeshStandardMaterial({ 
-        color: '#64748b',   // lighter shelf beams
-        metalness: 0.85, 
-        roughness: 0.25,
-        emissive: '#1e293b',
-        emissiveIntensity: 0.2,
-      });
       const supportMesh = new THREE.Mesh(supportGeo, supportMat);
       supportMesh.position.set((minX + maxX) / 2, levelY, (minZ + maxZ) / 2);
       layoutGroup.add(supportMesh);
@@ -517,12 +535,7 @@ export default function WarehouseScene({
       ];
 
       corners.forEach(corner => {
-        const columnGeo = new THREE.CylinderGeometry(0.14, 0.14, 10, 8);
-        const columnMat = new THREE.MeshStandardMaterial({ 
-          color: '#94a3b8',   // lighter rack columns
-          metalness: 0.92, 
-          roughness: 0.15,
-        });
+        // Reuse columnGeo and columnMat across all column instances
         const column = new THREE.Mesh(columnGeo, columnMat);
         column.position.set(corner.x, 5, corner.z);
         column.castShadow = true;
@@ -556,6 +569,8 @@ export default function WarehouseScene({
       controls.target.set(centX, 1.5, centZ);
       controls.update();
     }
+
+    if (triggerRenderRef.current) triggerRenderRef.current();
   }, [zones, bins]);
 
   // Effect 3: Highlight & Pulse selection (Runs when selection target updates)
@@ -585,6 +600,7 @@ export default function WarehouseScene({
     });
 
     pulseGroupRef.current = pulsingObjects;
+    if (triggerRenderRef.current) triggerRenderRef.current();
   }, [selectedBinCode, bins]); // Rebuild on layout, bins, or selection updates
 
   return (
@@ -622,3 +638,13 @@ export default function WarehouseScene({
     </div>
   );
 }
+
+export default React.memo(WarehouseScene, (prevProps, nextProps) => {
+  return (
+    prevProps.selectedBinCode === nextProps.selectedBinCode &&
+    prevProps.zones === nextProps.zones &&
+    prevProps.bins === nextProps.bins &&
+    prevProps.inventory === nextProps.inventory &&
+    prevProps.onBinClick === nextProps.onBinClick
+  );
+});

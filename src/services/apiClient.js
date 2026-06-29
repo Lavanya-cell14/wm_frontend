@@ -70,10 +70,10 @@ export const normalizeResponse = (data) => {
   return { results: [], count: 0 };
 };
 
-// ---------------------------------------------------------------------------
-// API CLIENT
-// ---------------------------------------------------------------------------
-export const apiClient = async (endpoint, options = {}) => {
+// Global cache to track active, concurrent GET requests
+const inflightGetRequests = new Map();
+
+const executeRequest = async (endpoint, options = {}) => {
   if (!BASE_URL) {
     throw new ApiError(0, 'CONFIG_ERROR', 'VITE_API_BASE_URL is not set. Check your .env file.');
   }
@@ -114,7 +114,7 @@ export const apiClient = async (endpoint, options = {}) => {
       localStorage.removeItem('access');
       
       // Retry the call with a retry flag to avoid infinite loops
-      return apiClient(endpoint, {
+      return executeRequest(endpoint, {
         ...options,
         _isRetry: true
       });
@@ -136,6 +136,31 @@ export const apiClient = async (endpoint, options = {}) => {
   }
 
   return response.json();
+};
+
+export const apiClient = async (endpoint, options = {}) => {
+  const method = (options.method || 'GET').toUpperCase();
+  if (method === 'GET') {
+    // Unique key per path + query
+    const cacheKey = JSON.stringify({ endpoint, headers: options.headers });
+    if (inflightGetRequests.has(cacheKey)) {
+      console.warn(`[apiClient] Deduplicating concurrent in-flight GET request: ${endpoint}`);
+      return inflightGetRequests.get(cacheKey);
+    }
+
+    const requestPromise = (async () => {
+      try {
+        return await executeRequest(endpoint, options);
+      } finally {
+        inflightGetRequests.delete(cacheKey);
+      }
+    })();
+
+    inflightGetRequests.set(cacheKey, requestPromise);
+    return requestPromise;
+  }
+
+  return executeRequest(endpoint, options);
 };
 
 // ---------------------------------------------------------------------------

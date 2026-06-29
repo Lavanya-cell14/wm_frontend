@@ -7,12 +7,8 @@ import { getInboundShipments, createInboundShipmentApi, patchInboundShipment } f
 
 export default function Inbound() {
   const navigate = useNavigate();
-  const { inboundTasks: contextTasks, createInboundShipment, assignInboundStaff, inventory, generateNextId } = useWarehouse();
+  const { inboundTasks: tasks, createInboundShipment, assignInboundStaff, inventory, generateNextId, isLoading, error: apiError } = useWarehouse();
   
-  const [tasks, setTasks] = useState(contextTasks);
-  const [loading, setLoading] = useState(false);
-  const [apiError, setApiError] = useState(null);
-  const [fallbackUsed, setFallbackUsed] = useState(false);
   const [activeTab, setActiveTab] = useState('Pending');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -33,32 +29,6 @@ export default function Inbound() {
 
   // Form states - Assign
   const [staffName, setStaffName] = useState('Warehouse Staff');
-
-  const loadShipments = async () => {
-    setLoading(true);
-    setApiError(null);
-    try {
-      console.warn("[Inbound] Fetching live expected shipments from GET /api/inbound/");
-      const response = await getInboundShipments();
-      if (response && response.results) {
-        setTasks(response.results.length > 0 ? response.results : contextTasks);
-        setFallbackUsed(response.results.length === 0);
-      } else {
-        setTasks(contextTasks);
-        setFallbackUsed(true);
-      }
-    } catch (err) {
-      console.warn("[Inbound] API error fetching shipments, using local stubs:", err);
-      setTasks(contextTasks);
-      setFallbackUsed(true);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadShipments();
-  }, [contextTasks]);
 
   const handleOpenAddModal = () => {
     const nextSku = generateNextId('PRD-', inventory.map(item => item.sku));
@@ -125,7 +95,7 @@ export default function Inbound() {
     setCurrentPage(1);
   }, [searchQuery, activeTab]);
 
-  if (loading && tasks.length === 0) {
+  if (isLoading && tasks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
         <Loader2 className="w-10 h-10 text-[#0071C1] animate-spin" />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from 'shared-ui';
 import { 
@@ -16,6 +16,19 @@ import {
   AlertTriangle,
   UserCheck
 } from 'lucide-react';
+
+// Mock static config arrays declared outside component to avoid reference recreation on every render cycle
+const zoneGroups = [
+  { id: 'ZG-001', name: 'Zone Group Alpha', warehouseId: 'WH-001', type: 'Ambient Storage', zoneIds: ['ZONE-Z1', 'ZONE-Z2'] },
+  { id: 'ZG-002', name: 'Zone Group Beta', warehouseId: 'WH-001', type: 'Specialty Storage', zoneIds: ['ZONE-Z3', 'ZONE-Z4'] }
+];
+
+const aisles = [
+  { id: 'AIS-001', name: 'Aisle 1', zoneName: 'Zone A', status: 'Operational', rackIds: [] },
+  { id: 'AIS-002', name: 'Aisle 2', zoneName: 'Zone B', status: 'Operational', rackIds: [] },
+  { id: 'AIS-003', name: 'Aisle 3', zoneName: 'Zone C', status: 'Blocked', rackIds: [] },
+  { id: 'AIS-004', name: 'Aisle 4', zoneName: 'Zone D', status: 'Operational', rackIds: [] }
+];
 
 export default function WarehouseTree() {
   const { warehouses, zones, racks, shelves, bins, inventory } = useWarehouse();
@@ -38,19 +51,57 @@ export default function WarehouseTree() {
     setExpandedNodes(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // Mock Zone Groups
-  const zoneGroups = [
-    { id: 'ZG-001', name: 'Zone Group Alpha', warehouseId: 'WH-001', type: 'Ambient Storage', zoneIds: ['ZONE-Z1', 'ZONE-Z2'] },
-    { id: 'ZG-002', name: 'Zone Group Beta', warehouseId: 'WH-001', type: 'Specialty Storage', zoneIds: ['ZONE-Z3', 'ZONE-Z4'] }
-  ];
+  // Pre-indexed lookup maps to convert nested O(N) scans into O(1) key retrievals
+  const zonesById = useMemo(() => {
+    const cache = {};
+    zones.forEach(z => { cache[z.id] = z; });
+    return cache;
+  }, [zones]);
 
-  // Mock Aisles
-  const aisles = [
-    { id: 'AIS-001', name: 'Aisle 1', zoneName: 'Zone A', status: 'Operational', rackIds: [] },
-    { id: 'AIS-002', name: 'Aisle 2', zoneName: 'Zone B', status: 'Operational', rackIds: [] },
-    { id: 'AIS-003', name: 'Aisle 3', zoneName: 'Zone C', status: 'Blocked', rackIds: [] },
-    { id: 'AIS-004', name: 'Aisle 4', zoneName: 'Zone D', status: 'Operational', rackIds: [] }
-  ];
+  const aislesByZoneName = useMemo(() => {
+    const cache = {};
+    aisles.forEach(a => {
+      if (!cache[a.zoneName]) cache[a.zoneName] = [];
+      cache[a.zoneName].push(a);
+    });
+    return cache;
+  }, []);
+
+  const racksByZoneId = useMemo(() => {
+    const cache = {};
+    racks.forEach(r => {
+      if (!cache[r.zoneId]) cache[r.zoneId] = [];
+      cache[r.zoneId].push(r);
+    });
+    return cache;
+  }, [racks]);
+
+  const shelvesByRackId = useMemo(() => {
+    const cache = {};
+    shelves.forEach(s => {
+      if (!cache[s.rackId]) cache[s.rackId] = [];
+      cache[s.rackId].push(s);
+    });
+    return cache;
+  }, [shelves]);
+
+  const binsByZoneAndShelf = useMemo(() => {
+    const cache = {};
+    bins.forEach(b => {
+      const key = `${b.zone}-${b.shelf}`;
+      if (!cache[key]) cache[key] = [];
+      cache[key].push(b);
+    });
+    return cache;
+  }, [bins]);
+
+  const inventoryByBinCode = useMemo(() => {
+    const cache = {};
+    inventory.forEach(i => {
+      cache[i.bin] = i;
+    });
+    return cache;
+  }, [inventory]);
 
   // Search filter
   const matchesSearch = (text) => {
@@ -104,10 +155,6 @@ export default function WarehouseTree() {
                 const whExpanded = expandedNodes[wh.id];
                 const whZoneGroups = zoneGroups.filter(zg => zg.warehouseId === 'WH-001');
 
-                if (!matchesSearch(wh.name) && searchQuery) {
-                  // If searching, let's keep visible if children match
-                }
-
                 return (
                   <div key={wh.id} className="space-y-1">
                     <div className="flex items-center gap-1.5 py-1.5 px-2 hover:bg-slate-50 rounded-lg cursor-pointer" onClick={() => selectNodeDetails('Warehouse', wh.name, { location: wh.location, area: wh.area, status: 'Active' })}>
@@ -124,7 +171,9 @@ export default function WarehouseTree() {
                       <div className="pl-6 border-l border-slate-200 ml-4 space-y-1">
                         {whZoneGroups.map(zg => {
                           const zgExpanded = expandedNodes[zg.id];
-                          const zgZones = zones.filter(z => zg.zoneIds.includes(z.id));
+                          
+                          // O(1) zone mapping via zonesById cache index
+                          const zgZones = zg.zoneIds.map(id => zonesById[id]).filter(Boolean);
 
                           return (
                             <div key={zg.id} className="space-y-1">
@@ -142,7 +191,9 @@ export default function WarehouseTree() {
                                 <div className="pl-6 border-l border-slate-200 ml-4 space-y-1">
                                   {zgZones.map(zone => {
                                     const zoneExpanded = expandedNodes[zone.id];
-                                    const zoneAisles = aisles.filter(a => a.zoneName === zone.name);
+                                    
+                                    // O(1) aisle mapping via aislesByZoneName index
+                                    const zoneAisles = aislesByZoneName[zone.name] || [];
                                     
                                     return (
                                       <div key={zone.id} className="space-y-1">
@@ -161,8 +212,8 @@ export default function WarehouseTree() {
                                             {zoneAisles.map(aisle => {
                                               const aisleExpanded = expandedNodes[aisle.id];
                                               
-                                              // Filter racks in this zone
-                                              const zoneRacks = racks.filter(r => r.zoneId === zone.id);
+                                              // O(1) rack mapping via racksByZoneId index
+                                              const zoneRacks = racksByZoneId[zone.id] || [];
 
                                               return (
                                                 <div key={aisle.id} className="space-y-1">
@@ -180,7 +231,9 @@ export default function WarehouseTree() {
                                                     <div className="pl-6 border-l border-slate-200 ml-4 space-y-1">
                                                       {zoneRacks.map(rack => {
                                                         const rackExpanded = expandedNodes[rack.id];
-                                                        const rackShelves = shelves.filter(s => s.rackId === rack.id);
+                                                        
+                                                        // O(1) shelf mapping via shelvesByRackId index
+                                                        const rackShelves = shelvesByRackId[rack.id] || [];
 
                                                         return (
                                                           <div key={rack.id} className="space-y-1">
@@ -199,8 +252,8 @@ export default function WarehouseTree() {
                                                                 {rackShelves.map(shelf => {
                                                                   const shelfExpanded = expandedNodes[shelf.id];
                                                                   
-                                                                  // Filter bins on this shelf
-                                                                  const shelfBins = bins.filter(b => b.shelf === shelf.shelfLevel && b.zone === zone.name);
+                                                                  // O(1) bin mapping via binsByZoneAndShelf index
+                                                                  const shelfBins = binsByZoneAndShelf[`${zone.name}-${shelf.shelfLevel}`] || [];
 
                                                                   return (
                                                                     <div key={shelf.id} className="space-y-1">
@@ -216,7 +269,8 @@ export default function WarehouseTree() {
                                                                       {shelfExpanded && (
                                                                         <div className="pl-6 border-l border-slate-200 ml-4 space-y-0.5">
                                                                           {shelfBins.map(bin => {
-                                                                            const product = inventory.find(i => i.bin === bin.code);
+                                                                            // O(1) inventory check via inventoryByBinCode cache index
+                                                                            const product = inventoryByBinCode[bin.code];
                                                                             let statusColor = 'bg-slate-200 text-slate-700';
                                                                             if (bin.status === 'FULL') statusColor = 'bg-red-100 text-red-700 border-red-200';
                                                                             else if (bin.status === 'EMPTY') statusColor = 'bg-slate-50 text-slate-400 border-slate-200';

@@ -26,14 +26,16 @@ export default function RoutesOptimization() {
     const fetchRoutesData = async () => {
       setLoading(true);
       try {
-        console.warn("[Routes] Fetching live routes from GET /api/routes/");
-        const routeData = await getRoutesApi();
+        console.warn("[Routes] Fetching live routes and congestion concurrently...");
+        const [routeData, congestionData] = await Promise.all([
+          getRoutesApi().catch(err => { console.warn("Failed fetching routes:", err); return null; }),
+          getRouteCongestionApi().catch(err => { console.warn("Failed fetching route congestion:", err); return null; })
+        ]);
+
         if (active && routeData && routeData.results) {
           setActiveRoutes(routeData.results.length > 0 ? routeData.results : contextRoutes);
         }
         
-        console.warn("[Routes] Fetching live congestion from GET /api/routes/congestion/");
-        const congestionData = await getRouteCongestionApi();
         if (active && congestionData) {
           const rawList = Array.isArray(congestionData) ? congestionData :
                           (congestionData.results && Array.isArray(congestionData.results)) ? congestionData.results : null;

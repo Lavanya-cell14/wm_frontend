@@ -135,14 +135,16 @@ export default function DigitalTwin() {
     const fetchTwinData = async () => {
       setLoading(true);
       try {
-        console.warn("[DigitalTwin] Fetching live twin summary...");
-        const summary = await getTwinSummaryApi();
+        console.warn("[DigitalTwin] Fetching live twin summary and layout graph concurrently...");
+        const [summary, graph] = await Promise.all([
+          getTwinSummaryApi().catch(err => { console.warn("Failed fetching twin summary:", err); return null; }),
+          getLayoutGraphApi().catch(err => { console.warn("Failed fetching layout graph topology:", err); return null; })
+        ]);
+
         if (active && summary) {
           setTelemetry(summary);
         }
         
-        console.warn("[DigitalTwin] Fetching layout graph topology...");
-        const graph = await getLayoutGraphApi();
         if (active && graph) {
           setGraphSummary({
             nodes: graph.nodes?.length || 0,
