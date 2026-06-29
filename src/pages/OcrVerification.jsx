@@ -13,7 +13,7 @@ export default function OcrVerification() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { ocrDocuments, setOcrDocuments, verifyOcrDocument, rejectOcrDocument, fetchData } = useWarehouse();
+  const { ocrDocuments, setOcrDocuments, verifyOcrDocument, rejectOcrDocument, fetchInboundData, fetchInventoryData } = useWarehouse();
   
   const [selectedDocId, setSelectedDocId] = useState('');
   const [docDetails, setDocDetails] = useState({ document_number: '', supplier: '' });
@@ -175,21 +175,33 @@ export default function OcrVerification() {
       showToast('OCR Document verified and inbound receipt created!', 'success');
     } catch (err) {
       console.error('[OCR Verification] Approval API failed, falling back to local context update:', err);
-      showToast('Django Backend offline/error. Updating local context for UI safety.', 'warning');
-      setApiOfflineWarning('Django Backend is currently offline. Your verification is being processed locally.');
+      let errorMsg = 'Django Backend is currently offline. Your verification is being processed locally.';
+      if (err.status === 404) {
+        errorMsg = 'Document not found on backend database. Your verification is being processed locally.';
+      } else if (err.status === 400) {
+        const backendError = err.detail?.error || err.detail?.detail || err.message;
+        errorMsg = `Backend validation error: ${backendError}. Your verification is being processed locally.`;
+      } else if (err.status === 401 || err.status === 403) {
+        errorMsg = 'Authentication error. Your verification is being processed locally.';
+      }
+      showToast('Django Backend error. Updating local context for UI safety.', 'warning');
+      setApiOfflineWarning(errorMsg);
     }
 
     // Call context modifier
     verifyOcrDocument(selectedDocId, items, docDetails);
     
     // Sync state from backend
-    if (fetchData) {
-      await fetchData(true);
+    if (fetchInboundData) {
+      await fetchInboundData(true);
+    }
+    if (fetchInventoryData) {
+      await fetchInventoryData(true);
     }
     
-    // Redirect to inbound receipts
+    // Redirect to recommendations page
     setTimeout(() => {
-      navigate('/inventory/inbound');
+      navigate('/inventory/recommendations');
     }, 1500);
   };
 
@@ -207,8 +219,17 @@ export default function OcrVerification() {
       showToast('Document rejected and quarantined.', 'info');
     } catch (err) {
       console.error('[OCR Verification] Rejection API failed, falling back to local context update:', err);
-      showToast('Django Backend offline/error. Updating local context for UI safety.', 'warning');
-      setApiOfflineWarning('Django Backend is currently offline. Your rejection is being processed locally.');
+      let errorMsg = 'Django Backend is currently offline. Your rejection is being processed locally.';
+      if (err.status === 404) {
+        errorMsg = 'Document not found on backend database. Your rejection is being processed locally.';
+      } else if (err.status === 400) {
+        const backendError = err.detail?.error || err.detail?.detail || err.message;
+        errorMsg = `Backend validation error: ${backendError}. Your rejection is being processed locally.`;
+      } else if (err.status === 401 || err.status === 403) {
+        errorMsg = 'Authentication error. Your rejection is being processed locally.';
+      }
+      showToast('Django Backend error. Updating local context for UI safety.', 'warning');
+      setApiOfflineWarning(errorMsg);
     }
 
     rejectOcrDocument(selectedDocId, rejectReason);

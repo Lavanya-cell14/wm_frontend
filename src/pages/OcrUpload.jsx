@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../context/WarehouseContext';
 import { useAuth } from '../context/AuthContext';
-import { processOcrDocument, uploadOcrDocumentDjangoApi, normalizeOcrResponse } from '../services/ocrService';
+import { processOcrDocument, uploadOcrDocumentDjangoApi, fetchOcrDocumentApi, normalizeOcrResponse } from '../services/ocrService';
 import { AlertBanner, Badge, Button, Card, CardContent, CardHeader, CardTitle, DashboardStatCard, Input, StatusBadge } from 'shared-ui';
 import { 
   FileText, UploadCloud, Trash2, ShieldAlert, Sparkles, 
@@ -198,35 +198,39 @@ export default function OcrUpload() {
       controller.abort();
     }, 90000);
 
-    // 1. Optional Django/backend sync try/catch
+    let res = null;
+    let backendDocId = null;
     try {
-      console.log("[OCR] Optional backend sync started");
+      console.log("[OCR] Django backend upload and processing started");
       console.warn("[OCR Upload] Saving file to Django BE via /api/ocr/upload/");
       const djangoRes = await uploadOcrDocumentDjangoApi(activeDoc.fileObject);
-      if (djangoRes?.skipped) {
-        showToast("Backend login token missing. Django OCR sync skipped.", "warning");
-      }
-    } catch (djangoErr) {
-      console.error("[OCR] Optional backend sync failed:", djangoErr);
-      showToast("Django backend save failed. Extraction will continue locally.", "warning");
-    }
-
-    // 2. OCR extraction try/catch
-    let res = null;
-    try {
-      console.log("[OCR] Extract request started");
-      console.log("[OCR Flow] Before calling processOcrDocument for file:", activeDoc.fileName);
-      res = await processOcrDocument(activeDoc.fileObject, { signal: controller.signal });
-      clearTimeout(timeoutId);
-      console.log("[OCR] Extract success raw response:", res);
-    } catch (extractErr) {
-      clearTimeout(timeoutId);
-      console.error('[OCR Flow Error] API failure:', extractErr);
       
-      const isTimeout = extractErr.name === 'AbortError' || extractErr.message.includes('timeout');
+      if (djangoRes?.document_id) {
+        backendDocId = djangoRes.document_id;
+        console.log("[OCR] Saved to Django backend. Received UUID:", backendDocId);
+        
+        // Fetch the fully processed document details from the Django Backend.
+        console.log("[OCR] Fetching extracted details from Django backend for ID:", backendDocId);
+        const docDetails = await fetchOcrDocumentApi(backendDocId);
+        clearTimeout(timeoutId);
+        
+        if (docDetails && docDetails.extracted_json) {
+          res = docDetails.extracted_json;
+          console.log("[OCR] Successfully retrieved extracted JSON from Django Backend:", res);
+        } else {
+          throw new Error("Django backend processed the document but did not return extracted data. Check backend logs.");
+        }
+      } else {
+        throw new Error("Django backend failed to return a document ID.");
+      }
+    } catch (err) {
+      clearTimeout(timeoutId);
+      console.error('[OCR Flow Error] Inbound upload/processing pipeline failed:', err);
+      
+      const isTimeout = err.name === 'AbortError' || err.message.includes('timeout');
       const errorMsg = isTimeout 
         ? "OCR request completed slowly. Please retry."
-        : `OCR processing error: ${extractErr.message}`;
+        : `OCR processing error: ${err.message}`;
       
       showToast(errorMsg, 'error');
       setApiOfflineWarning(errorMsg);
@@ -281,6 +285,7 @@ export default function OcrUpload() {
         d.id === activeFileId 
           ? {
               ...d,
+              id: backendDocId || d.id,
               status: 'VERIFICATION_PENDING',
               confidenceScore: 50,
               extractedItems: fallbackItems,
@@ -295,7 +300,10 @@ export default function OcrUpload() {
           : d
       ));
 
-      localStorage.setItem('latestProcessedDocId', activeFileId);
+      localStorage.setItem('latestProcessedDocId', backendDocId || activeFileId);
+      if (backendDocId) {
+        setActiveFileId(backendDocId);
+      }
       showToast('OCR response normalization failed. Document marked for Manual Review.', 'warning');
       setProcessing(false);
       setProcessingStartTime(null);
@@ -307,7 +315,7 @@ export default function OcrUpload() {
       d.id === activeFileId 
         ? {
             ...d,
-            id: d.id, // Keep the uploaded ID (e.g. OCR-117)
+            id: backendDocId || d.id, // Keep the uploaded ID (e.g. OCR-117) or use backend UUID
             documentNumber: normalized.documentNumber, // Attach normalized document number (e.g. INV-2026-1001)
             status: 'VERIFICATION_PENDING',
             confidenceScore: normalized.confidenceScore,
@@ -324,7 +332,10 @@ export default function OcrUpload() {
     ));
     
     console.log("[OCR Flow] Final document status after mapping: VERIFICATION_PENDING");
-    localStorage.setItem('latestProcessedDocId', activeFileId);
+    localStorage.setItem('latestProcessedDocId', backendDocId || activeFileId);
+    if (backendDocId) {
+      setActiveFileId(backendDocId);
+    }
 
     showToast('OCR analysis completed successfully! Ready for verification.');
 

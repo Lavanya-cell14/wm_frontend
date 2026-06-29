@@ -2,24 +2,23 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
 import { useAuth } from '../../context/AuthContext';
+import SharedKeyValueCard from '../../components/shared/SharedKeyValueCard';
+import { ClipboardList, Play, CheckCircle2, Navigation, MapPin, Box, ArrowRight, Hourglass, Sparkles, Clock, X, Eye } from 'lucide-react';
 import { 
+  Badge, 
   Card, 
   CardContent, 
-  CardHeader, 
-  CardTitle, 
-  Button, 
-  Badge, 
-  AlertBanner, 
   Table, 
   TableHeader, 
   TableBody, 
   TableRow, 
   TableHead, 
-  TableCell,
-  Modal,
-  Pagination
+  TableCell, 
+  Button, 
+  Modal, 
+  Pagination, 
+  AlertBanner 
 } from 'shared-ui';
-import { ClipboardList, Play, CheckCircle2, Navigation, MapPin, Box, ArrowRight, Hourglass, Sparkles, Clock, X, Eye } from 'lucide-react';
 
 export default function PutawayTasks() {
   const navigate = useNavigate();
@@ -206,6 +205,15 @@ export default function PutawayTasks() {
               </div>
             </div>
 
+            <SharedKeyValueCard
+              title="AI Placement Orientation"
+              items={[
+                { label: "Orientation", value: selectedTaskForModal.orientation || "Orientation data not available from backend allocation." },
+                { label: "Max Units Fit", value: selectedTaskForModal.maxUnitsFit ?? "N/A" },
+                { label: "Utilization Score", value: selectedTaskForModal.utilizationScore ? `${selectedTaskForModal.utilizationScore}%` : "N/A" },
+                { label: "Placement Instruction", value: selectedTaskForModal.placementInstruction || "N/A" },
+              ]}
+            />
             <div className="p-4 border border-gray-100 rounded-2xl bg-white space-y-2">
               <h4 className="font-bold text-gray-900 border-b border-gray-100 pb-1.5 uppercase text-[10px] tracking-wider text-indigo-600">AI Routing Instructions</h4>
               <div className="bg-indigo-50/50 p-3 rounded-lg border border-indigo-100 space-y-1.5">

@@ -113,19 +113,19 @@ export default function WarehouseScene({
   useEffect(() => {
     if (!mountRef.current) return;
 
-    // 1. Scene setup
+    // 1. Scene setup — lighter, more visible background
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#0b1329'); // Sleek dark slate blue
+    scene.background = new THREE.Color('#0f172a'); // dark navy (less pure black)
     sceneRef.current = scene;
 
-    // Add fog for visual depth
-    scene.fog = new THREE.FogExp2('#0b1329', 0.007);
+    // Mild fog — just enough for depth without hiding racks
+    scene.fog = new THREE.Fog('#0f172a', 120, 350);
 
     // 2. Camera setup
     const width = mountRef.current.clientWidth;
     const height = mountRef.current.clientHeight || 450;
-    const camera = new THREE.PerspectiveCamera(45, width / height, 1, 1000);
-    camera.position.set(50, 45, 90); // Initial elevated view
+    const camera = new THREE.PerspectiveCamera(50, width / height, 0.5, 800);
+    camera.position.set(40, 35, 75); // closer, slightly lower angle for clarity
     cameraRef.current = camera;
 
     // 3. Renderer setup
@@ -134,48 +134,62 @@ export default function WarehouseScene({
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.3; // slightly brighter overall output
     mountRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
     // 4. Orbit Controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.maxPolarAngle = Math.PI / 2 - 0.05; // Don't go below floor
-    controls.minDistance = 10;
-    controls.maxDistance = 200;
+    controls.dampingFactor = 0.06;
+    controls.maxPolarAngle = Math.PI / 2 - 0.02;
+    controls.minDistance = 5;
+    controls.maxDistance = 300;
     controlsRef.current = controls;
 
-    // 5. Lighting
-    const ambientLight = new THREE.AmbientLight('#ffffff', 0.35);
+    // 5. Lighting — significantly brighter for demo clarity
+
+    // Strong ambient so shadows don't go pure black
+    const ambientLight = new THREE.AmbientLight('#d4e8ff', 0.75);
     scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight('#ffffff', 0.85);
-    dirLight.position.set(40, 100, 30);
+    // Key directional light (sun)
+    const dirLight = new THREE.DirectionalLight('#ffffff', 1.4);
+    dirLight.position.set(50, 90, 60);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 2048;
     dirLight.shadow.mapSize.height = 2048;
     dirLight.shadow.camera.near = 0.5;
-    dirLight.shadow.camera.far = 200;
-    const d = 80;
+    dirLight.shadow.camera.far = 300;
+    const d = 100;
     dirLight.shadow.camera.left = -d;
     dirLight.shadow.camera.right = d;
     dirLight.shadow.camera.top = d;
     dirLight.shadow.camera.bottom = -d;
-    dirLight.shadow.bias = -0.0005;
+    dirLight.shadow.bias = -0.0003;
     scene.add(dirLight);
 
-    // Grid Floor
-    const gridHelper = new THREE.GridHelper(200, 50, '#1e293b', '#0f172a');
+    // Fill light from opposite side to reduce harsh shadows
+    const fillLight = new THREE.DirectionalLight('#7fb8ff', 0.6);
+    fillLight.position.set(-40, 50, -30);
+    scene.add(fillLight);
+
+    // Hemisphere (sky/ground) for natural-feeling ambient gradient
+    const hemiLight = new THREE.HemisphereLight('#b8d4f0', '#1e293b', 0.55);
+    scene.add(hemiLight);
+
+    // Grid Floor — lighter grid lines
+    const gridHelper = new THREE.GridHelper(300, 60, '#1e3a5f', '#162032');
     gridHelper.position.y = -0.05;
     scene.add(gridHelper);
 
-    // Concrete floor plane
-    const floorGeo = new THREE.PlaneGeometry(300, 300);
+    // Concrete floor plane — slightly lighter
+    const floorGeo = new THREE.PlaneGeometry(400, 400);
     const floorMat = new THREE.MeshStandardMaterial({ 
-      color: '#070b19', 
-      roughness: 0.8, 
-      metalness: 0.2 
+      color: '#0c1828', 
+      roughness: 0.85, 
+      metalness: 0.1 
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
@@ -332,18 +346,18 @@ export default function WarehouseScene({
     const binMeshes = [];
 
     const colors = {
-      empty: '#334155',      // Slate-700
-      occupied: '#10b981',   // Emerald-500
-      full: '#ef4444',       // Red-500
+      empty: '#475569',      // Slate-600 — slightly lighter than before for visibility
+      occupied: '#22d3ee',   // Cyan-400 — brighter pop for occupied bins
+      full: '#f87171',       // Red-400 — bright red for over-capacity
       highlight: '#fbbf24',  // Amber-400 (glowing/pulse)
     };
 
-    // Draw Zones
+    // Draw Zones — more visible colors
     const zoneColorMap = {
-      'Zone A': '#0071C1',
-      'Zone B': '#a855f7',
-      'Zone C': '#f97316',
-      'Zone D': '#10b981',
+      'Zone A': '#38bdf8',   // Sky-400
+      'Zone B': '#c084fc',   // Purple-400
+      'Zone C': '#fb923c',   // Orange-400
+      'Zone D': '#4ade80',   // Green-400
     };
     const PAD = 2.0;
 
@@ -380,12 +394,14 @@ export default function WarehouseScene({
       const zoneGeo = new THREE.BoxGeometry(zWidth, zHeight, zDepth);
       const zoneMat = new THREE.MeshStandardMaterial({
         color: zColor,
-        roughness: 0.5,
+        roughness: 0.4,
         transparent: true,
-        opacity: 0.15,
+        opacity: 0.22,   // more visible zone floor
+        emissive: zColor,
+        emissiveIntensity: 0.04,
       });
       const zoneMesh = new THREE.Mesh(zoneGeo, zoneMat);
-      zoneMesh.position.set(zX + zWidth / 2, 0.05, zZ + zDepth / 2);
+      zoneMesh.position.set(zX + zWidth / 2, 0.06, zZ + zDepth / 2);
       layoutGroup.add(zoneMesh);
 
       const edges = new THREE.EdgesGeometry(zoneGeo);
@@ -396,19 +412,29 @@ export default function WarehouseScene({
       line.position.copy(zoneMesh.position);
       layoutGroup.add(line);
 
-      // Zone label sprite
+      // Zone label sprite — larger and clearer
       const canvas = document.createElement('canvas');
-      canvas.width = 160;
-      canvas.height = 64;
+      canvas.width = 256;
+      canvas.height = 80;
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = zColor;
-      ctx.font = 'bold 26px Inter, sans-serif';
-      ctx.fillText(zoneName, 10, 42);
+      // Background pill
+      ctx.fillStyle = `${zColor}33`;
+      ctx.roundRect(4, 4, 248, 72, 12);
+      ctx.fill();
+      ctx.strokeStyle = zColor;
+      ctx.lineWidth = 3;
+      ctx.roundRect(4, 4, 248, 72, 12);
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 32px Inter, Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(zoneName, 128, 40);
       const texture = new THREE.CanvasTexture(canvas);
       const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
       const sprite = new THREE.Sprite(spriteMat);
-      sprite.position.set(zX + zWidth / 2, 5, zZ + zDepth / 2);
-      sprite.scale.set(10, 4, 1);
+      sprite.position.set(zX + zWidth / 2, 4.5, zZ + zDepth / 2);
+      sprite.scale.set(14, 4.5, 1);
       layoutGroup.add(sprite);
     });
 
@@ -471,11 +497,13 @@ export default function WarehouseScene({
       const shelfW = (maxX - minX) + pad * 2;
       const shelfD = (maxZ - minZ) + pad * 2;
 
-      const supportGeo = new THREE.BoxGeometry(shelfW, 0.1, shelfD);
+      const supportGeo = new THREE.BoxGeometry(shelfW, 0.12, shelfD);
       const supportMat = new THREE.MeshStandardMaterial({ 
-        color: '#475569', 
-        metalness: 0.8, 
-        roughness: 0.3 
+        color: '#64748b',   // lighter shelf beams
+        metalness: 0.85, 
+        roughness: 0.25,
+        emissive: '#1e293b',
+        emissiveIntensity: 0.2,
       });
       const supportMesh = new THREE.Mesh(supportGeo, supportMat);
       supportMesh.position.set((minX + maxX) / 2, levelY, (minZ + maxZ) / 2);
@@ -489,11 +517,11 @@ export default function WarehouseScene({
       ];
 
       corners.forEach(corner => {
-        const columnGeo = new THREE.CylinderGeometry(0.12, 0.12, 10, 8);
+        const columnGeo = new THREE.CylinderGeometry(0.14, 0.14, 10, 8);
         const columnMat = new THREE.MeshStandardMaterial({ 
-          color: '#64748b', 
-          metalness: 0.9, 
-          roughness: 0.2 
+          color: '#94a3b8',   // lighter rack columns
+          metalness: 0.92, 
+          roughness: 0.15,
         });
         const column = new THREE.Mesh(columnGeo, columnMat);
         column.position.set(corner.x, 5, corner.z);

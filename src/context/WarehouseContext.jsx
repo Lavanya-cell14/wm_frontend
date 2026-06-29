@@ -10,6 +10,7 @@ import { getAiRecommendationsApi } from '../services/recommendationService';
 import { getMovementsApi } from '../services/movementService';
 import { getUsersApi } from '../services/usersService';
 import { getAuditLogsApi } from '../services/auditLogService';
+import { getOcrDocuments } from '../services/ocrService';
 import { 
   getAssignedPutawayTasks, 
   startPutawayTask as startPutawayTaskApi, 
@@ -317,6 +318,133 @@ export function WarehouseProvider({ children }) {
     setOcrDocuments(prev => prev.map(d => d.id === docId ? { ...d, status: 'REJECTED', rejectReason: reason } : d));
   };
 
+  /**
+   * Fetches ALL OCR documents from the real backend and populates ocrDocuments state.
+   * Maps backend field names to frontend shape expected by OcrVerification, OcrHistory, etc.
+   * Merges with locally-created docs (e.g. ones added via OcrUpload before backend sync).
+   */
+  const fetchOcrDocuments = async (isSilent = false) => {
+    if (!isSilent) setIsLoading(true);
+    try {
+      // Fetch first page to get total count, then fetch all remaining pages
+      const firstPage = await getOcrDocuments(1).catch(e => {
+        console.warn('[WarehouseContext] Failed fetching OCR documents page 1:', e?.message || e);
+        return { results: [], count: 0 };
+      });
+
+      let allResults = [...(firstPage.results || [])];
+
+      // If there are more pages, fetch them in parallel
+      const pageSize = 10; // Django default page size
+      const totalPages = Math.ceil((firstPage.count || 0) / pageSize);
+      if (totalPages > 1) {
+        const pagePromises = [];
+        for (let p = 2; p <= totalPages; p++) {
+          pagePromises.push(
+            getOcrDocuments(p).catch(e => {
+              console.warn(`[WarehouseContext] Failed fetching OCR documents page ${p}:`, e?.message || e);
+              return { results: [] };
+            })
+          );
+        }
+        const pages = await Promise.all(pagePromises);
+        pages.forEach(pg => { allResults = allResults.concat(pg.results || []); });
+      }
+
+      if (allResults.length === 0) return;
+
+      // Normalize backend shape → frontend shape
+      const normalized = allResults.map(doc => {
+        const extractedJson = doc.extracted_json || {};
+        const partyInfo     = extractedJson.party_info     || {};
+        const docInfo       = extractedJson.document_info  || {};
+        const financialInfo = extractedJson.financial_info || {};
+        const products      = extractedJson.products       || [];
+
+        // Map backend status → frontend status
+        let feStatus = 'VERIFICATION_PENDING';
+        const beStatus = (doc.status || doc.processing_status || '').toUpperCase();
+        if (beStatus === 'SUCCESS' || beStatus === 'VERIFIED' || beStatus === 'APPROVED') {
+          feStatus = 'VERIFICATION_PENDING'; // Show SUCCESS docs as pending so clerk can review
+        } else if (beStatus === 'REJECTED') {
+          feStatus = 'REJECTED';
+        } else if (beStatus === 'FAILED' || beStatus === 'ERROR') {
+          feStatus = 'FAILED';
+        }
+
+        // Parse dimension/weight objects that backend serialises as strings ("@{...}")
+        const parseBackendObj = (val) => {
+          if (!val || typeof val !== 'string') return val;
+          // Backend sometimes serialises PSObject as "@{key=val; ...}"
+          if (val.startsWith('@{')) {
+            const inner = val.slice(2, -1);
+            const out = {};
+            inner.split(';').forEach(pair => {
+              const [k, v] = pair.trim().split('=');
+              if (k) out[k.trim()] = isNaN(v) ? v?.trim() : Number(v);
+            });
+            return out;
+          }
+          return val;
+        };
+
+        const mappedItems = products.map((item, idx) => {
+          const dims   = parseBackendObj(item.dimensions)   || {};
+          const weight = parseBackendObj(item.weight)        || {};
+          return {
+            id:              item.id || `EXT-${doc.document_id}-${idx}`,
+            sku:             item.sku || item.SKU || '',
+            productName:     item.product_name || item.name || item.productName || '',
+            category:        item.category || 'General',
+            quantity:        Number(item.quantity || item.qty || 0),
+            uom:             item.uom || item.unit || 'BOX',
+            length:          dims.length ?? item.length ?? '',
+            width:           dims.width  ?? item.width  ?? '',
+            height:          dims.height ?? item.height ?? '',
+            weight:          weight.value ?? (typeof item.weight === 'number' ? item.weight : '') ,
+            batchNumber:     item.batch_number || item.batchNumber || `BAT-${Math.floor(1000 + Math.random() * 9000)}`,
+            expiryDate:      item.expiry_date  || item.expiryDate  || '2028-12-31',
+            confidenceScore: item.confidence_score != null ? Math.round(item.confidence_score * 100) : Math.round((doc.confidence_score || 0.95) * 100),
+            validationStatus: (item.sku || item.SKU) ? 'Valid' : 'Warning',
+            storageType:     item.storage_type  || item.storageType  || 'GENERAL',
+            isFragile:       !!(item.is_fragile  || item.fragile     || item.isFragile),
+            isStackable:     !!(item.is_stackable|| item.stackable   || item.isStackable),
+          };
+        });
+
+        return {
+          id:              docInfo.document_number || docInfo.invoice_number || doc.document_id,
+          _backendId:      doc.document_id,
+          status:          feStatus,
+          documentType:    doc.document_type || 'invoice',
+          supplierName:    partyInfo.supplier_name || partyInfo.name || 'Unknown Supplier',
+          documentNumber:  docInfo.document_number || docInfo.invoice_number || doc.document_id,
+          fileName:        doc.file_name || '',
+          totalAmount:     financialInfo.total_amount || '',
+          taxAmount:       financialInfo.tax          || '',
+          confidenceScore: Math.round((doc.confidence_score || 0.95) * 100),
+          extractedItems:  mappedItems,
+          createdAt:       doc.created_at || new Date().toISOString(),
+          updatedAt:       doc.updated_at || new Date().toISOString(),
+          rejectReason:    doc.rejection_reason || '',
+        };
+      });
+
+      // Merge: keep locally-created docs that don't exist in backend yet
+      setOcrDocuments(prev => {
+        const backendIds = new Set(normalized.map(d => d._backendId));
+        const localOnly  = prev.filter(d => !d._backendId || !backendIds.has(d._backendId));
+        return [...normalized, ...localOnly];
+      });
+
+      console.log(`[WarehouseContext] Loaded ${normalized.length} OCR documents from backend.`);
+    } catch (err) {
+      console.error('[WarehouseContext] fetchOcrDocuments failed:', err);
+    } finally {
+      if (!isSilent) setIsLoading(false);
+    }
+  };
+
   const [inboundTasks, setInboundTasks] = useState([]);
 
   const [products, setProducts] = useState([]);
@@ -326,38 +454,13 @@ export function WarehouseProvider({ children }) {
   const [movements, setMovements] = useState([]);
   const [routes, setRoutes] = useState([]);
 
-  const fetchData = async (isSilent = false) => {
+  const fetchWarehouseStructure = async (isSilent = false) => {
     if (!isSilent) setIsLoading(true);
-    setError(null);
     try {
-      const [
-        whsRes,
-        zonesRes,
-        binsRes,
-        productsRes,
-        invRes,
-        ordersRes,
-        routesRes,
-        inboundRes,
-        aiRecsRes,
-        movementsRes,
-        usersRes,
-        putawayRes,
-        auditLogsRes
-      ] = await Promise.all([
+      const [whsRes, zonesRes, binsRes] = await Promise.all([
         getWarehouses().catch(e => { console.warn("Failed fetching warehouses:", e); return { results: [] }; }),
         getZones().catch(e => { console.warn("Failed fetching zones:", e); return { results: [] }; }),
-        getBins().catch(e => { console.warn('[WarehouseContext] Failed fetching /api/bins/ — bins will be empty. Error:', e?.message || e); return { results: [] }; }),
-        getProducts().catch(e => { console.warn("Failed fetching products:", e); return { results: [] }; }),
-        getInventory().catch(e => { console.warn("Failed fetching inventory:", e); return { results: [] }; }),
-        getOrders().catch(e => { console.warn("Failed fetching orders:", e); return { results: [] }; }),
-        getRoutesApi().catch(e => { console.warn("Failed fetching routes:", e); return { results: [] }; }),
-        getInboundShipments().catch(e => { console.warn("Failed fetching inbound shipments:", e); return { results: [] }; }),
-        getAiRecommendationsApi().catch(e => { console.warn("Failed fetching AI recommendations:", e); return { results: [] }; }),
-        getMovementsApi().catch(e => { console.warn("Failed fetching movements:", e); return { results: [] }; }),
-        getUsersApi().catch(e => { console.warn("Failed fetching users:", e); return { results: [] }; }),
-        getAssignedPutawayTasks().catch(e => { console.warn("Failed fetching putaway tasks:", e); return []; }),
-        getAuditLogsApi().catch(e => { console.warn("Failed fetching audit logs:", e); return { results: [] }; })
+        getBins().catch(e => { console.warn('[WarehouseContext] Failed fetching /api/bins/ — bins will be empty. Error:', e?.message || e); return { results: [] }; })
       ]);
 
       if (whsRes?.results?.length > 0) {
@@ -378,13 +481,11 @@ export function WarehouseProvider({ children }) {
         setZones([]);
       }
 
-      console.log('[WarehouseContext] raw bins response', binsRes);
       if (binsRes?.results?.length > 0) {
         const normalizedBins = binsRes.results.map(b => {
           const maxCap = Number(b.max_capacity ?? b.maxCapacity ?? 100);
           const curCap = Number(b.current_capacity ?? b.currentCapacity ?? 0);
           const isOccupied = b.is_occupied ?? false;
-          
           const codeVal = b.bin_code ?? b.code ?? b.binCode ?? b.name;
           
           let parsed = { zone: null, rack: null, shelf: null };
@@ -433,18 +534,31 @@ export function WarehouseProvider({ children }) {
             ...b,
           };
         });
-        console.log('[WarehouseContext] normalized bins count', normalizedBins.length);
         setBins(normalizedBins);
       } else {
         setBins([]);
       }
+    } catch (err) {
+      console.error("Error fetching warehouse structure", err);
+    } finally {
+      if (!isSilent) setIsLoading(false);
+    }
+  };
+
+  const fetchInventoryData = async (isSilent = false) => {
+    if (!isSilent) setIsLoading(true);
+    try {
+      const [productsRes, invRes] = await Promise.all([
+        getProducts().catch(e => { console.warn("Failed fetching products:", e); return { results: [] }; }),
+        getInventory().catch(e => { console.warn("Failed fetching inventory:", e); return { results: [] }; })
+      ]);
 
       if (productsRes?.results) {
         const mappedProducts = productsRes.results.map((p, idx) => {
           return {
             sku: p.sku || `SKU-100${idx + 1}`,
             productId: p.productId || p.id || `PRD-000${idx + 1}`,
-            name: p.name,
+            name: p.product_name || p.name || p.productName || `Product ${p.sku}`,
             category: p.category || "Electronics",
             weight: p.weight || `${p.weightKg || 2.0} kg`,
             dimensions: p.dimensions || "25x25x25 cm",
@@ -493,84 +607,20 @@ export function WarehouseProvider({ children }) {
       } else {
         setInventory([]);
       }
+    } catch (err) {
+      console.error("Error fetching inventory data", err);
+    } finally {
+      if (!isSilent) setIsLoading(false);
+    }
+  };
 
-      if (usersRes?.results) {
-        const mappedWorkers = usersRes.results.map(w => ({
-          id: w.workerId || w.id,
-          name: w.name || w.username,
-          username: w.username,
-          first_name: w.first_name,
-          last_name: w.last_name,
-          email: w.email || `${w.id || w.username}@warehouseai.com`,
-          role: w.role || "WAREHOUSE_OPERATOR",
-          warehouse: w.warehouse || "Central Fulfillment A",
-          status: w.status || "Active",
-          lastLogin: w.lastLogin || "Just now",
-          createdAt: w.createdAt || "2026-01-10",
-          efficiency: w.efficiency || `${w.efficiencyScore || 90}%`,
-          zone: w.zoneAssigned || w.zone || "Zone A"
-        }));
-        setWorkers(mappedWorkers);
-      } else {
-        setWorkers([]);
-      }
-
-      if (routesRes?.results) {
-        const mappedRoutes = routesRes.results.map(r => ({
-          id: r.routeId || r.id,
-          from: r.stops && r.stops[0] ? r.stops[0] : (r.from || "Receiving Dock"),
-          to: r.stops && r.stops.length > 0 ? r.stops[r.stops.length - 1] : (r.to || "BIN-001"),
-          distance: r.distance || `${r.distanceMeters || 100}m`,
-          time: r.time || `${Math.round((r.estimatedTimeSec || 300) / 60)} mins`,
-          operator: r.workerId || r.operator || "Unassigned",
-          status: r.status || "Active"
-        }));
-        setRoutes(mappedRoutes);
-      } else {
-        setRoutes([]);
-      }
-
-      if (ordersRes?.results) {
-        const mappedOrders = ordersRes.results.map((o, idx) => {
-          const status = o.status === "CREATED" ? "Pending" : o.status === "PICKING" ? "In Progress" : o.status === "PACKED" ? "Packed" : o.status || "Pending";
-          return {
-            id: o.orderId || o.id,
-            customer: o.customerName || o.customer || "Unknown Customer",
-            dispatchTime: o.dispatchTime || "Today, 20:00",
-            productCount: o.quantity || o.productCount || 1,
-            status,
-            progress: o.progress || (status === "Pending" ? 10 : status === "In Progress" ? 40 : status === "Packed" ? 80 : 100),
-            orderDate: o.orderDate || new Date().toISOString().split('T')[0],
-            createdAt: o.createdAt || new Date().toISOString(),
-            completedAt: o.completedAt || null
-          };
-        });
-        setOrders(mappedOrders);
-      } else {
-        setOrders([]);
-      }
-
-      if (movementsRes?.results) {
-        const mappedMovements = movementsRes.results.map((m, idx) => {
-          return {
-            id: m.movementId || m.id,
-            item: m.productName || m.itemName || `Product ${m.productId || m.sku}`,
-            sku: m.productId || m.sku,
-            from: m.fromBin || m.from,
-            to: m.toBin || m.to,
-            user: m.workerId || m.user || "Warehouse Staff",
-            time: m.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            type: m.type || "Putaway",
-            status: m.status || "Completed",
-            qty: m.quantity || m.qty || 1,
-            movementDate: m.movementDate || new Date().toISOString().split('T')[0],
-            timestamp: m.timestamp || new Date().toISOString()
-          };
-        });
-        setMovements(mappedMovements);
-      } else {
-        setMovements([]);
-      }
+  const fetchInboundData = async (isSilent = false) => {
+    if (!isSilent) setIsLoading(true);
+    try {
+      const [inboundRes, putawayRes] = await Promise.all([
+        getInboundShipments().catch(e => { console.warn("Failed fetching inbound shipments:", e); return { results: [] }; }),
+        getAssignedPutawayTasks().catch(e => { console.warn("Failed fetching putaway tasks:", e); return []; })
+      ]);
 
       if (inboundRes?.results) {
         const mappedInbounds = inboundRes.results.map((i, idx) => {
@@ -608,7 +658,6 @@ export function WarehouseProvider({ children }) {
             mappedStatus = ship.status;
           }
 
-          // Check if there is an active putaway task for this inbound receipt
           const matchedTask = tasksList.find(t => 
             t.inboundId === ship.id || 
             t.inboundId === ship._rawBackendId ||
@@ -633,6 +682,7 @@ export function WarehouseProvider({ children }) {
             documentReference: ship.shipment_code || 'REF-GEN',
             sku: ship.sku || 'SKU-GENERIC',
             productName: ship.product_name || ship.product || `Shipment from ${ship.supplier_name || 'Supplier'}`,
+            productId: ship.productId || null,
             category: ship.category || 'General',
             quantityReceived: Number(ship.quantity || 50),
             verifiedQuantity: Number(ship.quantity || 50),
@@ -669,7 +719,74 @@ export function WarehouseProvider({ children }) {
       } else {
         setInboundTasks([]);
       }
+    } catch (err) {
+      console.error("Error fetching inbound data", err);
+    } finally {
+      if (!isSilent) setIsLoading(false);
+    }
+  };
 
+  const fetchPutawayTasks = async (isSilent = false) => {
+    if (!isSilent) setIsLoading(true);
+    try {
+      const putawayRes = await getAssignedPutawayTasks().catch(e => { console.warn("Failed fetching putaway tasks:", e); return []; });
+      if (putawayRes) {
+        const tasksList = Array.isArray(putawayRes) ? putawayRes : putawayRes.results || [];
+        setPutawayTasks(prev => {
+          const merged = [...prev];
+          tasksList.forEach(task => {
+            const existingIdx = merged.findIndex(t => t.id === task.id || t.inboundId === task.inboundId);
+            if (existingIdx > -1) {
+              merged[existingIdx] = { ...task, ...merged[existingIdx] };
+            } else {
+              merged.push(task);
+            }
+          });
+          return merged;
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching putaway tasks", err);
+    } finally {
+      if (!isSilent) setIsLoading(false);
+    }
+  };
+
+  const fetchUsers = async (isSilent = false) => {
+    if (!isSilent) setIsLoading(true);
+    try {
+      const usersRes = await getUsersApi().catch(e => { console.warn("Failed fetching users:", e); return { results: [] }; });
+      if (usersRes?.results) {
+        const mappedWorkers = usersRes.results.map(w => ({
+          id: w.workerId || w.id,
+          name: w.name || w.username,
+          username: w.username,
+          first_name: w.first_name,
+          last_name: w.last_name,
+          email: w.email || `${w.id || w.username}@warehouseai.com`,
+          role: w.role || "WAREHOUSE_OPERATOR",
+          warehouse: w.warehouse || "Central Fulfillment A",
+          status: w.status || "Active",
+          lastLogin: w.lastLogin || "Just now",
+          createdAt: w.createdAt || "2026-01-10",
+          efficiency: w.efficiency || `${w.efficiencyScore || 90}%`,
+          zone: w.zoneAssigned || w.zone || "Zone A"
+        }));
+        setWorkers(mappedWorkers);
+      } else {
+        setWorkers([]);
+      }
+    } catch (err) {
+      console.error("Error fetching users", err);
+    } finally {
+      if (!isSilent) setIsLoading(false);
+    }
+  };
+
+  const fetchRecommendations = async (isSilent = false) => {
+    if (!isSilent) setIsLoading(true);
+    try {
+      const aiRecsRes = await getAiRecommendationsApi().catch(e => { console.warn("Failed fetching AI recommendations:", e); return { results: [] }; });
       if (aiRecsRes?.results) {
         const mappedRecs = aiRecsRes.results.map((r, idx) => {
           return {
@@ -697,23 +814,95 @@ export function WarehouseProvider({ children }) {
           return merged;
         });
       }
+    } catch (err) {
+      console.error("Error fetching AI recommendations", err);
+    } finally {
+      if (!isSilent) setIsLoading(false);
+    }
+  };
 
-      if (putawayRes) {
-        const tasksList = Array.isArray(putawayRes) ? putawayRes : putawayRes.results || [];
-        setPutawayTasks(prev => {
-          const merged = [...prev];
-          tasksList.forEach(task => {
-            const existingIdx = merged.findIndex(t => t.id === task.id || t.inboundId === task.inboundId);
-            if (existingIdx > -1) {
-              merged[existingIdx] = { ...task, ...merged[existingIdx] };
-            } else {
-              merged.push(task);
-            }
-          });
-          return merged;
-        });
+  const fetchRoutes = async (isSilent = false) => {
+    try {
+      const routesRes = await getRoutesApi().catch(e => { console.warn("Failed fetching routes:", e); return { results: [] }; });
+      if (routesRes?.results) {
+        const mappedRoutes = routesRes.results.map(r => ({
+          id: r.routeId || r.id,
+          from: r.stops && r.stops[0] ? r.stops[0] : (r.from || "Receiving Dock"),
+          to: r.stops && r.stops.length > 0 ? r.stops[r.stops.length - 1] : (r.to || "BIN-001"),
+          distance: r.distance || `${r.distanceMeters || 100}m`,
+          time: r.time || `${Math.round((r.estimatedTimeSec || 300) / 60)} mins`,
+          operator: r.workerId || r.operator || "Unassigned",
+          status: r.status || "Active"
+        }));
+        setRoutes(mappedRoutes);
+      } else {
+        setRoutes([]);
       }
+    } catch (err) {
+      console.error("Error fetching routes", err);
+    }
+  };
 
+  const fetchMovements = async (isSilent = false) => {
+    try {
+      const movementsRes = await getMovementsApi().catch(e => { console.warn("Failed fetching movements:", e); return { results: [] }; });
+      if (movementsRes?.results) {
+        const mappedMovements = movementsRes.results.map((m, idx) => {
+          return {
+            id: m.movementId || m.id,
+            item: m.productName || m.itemName || `Product ${m.productId || m.sku}`,
+            sku: m.productId || m.sku,
+            from: m.fromBin || m.from,
+            to: m.toBin || m.to,
+            user: m.workerId || m.user || "Warehouse Staff",
+            time: m.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            type: m.type || "Putaway",
+            status: m.status || "Completed",
+            qty: m.quantity || m.qty || 1,
+            movementDate: m.movementDate || new Date().toISOString().split('T')[0],
+            timestamp: m.timestamp || new Date().toISOString()
+          };
+        });
+        setMovements(mappedMovements);
+      } else {
+        setMovements([]);
+      }
+    } catch (err) {
+      console.error("Error fetching movements", err);
+    }
+  };
+
+  const fetchOrders = async (isSilent = false) => {
+    try {
+      const ordersRes = await getOrders().catch(e => { console.warn("Failed fetching orders:", e); return { results: [] }; });
+      if (ordersRes?.results) {
+        const mappedOrders = ordersRes.results.map((o, idx) => {
+          const status = o.status === "CREATED" ? "Pending" : o.status === "PICKING" ? "In Progress" : o.status === "PACKED" ? "Packed" : o.status || "Pending";
+          return {
+            id: o.orderId || o.id,
+            customer: o.customerName || o.customer || "Unknown Customer",
+            dispatchTime: o.dispatchTime || "Today, 20:00",
+            productCount: o.quantity || o.productCount || 1,
+            status,
+            progress: o.progress || (status === "Pending" ? 10 : status === "In Progress" ? 40 : status === "Packed" ? 80 : 100),
+            orderDate: o.orderDate || new Date().toISOString().split('T')[0],
+            createdAt: o.createdAt || new Date().toISOString(),
+            completedAt: o.completedAt || null
+          };
+        });
+        setOrders(mappedOrders);
+      } else {
+        setOrders([]);
+      }
+    } catch (err) {
+      console.error("Error fetching orders", err);
+    }
+  };
+
+  const fetchAuditLogs = async (isSilent = false) => {
+    if (!isSilent) setIsLoading(true);
+    try {
+      const auditLogsRes = await getAuditLogsApi().catch(e => { console.warn("Failed fetching audit logs:", e); return { results: [] }; });
       if (auditLogsRes) {
         const logsList = Array.isArray(auditLogsRes) ? auditLogsRes : (auditLogsRes.results || []);
         const mappedLogs = logsList.map((log, index) => {
@@ -729,8 +918,32 @@ export function WarehouseProvider({ children }) {
           };
         });
         setAuditLogs(mappedLogs);
+      } else {
+        setAuditLogs([]);
       }
+    } catch (err) {
+      console.error("Error fetching audit logs", err);
+    } finally {
+      if (!isSilent) setIsLoading(false);
+    }
+  };
 
+  const fetchData = async (isSilent = false) => {
+    if (!isSilent) setIsLoading(true);
+    setError(null);
+    try {
+      await Promise.all([
+        fetchWarehouseStructure(true),
+        fetchInventoryData(true),
+        fetchInboundData(true),
+        fetchPutawayTasks(true),
+        fetchUsers(true),
+        fetchRecommendations(true),
+        fetchRoutes(true),
+        fetchMovements(true),
+        fetchOrders(true),
+        fetchAuditLogs(true)
+      ]);
     } catch (err) {
       console.error("Error fetching APIs", err);
       setError("Failed to synchronize layout and real-time inventory from central backend API.");
@@ -740,7 +953,13 @@ export function WarehouseProvider({ children }) {
   };
 
   useEffect(() => {
-    fetchData();
+    // Fetch critical layout and inventory data on mount, but do not block app load
+    fetchWarehouseStructure(true);
+    fetchInventoryData(true);
+    fetchInboundData(true);
+    fetchPutawayTasks(true);
+    fetchOcrDocuments(true); // Load real OCR documents from backend on startup
+    fetchAuditLogs(true);
   }, []);
 
 
@@ -1831,6 +2050,14 @@ export function WarehouseProvider({ children }) {
         rejectOcrDocument,
         setAiRecommendations,
         fetchData,
+        fetchWarehouseStructure,
+        fetchInventoryData,
+        fetchInboundData,
+        fetchPutawayTasks,
+        fetchUsers,
+        fetchRecommendations,
+        fetchOcrDocuments,
+        fetchAuditLogs,
       }}
     >
       {children}
