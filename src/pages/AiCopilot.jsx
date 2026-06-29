@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Bot, Send, User, Sparkles, Box, Search, PackageSearch, Navigation, Map, ShieldAlert, Cpu, Settings2 } from 'lucide-react';
 import { Badge, Button, Card, CardContent, Input } from 'shared-ui';
 import { askRag } from '../services/ragService';
@@ -16,6 +16,12 @@ export default function AiCopilot() {
   
   // Mode selection: 'rag' (port 8002) | 'wms' (port 8000)
   const [queryMode, setQueryMode] = useState('rag');
+
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isTyping]);
 
   const suggestedPrompts = [
     "Where is SKU100?",
@@ -46,7 +52,7 @@ export default function AiCopilot() {
         // Hits WMS Django Backend server on port 8000
         console.warn("[AiCopilot] Sending query to WMS Backend query API (/api/ai/query/)");
         const response = await queryAiCopilotApi(userMsg);
-        const botText = response.response || response.suggestion || "No response received from WMS AI query engine.";
+        const botText = response.answer || response.response || response.suggestion || "No response received from WMS AI query engine.";
         setMessages(prev => [...prev, { sender: 'bot', text: botText }]);
       }
     } catch (err) {
@@ -115,11 +121,23 @@ export default function AiCopilot() {
             const isBot = msg.sender === 'bot';
             if (msg.isSystemWarning) {
               return (
-                <div key={idx} className="flex justify-center my-2">
+                <div key={idx} className="flex flex-col items-center gap-2 my-2 w-full animate-in fade-in zoom-in-95 duration-200">
                   <div className="bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-xs max-w-xl">
                     <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
                     <span>{msg.text}</span>
                   </div>
+                  <Button
+                    onClick={() => {
+                      const userMsgs = messages.filter(m => m.sender === 'user');
+                      if (userMsgs.length > 0) {
+                        handleSendMessage(userMsgs[userMsgs.length - 1].text);
+                      }
+                    }}
+                    disabled={isTyping}
+                    className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1 rounded-lg border border-slate-200 transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    Retry Request
+                  </Button>
                 </div>
               );
             }
@@ -154,6 +172,7 @@ export default function AiCopilot() {
               </div>
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Suggested Prompts Grid */}
