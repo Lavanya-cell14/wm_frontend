@@ -1,12 +1,15 @@
 import React from 'react';
 import { Card, CardContent } from 'shared-ui';
 
-export default function StatCard({ title, value, icon: Icon, trend, trendLabel }) {
+export default function StatCard({ title, value, icon: Icon, trend, trendLabel, onClick }) {
   const isPositive = trend && trend > 0;
   const isNegative = trend && trend < 0;
 
   return (
-    <Card className="h-full flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-300 border border-gray-150 bg-white select-none group">
+    <Card 
+      onClick={onClick}
+      className={`h-full flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-300 border border-gray-150 bg-white select-none group ${onClick ? 'cursor-pointer' : ''}`}
+    >
       <CardContent className="p-6 flex flex-col justify-between flex-1">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">

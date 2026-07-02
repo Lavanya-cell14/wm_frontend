@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWarehouse } from '../../context/WarehouseContext';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
   CardDescription,
-  Badge, 
-  Button, 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableRow, 
-  TableHead, 
+  Badge,
+  Button,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
   TableCell,
   Modal,
   Pagination,
@@ -23,9 +23,9 @@ import {
 } from 'shared-ui';
 import SharedKeyValueCard from '../../components/shared/SharedKeyValueCard';
 import { Lightbulb, ChevronRight, Eye, Info, Sparkles, Filter, Settings, Cpu, HelpCircle, AlertTriangle, Loader2, CheckSquare } from 'lucide-react';
-import { 
-  getRecommendationsApi, 
-  suggestBinRecommendationApi, 
+import {
+  getRecommendationsApi,
+  suggestBinRecommendationApi,
   recommend3dPlacementApi,
   generateStorageRecommendationApi,
   generateBinAllocationApi,
@@ -36,9 +36,9 @@ import { getProductBySkuApi } from '../../services/productService';
 
 export default function RecommendationsPage() {
   const navigate = useNavigate();
-  const { 
-    aiRecommendations = [], 
-    inboundReceipts = [], 
+  const {
+    aiRecommendations = [],
+    inboundReceipts = [],
     products = [],
     workers = [],
     bins = [],
@@ -78,17 +78,17 @@ export default function RecommendationsPage() {
   const filteredOperators = useMemo(() => {
     // 1. First priority: users with role WAREHOUSE_OPERATOR or OPERATOR
     let ops = workers.filter(w => w.role === 'WAREHOUSE_OPERATOR' || w.role === 'OPERATOR');
-    
+
     // 2. Second priority: include users with role STAFF / staff if no operator role exists
     if (ops.length === 0) {
       ops = workers.filter(w => w.role === 'STAFF' || w.role === 'staff');
     }
-    
+
     // 3. Third priority: include any available worker/user as final fallback for demo
     if (ops.length === 0) {
       ops = workers;
     }
-    
+
     // Hide users whose username contains "admin" unless explicitly an operator
     let filteredOps = ops.filter(w => {
       const username = (w.username || w.name || '').toLowerCase();
@@ -104,7 +104,7 @@ export default function RecommendationsPage() {
     }
     return filteredOps;
   }, [workers]);
-  
+
   // Tab state: 'monitor' | 'allocation-tools'
   const [activeTab, setActiveTab] = useState('monitor');
   const [searchQuery, setSearchQuery] = useState('');
@@ -129,9 +129,9 @@ export default function RecommendationsPage() {
     const maxCap = Number(b.max_capacity ?? b.maxCapacity ?? 100);
     const curCap = Number(b.current_capacity ?? b.currentCapacity ?? 0);
     const isOccupied = b.is_occupied ?? false;
-    
+
     const codeVal = b.bin_code ?? b.code ?? b.binCode ?? b.name;
-    
+
     // Parse fallback locations from bin code pattern: RACK-A1-01-L1-B01
     let parsed = { zone: null, rack: null, shelf: null };
     if (codeVal && typeof codeVal === 'string') {
@@ -163,19 +163,19 @@ export default function RecommendationsPage() {
     }
 
     return {
-      id:              b.bin_id   ?? b.id   ?? b.binId,
-      code:            codeVal,
-      binCode:         codeVal,
-      shelfId:         b.shelf    ?? b.shelf_id  ?? b.shelfId,
-      rackId:          b.rack_id  ?? b.rackId,
-      zoneId:          b.zone_id  ?? b.zoneId,
-      zone:            b.zone     ?? parsed.zone,
-      rack:            b.rack     ?? b.rack_code ?? parsed.rack,
-      shelf:           b.shelf_level ?? parsed.shelf ?? null,
-      maxCapacity:     maxCap,
+      id: b.bin_id ?? b.id ?? b.binId,
+      code: codeVal,
+      binCode: codeVal,
+      shelfId: b.shelf ?? b.shelf_id ?? b.shelfId,
+      rackId: b.rack_id ?? b.rackId,
+      zoneId: b.zone_id ?? b.zoneId,
+      zone: b.zone ?? parsed.zone,
+      rack: b.rack ?? b.rack_code ?? parsed.rack,
+      shelf: b.shelf_level ?? parsed.shelf ?? null,
+      maxCapacity: maxCap,
       currentCapacity: curCap,
-      isOccupied:      isOccupied,
-      status:          status,
+      isOccupied: isOccupied,
+      status: status,
       ...b,
     };
   };
@@ -454,6 +454,9 @@ export default function RecommendationsPage() {
     const zGroup = zoneVal === 'Zone D' ? 'Cold Storage ZG' : 'Ambient Storage ZG';
     const aisleVal = zoneVal === 'Zone C' ? 'Aisle 3' : 'Aisle 1';
 
+
+
+
     const customRec = {
       id: `REC-${Date.now()}`,
       inboundId: receipt.id,
@@ -488,8 +491,8 @@ export default function RecommendationsPage() {
 
     if (setInboundReceipts) {
       setInboundReceipts(prev => prev.map(r =>
-        r.id === receipt.id ? { 
-          ...r, 
+        r.id === receipt.id ? {
+          ...r,
           status: 'BIN_ALLOCATED',
           bin: binVal,
           binCode: binVal,
@@ -552,6 +555,7 @@ export default function RecommendationsPage() {
     try {
       const res = await generateBinAllocationApi(productUuid, receipt._rawBackendId || receipt.id);
       const apiResult = {
+        allocationId: res.id,
         binCode: res.bin?.code || 'N/A',
         rack: res.rack?.code || 'N/A',
         shelf: res.shelf?.number || 'N/A',
@@ -564,81 +568,14 @@ export default function RecommendationsPage() {
         isFallback: false,
       };
       setLiveAllocResult(apiResult);
-
-      // Commit allocation to local state
-      commitAllocation(
-        receipt,
-        apiResult.binCode,
-        apiResult.shelf,
-        apiResult.rack,
-        apiResult.zone,
-        apiResult.score,
-        apiResult.reason
-      );
-
-      showToast(`Bin "${apiResult.binCode}" allocated successfully! Redirecting to Allocations...`);
-      if (fetchInboundData) fetchInboundData(true).catch(e => console.warn('fetchInboundData refresh error:', e));
-      if (fetchPutawayTasks) fetchPutawayTasks(true).catch(e => console.warn('fetchPutawayTasks refresh error:', e));
-      if (fetchInventoryData) fetchInventoryData(true).catch(e => console.warn('fetchInventoryData refresh error:', e));
-      setTimeout(() => {
-        navigate('/inventory/allocations');
-      }, 1500);
+      console.log("apiResult", apiResult);
+      showToast(`Bin "${apiResult.binCode}" identified. Please assign an operator to dispatch.`);
     } catch (err) {
       console.error('[Recommendations] Bin allocation API failed:', err);
       const msg = 'Backend recommendation API unavailable.';
       setLiveAllocError(msg);
       showToast(msg, 'error');
-      // Attempt fallback using available bins
-      const loadedBins = await ensureBinsLoaded();
-      // Resolve product UUID if needed
-      let productUuid = receipt.productId || getProductUuidForSku(receipt.sku);
-      if (!productUuid && receipt.sku) {
-        try {
-          console.log(`[Recommendations] Product UUID not found locally for SKU "${receipt.sku}". Fetching from backend...`);
-          const backendProd = await getProductBySkuApi(receipt.sku);
-          if (backendProd) {
-            productUuid = backendProd.productId || backendProd.id;
-            console.log(`[Recommendations] Successfully resolved SKU "${receipt.sku}" to UUID "${productUuid}" via backend.`);
-          }
-        } catch (err) {
-          console.warn(`[Recommendations] Backend SKU lookup failed for "${receipt.sku}":`, err);
-        }
-      }
-      // Local fallback on API failure
-      const fallbackBin = pickFallbackBin(loadedBins);
-      if (!fallbackBin) {
-        const noBinMsg = `Bin allocation API offline and no bins found in context. Please check Admin → Bins.`;
-        setLiveAllocError(noBinMsg);
-        showToast(noBinMsg, 'error');
-        return;
-      }
-      const localResult = {
-        binCode: fallbackBin.code,
-        shelf: fallbackBin.shelf || fallbackBin.shelfLevel || '1',
-        rack: fallbackBin.rack || fallbackBin.rackCode || 'RACK-001',
-        zone: fallbackBin.zone || 'Zone A',
-        score: 84,
-        reason: `API offline — fallback: Bin "${fallbackBin.code}" selected from loaded context bins. You can proceed to assign an operator and dispatch.`,
-        routeDistance: '35',
-        routePath: [`Receiving Dock`, `${fallbackBin.zone || 'Zone A'}`, `${fallbackBin.code}`],
-        storageStatus: 'ALLOCATED',
-        isFallback: true,
-      };
-      console.log('[Recommendations] API failed fallback bin allocation result:', localResult);
-      setLiveAllocResult(localResult);
-      commitAllocation(
-        receipt,
-        fallbackBin.code,
-        fallbackBin.shelf || fallbackBin.shelfLevel || '1',
-        fallbackBin.rack || fallbackBin.rackCode || 'RACK-001',
-        fallbackBin.zone || 'Zone A',
-        84,
-        localResult.reason
-      );
-      showToast(`Backend offline — Bin "${fallbackBin.code}" allocated from local context. Redirecting to Allocations...`, 'warning');
-      setTimeout(() => {
-        navigate('/inventory/allocations');
-      }, 1500);
+      return;
     } finally {
       setLiveAllocLoading(false);
     }
@@ -658,12 +595,15 @@ export default function RecommendationsPage() {
         quantity: Number(suggestQty)
       };
       const res = await suggestBinRecommendationApi(payload);
+      if (!res.recommended_bin) {
+        throw new Error("Invalid response from server: recommended_bin missing.");
+      }
       setSuggestResult({
-        bin: res.recommended_bin || 'BIN-005',
-        aisle: res.aisle || 'Aisle A2',
-        shelf: res.shelf || 'Level 2',
-        confidence: res.confidence ? Math.round(Number(res.confidence) * 100) : 92,
-        reason: res.reason || 'Storage rules verification completed. Direct AStar route matches.'
+        bin: res.recommended_bin,
+        aisle: res.aisle,
+        shelf: res.shelf,
+        confidence: res.confidence ? Math.round(Number(res.confidence) * 100) : null,
+        reason: res.reason
       });
     } catch (err) {
       console.error("API suggest-bin offline:", err);
@@ -687,12 +627,15 @@ export default function RecommendationsPage() {
         box_dimensions: placementDim
       };
       const res = await recommend3dPlacementApi(payload);
+      if (res.x_offset == null) {
+        throw new Error("Invalid response from server: coordinates missing.");
+      }
       setPlacementResult({
-        x: res.x_offset != null ? res.x_offset : 0.8,
-        y: res.y_offset != null ? res.y_offset : 0.4,
-        z: res.z_offset != null ? res.z_offset : 1.2,
-        orientation: res.orientation || 'Horizontal Align',
-        utilization: res.utilization_percentage ? Math.round(Number(res.utilization_percentage)) : 76
+        x: res.x_offset,
+        y: res.y_offset,
+        z: res.z_offset,
+        orientation: res.orientation,
+        utilization: res.utilization_percentage ? Math.round(Number(res.utilization_percentage)) : null
       });
     } catch (err) {
       console.error("API 3d-placement offline:", err);
@@ -705,8 +648,8 @@ export default function RecommendationsPage() {
 
   // Filter list memoized with useMemo
   const filteredRecs = useMemo(() => {
-    return recommendations.filter(rec => 
-      (rec.productName || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+    return recommendations.filter(rec =>
+      (rec.productName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (rec.sku || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (rec.bin || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -723,7 +666,7 @@ export default function RecommendationsPage() {
           <AlertBanner type={toastType} message={toastMessage} />
         </div>
       )}
-      
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -746,22 +689,20 @@ export default function RecommendationsPage() {
       <div className="flex border-b border-gray-150">
         <button
           onClick={() => { setActiveTab('monitor'); setCurrentPage(1); }}
-          className={`pb-3 px-5 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${
-            activeTab === 'monitor' 
-              ? 'border-[#0071C1] text-[#0071C1]' 
-              : 'border-transparent text-gray-400 hover:text-gray-700'
-          }`}
+          className={`pb-3 px-5 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${activeTab === 'monitor'
+            ? 'border-[#0071C1] text-[#0071C1]'
+            : 'border-transparent text-gray-400 hover:text-gray-700'
+            }`}
         >
           <Cpu className="w-4.5 h-4.5" />
           AI Recommendations Monitor
         </button>
         <button
           onClick={() => { setActiveTab('allocation-tools'); }}
-          className={`pb-3 px-5 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${
-            activeTab === 'allocation-tools' 
-              ? 'border-[#0071C1] text-[#0071C1]' 
-              : 'border-transparent text-gray-400 hover:text-gray-700'
-          }`}
+          className={`pb-3 px-5 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${activeTab === 'allocation-tools'
+            ? 'border-[#0071C1] text-[#0071C1]'
+            : 'border-transparent text-gray-400 hover:text-gray-700'
+            }`}
         >
           <Settings className="w-4.5 h-4.5" />
           AI Allocation Tools
@@ -862,7 +803,7 @@ export default function RecommendationsPage() {
                                   </div>
                                 </TableCell>
                               </TableRow>
-                              
+
                               {/* Live Results Panel — renders whenever this row is active */}
                               {isActive && (
                                 <TableRow>
@@ -886,9 +827,9 @@ export default function RecommendationsPage() {
                                           </div>
                                         ) : liveRecResult ? (
                                           <div className="space-y-2 text-xs font-semibold text-slate-700 text-left">
-                                            
-  
-                                         
+
+
+
                                             <div className="flex justify-between items-center">
                                               <span>Recommended Zone: <span className="font-bold text-gray-900">{liveRecResult.zone}</span></span>
                                               <Badge variant="success" className="font-mono">{liveRecResult.score}% Confidence</Badge>
@@ -945,7 +886,7 @@ export default function RecommendationsPage() {
                                               <div className="flex gap-2">
                                                 <div className="flex-1 text-left">
                                                   <label className="block text-[10px] text-gray-500 font-bold mb-1 uppercase">Assign Operator *</label>
-                                                  <select 
+                                                  <select
                                                     id={`operator-select-${receipt.id}`}
                                                     className="w-full border border-gray-300 rounded-lg px-2 py-1.5 bg-white text-xs font-semibold text-gray-700"
                                                     defaultValue=""
@@ -969,7 +910,7 @@ export default function RecommendationsPage() {
                                                 </div>
                                                 <div className="text-left">
                                                   <label className="block text-[10px] text-gray-500 font-bold mb-1 uppercase">Priority</label>
-                                                  <select 
+                                                  <select
                                                     id={`priority-select-${receipt.id}`}
                                                     className="w-full border border-gray-300 rounded-lg px-2 py-1.5 bg-white text-xs font-semibold text-gray-700"
                                                     defaultValue="Medium"
@@ -990,14 +931,14 @@ export default function RecommendationsPage() {
                                                   const priSel = document.getElementById(`priority-select-${receipt.id}`);
                                                   const opVal = opSel ? opSel.value : '';
                                                   const priVal = priSel ? priSel.value : 'Medium';
-                                                  
+
                                                   if (!opVal) {
                                                     showToast('Please select a warehouse operator before dispatching.', 'warning');
                                                     return;
                                                   }
 
                                                   const [opId, opName] = opVal.split('|');
-                                                  
+
                                                   // Construct AI recommendation object using real allocated bin
                                                   const customRec = {
                                                     id: `REC-${Date.now()}`,
@@ -1016,17 +957,23 @@ export default function RecommendationsPage() {
                                                     status: 'RECOMMENDATION_APPROVED',
                                                     createdAt: new Date().toISOString()
                                                   };
-                                                  
+
                                                   console.log('[Recommendations] Dispatching with customRec:', customRec);
 
                                                   // Push into local aiRecommendations
                                                   setAiRecommendations(prev => [customRec, ...prev]);
-                                                  
+
                                                   // Call assignPutawayTask — advances receipt to ASSIGNED_TO_STAFF
                                                   assignPutawayTask(receipt.id, opId, opName, priVal, customRec);
                                                   
+                                                  // Complete the bin allocation in the backend
+                                                  if (liveAllocResult.allocationId && !liveAllocResult.isFallback) {
+                                                    completeBinAllocationApi(liveAllocResult.allocationId, opId)
+                                                      .catch(err => console.warn('[Recommendations] Backend complete failed:', err));
+                                                  }
+
                                                   showToast(`Putaway task assigned to ${opName} — Bin: ${liveAllocResult.binCode}`, 'success');
-                                                  
+
                                                   // Clear live state
                                                   setActiveLiveItemId(null);
                                                   setLiveRecResult(null);
@@ -1062,7 +1009,7 @@ export default function RecommendationsPage() {
       ) : (
         /* Allocation tools: Suggest Bin & 3D Simulation */
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
+
           {/* Tool 1: AI Bin Suggestion */}
           <Card className="border border-gray-100 shadow-sm flex flex-col justify-between">
             <CardHeader className="bg-slate-50/40 pb-4 border-b border-gray-100">
@@ -1092,8 +1039,8 @@ export default function RecommendationsPage() {
                 </div>
                 <div>
                   <label className="block text-gray-600 mb-1">Target Zone preference</label>
-                  <select 
-                    value={suggestZone} 
+                  <select
+                    value={suggestZone}
                     onChange={(e) => setSuggestZone(e.target.value)}
                     className="w-full border border-gray-300 rounded-lg p-2.5 bg-white text-xs font-medium text-gray-700"
                   >
@@ -1103,10 +1050,10 @@ export default function RecommendationsPage() {
                     <option value="Zone D">Zone D (Cold Storage)</option>
                   </select>
                 </div>
-                
-                <Button 
-                  type="submit" 
-                  disabled={suggestLoading} 
+
+                <Button
+                  type="submit"
+                  disabled={suggestLoading}
                   className="w-full bg-[#0071C1] hover:bg-[#005c9e] text-white justify-center py-2.5 font-bold gap-2 text-xs"
                 >
                   {suggestLoading ? 'Calculating optimal bin...' : 'Suggest Optimal Bin'}
@@ -1171,9 +1118,9 @@ export default function RecommendationsPage() {
                   <Input value={placementDim} onChange={(e) => setPlacementDim(e.target.value)} placeholder="e.g. 30x30x30" />
                 </div>
 
-                <Button 
-                  type="submit" 
-                  disabled={placementLoading} 
+                <Button
+                  type="submit"
+                  disabled={placementLoading}
                   className="w-full bg-[#0071C1] hover:bg-[#005c9e] text-white justify-center py-2.5 font-bold gap-2 text-xs"
                 >
                   {placementLoading ? 'Simulating layout graph offsets...' : 'Simulate 3D Placement'}

@@ -13,7 +13,7 @@ export default function OcrVerification() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { ocrDocuments, setOcrDocuments, verifyOcrDocument, rejectOcrDocument, fetchInboundData, fetchInventoryData } = useWarehouse();
+  const { ocrDocuments, setOcrDocuments, fetchInboundData, fetchInventoryData } = useWarehouse();
   
   const [selectedDocId, setSelectedDocId] = useState('');
   const [docDetails, setDocDetails] = useState({ document_number: '', supplier: '' });
@@ -173,34 +173,32 @@ export default function OcrVerification() {
       };
       await verifyOcrDocumentApi(selectedDocId, formattedPayload);
       showToast('OCR Document verified and inbound receipt created!', 'success');
+      
+      // Sync state from backend concurrently
+      await Promise.all([
+        fetchInboundData ? fetchInboundData(true) : Promise.resolve(),
+        fetchInventoryData ? fetchInventoryData(true) : Promise.resolve()
+      ]);
+      
+      // Redirect to recommendations page
+      setTimeout(() => {
+        navigate('/inventory/recommendations');
+      }, 1500);
     } catch (err) {
-      console.error('[OCR Verification] Approval API failed, falling back to local context update:', err);
-      let errorMsg = 'Django Backend is currently offline. Your verification is being processed locally.';
+      console.error('[OCR Verification] Approval API failed:', err);
+      let errorMsg = 'Django Backend is currently offline. Verification failed.';
       if (err.status === 404) {
-        errorMsg = 'Document not found on backend database. Your verification is being processed locally.';
+        errorMsg = 'Document not found on backend database.';
       } else if (err.status === 400) {
         const backendError = err.detail?.error || err.detail?.detail || err.message;
-        errorMsg = `Backend validation error: ${backendError}. Your verification is being processed locally.`;
+        errorMsg = `Backend validation error: ${backendError}`;
       } else if (err.status === 401 || err.status === 403) {
-        errorMsg = 'Authentication error. Your verification is being processed locally.';
+        errorMsg = 'Authentication error. Verification failed.';
       }
-      showToast('Django Backend error. Updating local context for UI safety.', 'warning');
+      showToast(errorMsg, 'error');
       setApiOfflineWarning(errorMsg);
+      return;
     }
-
-    // Call context modifier
-    verifyOcrDocument(selectedDocId, items, docDetails);
-    
-    // Sync state from backend concurrently
-    await Promise.all([
-      fetchInboundData ? fetchInboundData(true) : Promise.resolve(),
-      fetchInventoryData ? fetchInventoryData(true) : Promise.resolve()
-    ]);
-    
-    // Redirect to recommendations page
-    setTimeout(() => {
-      navigate('/inventory/recommendations');
-    }, 1500);
   };
 
   const handleReject = async () => {
@@ -215,32 +213,31 @@ export default function OcrVerification() {
       setApiOfflineWarning('');
       await rejectOcrDocumentApi(selectedDocId, rejectReason);
       showToast('Document rejected and quarantined.', 'info');
+      
+      setShowRejectModal(false);
+      setRejectReason('');
+      
+      // Find next pending doc if any
+      const nextPending = ocrDocuments.find(d => d.id !== selectedDocId && d.status === 'VERIFICATION_PENDING');
+      if (nextPending) {
+        handleSelectDocument(nextPending.id);
+      } else {
+        setSelectedDocId(null);
+      }
     } catch (err) {
-      console.error('[OCR Verification] Rejection API failed, falling back to local context update:', err);
-      let errorMsg = 'Django Backend is currently offline. Your rejection is being processed locally.';
+      console.error('[OCR Verification] Rejection API failed:', err);
+      let errorMsg = 'Django Backend is currently offline. Rejection failed.';
       if (err.status === 404) {
-        errorMsg = 'Document not found on backend database. Your rejection is being processed locally.';
+        errorMsg = 'Document not found on backend database.';
       } else if (err.status === 400) {
         const backendError = err.detail?.error || err.detail?.detail || err.message;
-        errorMsg = `Backend validation error: ${backendError}. Your rejection is being processed locally.`;
+        errorMsg = `Backend validation error: ${backendError}`;
       } else if (err.status === 401 || err.status === 403) {
-        errorMsg = 'Authentication error. Your rejection is being processed locally.';
+        errorMsg = 'Authentication error. Rejection failed.';
       }
-      showToast('Django Backend error. Updating local context for UI safety.', 'warning');
+      showToast(errorMsg, 'error');
       setApiOfflineWarning(errorMsg);
-    }
-
-    rejectOcrDocument(selectedDocId, rejectReason);
-    setShowRejectModal(false);
-    setRejectReason('');
-    
-    // Find next pending doc if any
-    const nextPending = ocrDocuments.find(d => d.id !== selectedDocId && d.status === 'VERIFICATION_PENDING');
-    if (nextPending) {
-      handleSelectDocument(nextPending.id);
-    } else {
-      setSelectedDocId('');
-      setItems([]);
+      return;
     }
   };
 

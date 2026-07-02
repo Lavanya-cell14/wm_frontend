@@ -98,10 +98,33 @@ export default function StaffDashboard() {
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <DashboardStatCard title="Assigned Tasks" value={assignedTasksCount} icon={ClipboardList} />
-        <DashboardStatCard title="Pending Tasks" value={pendingTasksCount} icon={Clock} />
-        <DashboardStatCard title="In Progress Tasks" value={inProgressTasksCount} icon={Play} />
-        <DashboardStatCard title="Completed Today" value={completedTodayCount} icon={CheckCircle2} />
+        <DashboardStatCard 
+          title="Assigned Tasks" 
+          value={assignedTasksCount} 
+          icon={ClipboardList} 
+          onClick={() => navigate('/operator/storage-tasks')}
+        />
+        <DashboardStatCard 
+          title="Pending Tasks" 
+          value={pendingTasksCount} 
+          icon={Clock} 
+          onClick={() => navigate('/operator/storage-tasks')}
+        />
+        <DashboardStatCard 
+          title="In Progress Tasks" 
+          value={inProgressTasksCount} 
+          icon={Play} 
+          onClick={() => navigate(activeTask ? '/operator/active' : '/operator/storage-tasks')}
+        />
+        <DashboardStatCard 
+          title="Completed Today" 
+          value={completedTodayCount} 
+          icon={CheckCircle2} 
+          onClick={() => {
+            const el = document.getElementById('recent-completed-tasks');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }}
+        />
       </div>
 
       {/* Main Grid */}
@@ -185,7 +208,7 @@ export default function StaffDashboard() {
           </Card>
 
           {/* Section 5: Recent Completed Tasks */}
-          <Card className="border border-gray-150 shadow-xs">
+          <Card id="recent-completed-tasks" className="border border-gray-150 shadow-xs">
             <CardHeader className="bg-slate-50/40 border-b border-gray-100 pb-3">
               <CardTitle className="text-sm font-bold uppercase flex items-center gap-2">
                 <CheckSquare className="w-4.5 h-4.5 text-emerald-600" />

@@ -81,13 +81,13 @@ export default function InventoryPage() {
         ]);
         if (!cancelled) {
           const mappedInventory = invRes.results.map(inv => {
-            const product = productsRes.results.find(p => p.id === inv.product);
-            const sku = product ? product.sku : '—';
-            const name = product ? product.product_name : `Product ${inv.product}`;
-            const category = product ? (CATEGORY_LOOKUP[product.category] || 'General') : 'General';
+            const product = productsRes.results.find(p => p.id === (inv.product?.id || inv.product));
+            const sku = inv.sku || (product ? product.sku : '—');
+            const name = inv.product_name || (product ? product.product_name : `Product ${inv.product}`);
+            const category = inv.category || (product ? (CATEGORY_LOOKUP[product.category] || 'General') : 'General');
             
             // Resolve bin assignment
-            const alloc = allocationsRes.results.find(a => a.product === inv.product);
+            const alloc = allocationsRes.results.find(a => a.product === (inv.product?.id || inv.product));
             let binCode = 'BIN-001';
             if (alloc) {
               const binObj = binsRes.results.find(b => b.id === alloc.bin);

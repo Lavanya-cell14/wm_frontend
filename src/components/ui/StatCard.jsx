@@ -1,13 +1,16 @@
 import React from 'react';
 import Card, { CardContent } from './Card';
 
-export default function StatCard({ title, value, icon: Icon, trend, trendValue, subtitle }) {
+export default function StatCard({ title, value, icon: Icon, trend, trendValue, subtitle, onClick }) {
   const isPositiveTrend = trend === 'up';
   const isNegativeTrend = trend === 'down';
   const isNeutralTrend = trend === 'neutral';
 
   return (
-    <Card className="hover:shadow-md transition-shadow duration-300">
+    <Card 
+      onClick={onClick}
+      className={`hover:shadow-md transition-shadow duration-300 ${onClick ? 'cursor-pointer' : ''}`}
+    >
       <CardContent className="p-6">
         <div className="flex justify-between items-start">
           <div className="flex flex-col gap-1">

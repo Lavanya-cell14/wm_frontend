@@ -1,6 +1,6 @@
 import React, { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { WarehouseProvider } from './context/WarehouseContext';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { WarehouseProvider, useWarehouse } from './context/WarehouseContext';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import MainLayout from './components/layout/MainLayout';
@@ -74,13 +74,113 @@ const WalkingPaths = lazy(() => import('./pages/admin/WalkingPaths'));
 const WarehouseSetupLanding = lazy(() => import('./pages/admin/WarehouseSetupLanding'));
 const NavigationSetupLanding = lazy(() => import('./pages/admin/NavigationSetupLanding'));
 
-const LayoutWrapper = () => (
-  <MainLayout>
-    <Suspense fallback={<LoadingSkeleton />}>
-      <Outlet />
-    </Suspense>
-  </MainLayout>
-);
+const LayoutWrapper = () => {
+  const location = useLocation();
+  const warehouse = useWarehouse();
+
+  React.useEffect(() => {
+    const path = location.pathname;
+    
+    // Check path patterns and trigger appropriate API fetches silently
+    if (path === '/manager/dashboard') {
+      warehouse.fetchWarehouseStructure?.(true);
+      warehouse.fetchInventoryData?.(true);
+      warehouse.fetchInboundData?.(true);
+      warehouse.fetchPutawayTasks?.(true);
+      warehouse.fetchOcrDocuments?.(true);
+    } else if (path === '/manager/analytics') {
+      warehouse.fetchInventoryData?.(true);
+      warehouse.fetchWarehouseStructure?.(true);
+      warehouse.fetchPutawayTasks?.(true);
+      warehouse.fetchOcrDocuments?.(true);
+    } else if (path === '/manager/digital-twin') {
+      warehouse.fetchWarehouseStructure?.(true);
+      warehouse.fetchInventoryData?.(true);
+    } else if (path === '/manager/inventory') {
+      warehouse.fetchInventoryData?.(true);
+      warehouse.fetchWarehouseStructure?.(true);
+    } else if (path === '/manager/reports') {
+      warehouse.fetchPutawayTasks?.(true);
+      warehouse.fetchOcrDocuments?.(true);
+      warehouse.fetchInventoryData?.(true);
+    } else if (path === '/manager/audit') {
+      warehouse.fetchUsers?.(true);
+      warehouse.fetchAuditLogs?.(true);
+    } else if (path === '/manager/orders') {
+      warehouse.fetchOrders?.(true);
+    } else if (path === '/manager/routes') {
+      warehouse.fetchRoutes?.(true);
+    } else if (path.startsWith('/operator/dashboard')) {
+      warehouse.fetchPutawayTasks?.(true);
+      warehouse.fetchRecommendations?.(true);
+    } else if (path.startsWith('/operator/storage-tasks')) {
+      warehouse.fetchPutawayTasks?.(true);
+    } else if (path.startsWith('/operator/navigation')) {
+      warehouse.fetchPutawayTasks?.(true);
+      warehouse.fetchWarehouseStructure?.(true);
+      warehouse.fetchInventoryData?.(true);
+    } else if (path.startsWith('/operator/placement-guidance')) {
+      warehouse.fetchPutawayTasks?.(true);
+    } else if (path.startsWith('/operator/active')) {
+      warehouse.fetchPutawayTasks?.(true);
+    } else if (path.startsWith('/operator/scanner')) {
+      warehouse.fetchRecommendations?.(true);
+    } else if (path.startsWith('/operator/inbound')) {
+      warehouse.fetchInboundData?.(true);
+    } else if (path.startsWith('/operator/movements')) {
+      warehouse.fetchMovements?.(true);
+    } else if (path.startsWith('/inventory/dashboard')) {
+      warehouse.fetchInventoryData?.(true);
+      warehouse.fetchOcrDocuments?.(true);
+      warehouse.fetchInboundData?.(true);
+      warehouse.fetchRecommendations?.(true);
+    } else if (path.startsWith('/inventory/ocr-')) {
+      warehouse.fetchOcrDocuments?.(true);
+    } else if (path.startsWith('/inventory/recommendations')) {
+      warehouse.fetchUsers?.(true);
+      warehouse.fetchInboundData?.(true);
+      warehouse.fetchPutawayTasks?.(true);
+    } else if (path.startsWith('/inventory/allocations')) {
+      warehouse.fetchInboundData?.(true);
+    } else if (path.startsWith('/admin/dashboard')) {
+      warehouse.fetchWarehouseStructure?.(true);
+      warehouse.fetchInventoryData?.(true);
+      warehouse.fetchUsers?.(true);
+      warehouse.fetchOcrDocuments?.(true);
+      warehouse.fetchAuditLogs?.(true);
+    } else if (
+      path.startsWith('/admin/warehouse-setup') ||
+      path.startsWith('/admin/navigation-setup') ||
+      path.startsWith('/admin/structure-tree') ||
+      path.startsWith('/admin/warehouses') ||
+      path.startsWith('/admin/zone-groups') ||
+      path.startsWith('/admin/zones') ||
+      path.startsWith('/admin/aisles') ||
+      path.startsWith('/admin/racks') ||
+      path.startsWith('/admin/shelves') ||
+      path.startsWith('/admin/bins') ||
+      path.startsWith('/admin/nav-nodes') ||
+      path.startsWith('/admin/nav-edges') ||
+      path.startsWith('/admin/walking-paths') ||
+      path.startsWith('/admin/settings') ||
+      path.startsWith('/admin/reports')
+    ) {
+      warehouse.fetchWarehouseStructure?.(true);
+    } else if (path.startsWith('/admin/users') || path.startsWith('/admin/roles')) {
+      warehouse.fetchUsers?.(true);
+    } else if (path.startsWith('/admin/audit')) {
+      warehouse.fetchAuditLogs?.(true);
+    }
+  }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <MainLayout>
+      <Suspense fallback={<LoadingSkeleton />}>
+        <Outlet />
+      </Suspense>
+    </MainLayout>
+  );
+};
 
 function App() {
   return (

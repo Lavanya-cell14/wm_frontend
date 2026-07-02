@@ -263,14 +263,12 @@ export default function InboundProducts() {
                 <TableHead className="p-3">Product</TableHead>
                 <TableHead className="p-3">Quantity</TableHead>
                 <TableHead className="p-3">Status</TableHead>
-                <TableHead className="p-3">Recommendation Status</TableHead>
-                <TableHead className="p-3 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-gray-100 bg-white">
               {paginatedReceipts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-gray-500 font-medium">
+                  <TableCell colSpan={5} className="text-center py-12 text-gray-500 font-medium">
                     No matching inbound records found in the system queue.
                   </TableCell>
                 </TableRow>
@@ -292,43 +290,6 @@ export default function InboundProducts() {
                       }`}>
                         {getStatusLabel(rec.status)}
                       </span>
-                    </TableCell>
-                    <TableCell className="p-3">
-                      <Badge variant={rec.binRecommendationStatus === 'BIN_SUGGESTED' ? 'primary' : 'outline'} className="text-[10px]">
-                        {rec.binRecommendationStatus || 'PENDING'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="p-3 text-right">
-                      <div className="flex justify-end gap-1.5 items-center">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-[11px] h-7 px-2 font-medium bg-[#F4FCFF] border-blue-100 text-blue-700 hover:bg-blue-50"
-                          onClick={() => setSelectedItemForModal(rec)}
-                        >
-                          <Eye className="w-3.5 h-3.5 mr-1 text-blue-500" />
-                          View Details
-                        </Button>
-                        {rec.status === 'WAITING_FOR_BIN_ASSIGNMENT' && (
-                          <Button 
-                            size="sm"
-                            onClick={() => handleRequestBinSuggestion(rec.id, rec._rawBackendId)}
-                            className="bg-[#F5FBFD] border border-blue-200 text-blue-700 hover:bg-blue-50 text-xs py-1 px-2.5 flex items-center gap-1 font-bold shadow-2xs"
-                          >
-                            <Sparkles className="w-3.5 h-3.5 text-blue-500 animate-pulse" />
-                            Slot Suggestion
-                          </Button>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="p-1 h-7 w-7 text-gray-400 hover:text-slate-600"
-                          onClick={() => navigate(`/inventory/lookup`, { state: { sku: rec.sku } })}
-                          title="Lookup Passport"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </div>
                     </TableCell>
                   </TableRow>
                 ))

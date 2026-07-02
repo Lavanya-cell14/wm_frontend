@@ -67,10 +67,10 @@ export default function AdminDashboard() {
   const systemHealth = '99.98% / Healthy';
 
   // Read-only Bin Occupancy metrics
-  const occupiedBins = bins.filter(b => b.status === 'Occupied' || b.status === 'Partial').length || 18;
-  const availableBins = bins.filter(b => b.status === 'Empty').length || 12;
-  const totalBins = bins.length || 30;
-  const occupancyPercent = totalBins > 0 ? ((occupiedBins / totalBins) * 100).toFixed(1) : '60.0';
+  const occupiedBins = bins.filter(b => b.isOccupied || b.is_occupied || b.status === 'FULL' || b.status === 'Occupied' || b.status === 'Partial' || (b.currentCapacity > 0)).length;
+  const availableBins = bins.length - occupiedBins;
+  const totalBins = bins.length;
+  const occupancyPercent = totalBins > 0 ? ((occupiedBins / totalBins) * 100).toFixed(1) : '0.0';
 
   // User distribution stats
   const activeUsersCount = workers.filter(w => w.status === 'Active').length;
@@ -129,9 +129,27 @@ export default function AdminDashboard() {
 
       {/* KPI Cards Grid (Precisely the 3 remaining cards) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard title="Total Products" value={totalProducts} icon={Box} subtitle="Unique registered SKUs" />
-        <StatCard title="Total Inventory" value={totalInventory} icon={Layers} subtitle="Aggregated stock units" />
-        <StatCard title="Total OCR Documents" value={totalOcr} icon={FileText} subtitle="Processed invoice files" />
+        <StatCard 
+          title="Total Products" 
+          value={totalProducts} 
+          icon={Box} 
+          subtitle="Unique registered SKUs" 
+          onClick={() => navigate('/admin/warehouse-setup')}
+        />
+        <StatCard 
+          title="Total Inventory" 
+          value={totalInventory} 
+          icon={Layers} 
+          subtitle="Aggregated stock units" 
+          onClick={() => navigate('/admin/warehouse-setup')}
+        />
+        <StatCard 
+          title="Total OCR Documents" 
+          value={totalOcr} 
+          icon={FileText} 
+          subtitle="Processed invoice files" 
+          onClick={() => navigate('/admin/reports')}
+        />
       </div>
 
       {/* Main Administrative Summaries Sections */}

@@ -15,12 +15,6 @@ export const sidebarItems = [
     allowedRoles: ['WAREHOUSE_MANAGER'],
   },
   {
-    name: 'Analytics',
-    path: '/manager/analytics',
-    icon: BarChart3,
-    allowedRoles: ['WAREHOUSE_MANAGER'],
-  },
-  {
     name: 'Digital Twin',
     path: '/manager/digital-twin',
     icon: MonitorPlay,
@@ -30,12 +24,6 @@ export const sidebarItems = [
     name: 'Inventory Overview',
     path: '/manager/inventory',
     icon: Box,
-    allowedRoles: ['WAREHOUSE_MANAGER'],
-  },
-  {
-    name: 'Reports',
-    path: '/manager/reports',
-    icon: FileText,
     allowedRoles: ['WAREHOUSE_MANAGER'],
   },
   {
@@ -56,12 +44,6 @@ export const sidebarItems = [
     name: 'Inbound Queue',
     path: '/inventory/inbound',
     icon: ArrowDownToLine,
-    allowedRoles: ['RECEIVING_INVENTORY_OFFICER'],
-  },
-  {
-    name: 'Products',
-    path: '/inventory/products',
-    icon: Package,
     allowedRoles: ['RECEIVING_INVENTORY_OFFICER'],
   },
   {
@@ -114,18 +96,6 @@ export const sidebarItems = [
     name: 'Dashboard',
     path: '/admin/dashboard',
     icon: LayoutDashboard,
-    allowedRoles: ['ADMIN'],
-  },
-  {
-    name: 'Warehouse Setup',
-    path: '/admin/warehouse-setup',
-    icon: Building2,
-    allowedRoles: ['ADMIN'],
-  },
-  {
-    name: 'Navigation Setup',
-    path: '/admin/navigation-setup',
-    icon: Map,
     allowedRoles: ['ADMIN'],
   },
   {

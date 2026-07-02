@@ -258,56 +258,10 @@ export default function OcrUpload() {
     } catch (mapperError) {
       console.error("[OCR] Normalize failed:", mapperError);
       setRawOcrDebugData(res);
-      
-      const fallbackItems = [
-        {
-          id: `EXT-${Date.now()}-fallback`,
-          sku: '',
-          productName: activeDoc.fileName.split('.')[0].replace(/[-_]/g, ' '),
-          category: 'General',
-          quantity: 1,
-          uom: 'BOX',
-          length: '',
-          width: '',
-          height: '',
-          weight: '',
-          batchNumber: `BAT-${Math.floor(1000 + Math.random() * 9000)}`,
-          expiryDate: '2028-12-31',
-          confidenceScore: 50,
-          validationStatus: 'Warning',
-          storageType: 'GENERAL',
-          isFragile: false,
-          isStackable: true
-        }
-      ];
-
-      setOcrDocuments(prev => prev.map(d => 
-        d.id === activeFileId 
-          ? {
-              ...d,
-              id: backendDocId || d.id,
-              status: 'VERIFICATION_PENDING',
-              confidenceScore: 50,
-              extractedItems: fallbackItems,
-              supplierName: 'MANUAL_REVIEW',
-              documentType: 'Invoice',
-              totalAmount: '',
-              taxAmount: '',
-              fileName: activeDoc.fileName,
-              warnings: 1,
-              warningsList: [`Normalization/Mapper error: ${mapperError.message}. Ready for manual review.`]
-            } 
-          : d
-      ));
-
-      localStorage.setItem('latestProcessedDocId', backendDocId || activeFileId);
-      if (backendDocId) {
-        setActiveFileId(backendDocId);
-      }
-      showToast('OCR response normalization failed. Document marked for Manual Review.', 'warning');
+      showToast(`OCR response normalization failed: ${mapperError.message}`, 'error');
       setProcessing(false);
       setProcessingStartTime(null);
-      return;
+      throw new Error(`Failed to map OCR data to product records: ${mapperError.message}`);
     }
 
     console.log("[OCR Flow] Before setting OCR document state to VERIFICATION_PENDING with ID:", activeFileId);

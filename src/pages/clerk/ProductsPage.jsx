@@ -81,7 +81,7 @@ export default function ProductsPage() {
           getInventory()
         ]);
         const mapped = productsRes.results.map(p => {
-          const inv = inventoryRes.results?.find(i => i.product === p.id);
+          const inv = inventoryRes.results?.find(i => (i.product?.id || i.product) === p.id);
           return {
             id: p.id,
             sku: p.sku,

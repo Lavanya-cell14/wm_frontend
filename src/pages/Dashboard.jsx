@@ -27,8 +27,8 @@ export default function Dashboard() {
 
   // Dynamic KPI Calculations
   const totalInventoryCount = inventory.reduce((sum, item) => sum + (item.quantity || 0), 0);
-  const occupiedBinsCount = bins.filter(b => b.status === 'Occupied' || b.status === 'Partial').length;
-  const availableBinsCount = bins.filter(b => b.status === 'Empty' || b.status === 'Active' && b.currentCapacity === 0).length;
+  const occupiedBinsCount = bins.filter(b => b.isOccupied || b.is_occupied || b.status === 'FULL' || b.status === 'Occupied' || b.status === 'Partial' || (b.currentCapacity > 0)).length;
+  const availableBinsCount = bins.length - occupiedBinsCount;
   const totalBinsCount = bins.length;
   const storageUtilizationStr = totalBinsCount > 0 ? ((occupiedBinsCount / totalBinsCount) * 100).toFixed(1) : '0.0';
   const pendingOcrCount = ocrDocuments.filter(doc => doc.status === 'VERIFICATION_PENDING' || doc.status === 'OCR_UPLOADED').length;
@@ -70,9 +70,24 @@ export default function Dashboard() {
 
       {/* Executive KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <DashboardStatCard title="Total Inventory" value={totalInventoryCount} icon={Box} />
-        <DashboardStatCard title="Pending OCR Reviews" value={pendingOcrCount} icon={ShieldAlert} />
-        <DashboardStatCard title="Completed Allocations" value={completedAllocationsCount} icon={UserCheck} />
+        <DashboardStatCard 
+          title="Total Inventory" 
+          value={totalInventoryCount} 
+          icon={Box} 
+          onClick={() => navigate('/manager/inventory')}
+        />
+        <DashboardStatCard 
+          title="Pending OCR Reviews" 
+          value={pendingOcrCount} 
+          icon={ShieldAlert} 
+          onClick={() => navigate('/ocr-upload')}
+        />
+        <DashboardStatCard 
+          title="Completed Allocations" 
+          value={completedAllocationsCount} 
+          icon={UserCheck} 
+          onClick={() => navigate('/manager/orders')}
+        />
       </div>
 
       {/* Main Sections Grid */}

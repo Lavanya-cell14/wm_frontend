@@ -238,11 +238,41 @@ export default function ClerkDashboard() {
 
       {/* KPI Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <StatCard title="Today's Uploads" value={kpis.todayUploads} icon={UploadCloud} subtitle="Manifest files added" />
-        <StatCard title="Pending Reviews" value={kpis.pendingReviews} icon={CheckSquare} subtitle="Awaiting officer confirm" />
-        <StatCard title="Approved Docs" value={kpis.approvedDocs} icon={FileText} subtitle="Receipts generated" />
-        <StatCard title="Rejected Docs" value={kpis.rejectedDocs} icon={AlertTriangle} subtitle="Quarantined filings" />
-        <StatCard title="Completed Docs" value={kpis.completedDocs} icon={FileText} subtitle="Manifests stored" />
+        <StatCard 
+          title="Today's Uploads" 
+          value={kpis.todayUploads} 
+          icon={UploadCloud} 
+          subtitle="Manifest files added" 
+          onClick={() => navigate('/inventory/ocr-center')}
+        />
+        <StatCard 
+          title="Pending Reviews" 
+          value={kpis.pendingReviews} 
+          icon={CheckSquare} 
+          subtitle="Awaiting officer confirm" 
+          onClick={() => navigate('/inventory/ocr-review')}
+        />
+        <StatCard 
+          title="Approved Docs" 
+          value={kpis.approvedDocs} 
+          icon={FileText} 
+          subtitle="Receipts generated" 
+          onClick={() => navigate('/inventory/ocr-history')}
+        />
+        <StatCard 
+          title="Rejected Docs" 
+          value={kpis.rejectedDocs} 
+          icon={AlertTriangle} 
+          subtitle="Quarantined filings" 
+          onClick={() => navigate('/inventory/ocr-history')}
+        />
+        <StatCard 
+          title="Completed Docs" 
+          value={kpis.completedDocs} 
+          icon={FileText} 
+          subtitle="Manifests stored" 
+          onClick={() => navigate('/inventory/ocr-history')}
+        />
       </div>
 
       {/* Main content grids */}

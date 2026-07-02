@@ -8,12 +8,12 @@ export default function RoleSelection() {
 
   const roles = [
     {
-      id: 'manager',
-      title: 'Warehouse Manager',
-      description: 'Oversee operations, analytics, and team performance.',
-      icon: <Settings className="w-8 h-8 text-blue-600 mb-4" />,
-      path: '/manager/dashboard',
-      color: 'border-blue-100 hover:border-blue-500'
+      id: 'inventory',
+      title: 'Inventory Officer',
+      description: 'Manage stock levels, incoming goods, and OCR.',
+      icon: <Package className="w-8 h-8 text-purple-600 mb-4" />,
+      path: '/inventory/dashboard',
+      color: 'border-purple-100 hover:border-purple-500'
     },
     {
       id: 'operator',
@@ -24,12 +24,12 @@ export default function RoleSelection() {
       color: 'border-green-100 hover:border-green-500'
     },
     {
-      id: 'inventory',
-      title: 'Inventory Officer',
-      description: 'Manage stock levels, incoming goods, and OCR.',
-      icon: <Package className="w-8 h-8 text-purple-600 mb-4" />,
-      path: '/inventory/dashboard',
-      color: 'border-purple-100 hover:border-purple-500'
+      id: 'manager',
+      title: 'Warehouse Manager',
+      description: 'Oversee operations, analytics, and team performance.',
+      icon: <Settings className="w-8 h-8 text-blue-600 mb-4" />,
+      path: '/manager/dashboard',
+      color: 'border-blue-100 hover:border-blue-500'
     },
     {
       id: 'admin',

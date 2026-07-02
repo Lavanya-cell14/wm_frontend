@@ -18,7 +18,7 @@ export const generateStorageRecommendationApi = async (productId) => {
   const res = await apiClient('/api/recommendations/storage/', {
     method: 'POST',
     body: JSON.stringify({ product_id: productId })
-  });
+  })
   console.warn(`[AI Recommendation] Response:`, res);
   return res;
 };

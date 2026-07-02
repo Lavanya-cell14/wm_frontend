@@ -211,112 +211,29 @@ export function WarehouseProvider({ children }) {
   }, [ocrDocuments]);
 
   const [inboundReceipts, setInboundReceipts] = useState(() => {
-    const localData = localStorage.getItem('inboundReceipts');
+    // Use versioned key — any data stored under old 'inboundReceipts' key is
+    // silently discarded, preventing stale/mock receipts from hydrating.
+    const localData = localStorage.getItem('inboundReceipts_v3');
     if (localData) {
       try {
         const parsed = JSON.parse(localData);
         if (Array.isArray(parsed)) return parsed;
       } catch (e) {
-        console.error('Failed parsing inboundReceipts from localStorage', e);
+        console.error('Failed parsing inboundReceipts_v3 from localStorage', e);
       }
     }
     return [];
   });
 
   useEffect(() => {
-    localStorage.setItem('inboundReceipts', JSON.stringify(inboundReceipts));
+    localStorage.setItem('inboundReceipts_v3', JSON.stringify(inboundReceipts));
   }, [inboundReceipts]);
 
   const addOcrDocument = (doc) => {
     setOcrDocuments(prev => [doc, ...prev]);
   };
 
-  const verifyOcrDocument = (docId, updatedItems, docDetails) => {
-    setOcrDocuments(prev => prev.map(d => d.id === docId ? { 
-      ...d, 
-      id: docDetails.document_number || d.id,
-      status: 'VERIFIED', 
-      extractedItems: updatedItems,
-      supplierName: docDetails.supplier || d.supplierName,
-      totalAmount: docDetails.total_amount || d.totalAmount,
-      taxAmount: docDetails.tax_amount || d.taxAmount
-    } : d));
-    
-    updatedItems.forEach((item, idx) => {
-      const receiptId = `IR-${Date.now()}-${idx}`;
-      const newReceipt = {
-        id: receiptId,
-        documentId: docId,
-        documentReference: docDetails.document_number || 'REF-UNK',
-        sku: item.sku,
-        productName: item.productName,
-        category: item.category,
-        quantityReceived: Number(item.quantity),
-        verifiedQuantity: Number(item.quantity),
-        supplier: docDetails.supplier || 'Unknown Supplier',
-        receivedDate: new Date().toISOString().split('T')[0],
-        dimensions: item.length ? `${item.length} x ${item.width} x ${item.height} cm` : 'Not Measured',
-        weight: item.weight ? `${item.weight} kg` : 'N/A',
-        status: 'WAITING_FOR_BIN_ASSIGNMENT',
-        binRecommendationStatus: 'WAITING_FOR_BIN_ASSIGNMENT'
-      };
 
-      setInboundReceipts(prev => [newReceipt, ...prev]);
-
-      setInventory(prev => {
-        const existingIdx = prev.findIndex(inv => inv.sku === item.sku);
-        if (existingIdx > -1) {
-          return prev.map((inv, index) => index === existingIdx ? {
-            ...inv,
-            status: "PENDING_PUTAWAY"
-          } : inv);
-        } else {
-          return [...prev, {
-            sku: item.sku,
-            name: item.productName,
-            category: item.category,
-            quantity: 0,
-            reserved: 0,
-            damaged: 0,
-            availableQuantity: 0,
-            reorderLevel: 10,
-            status: "PENDING_PUTAWAY",
-            warehouse: "Central Fulfillment A",
-            zone: "Zone A",
-            rack: "RACK-001",
-            shelf: "S-01",
-            bin: "Pending Bin",
-            weight: item.weight ? `${item.weight} kg` : 'N/A',
-            dimensions: item.length ? `${item.length} x ${item.width} x ${item.height} cm` : 'Not Measured',
-            lastUpdated: "Just added from OCR"
-          }];
-        }
-      });
-
-      const nextMovId = generateNextId('MOV-', movements.map(m => m.id));
-      setMovements(prev => [
-        {
-          id: nextMovId,
-          item: item.productName,
-          sku: item.sku,
-          from: "Receiving Dock",
-          to: "Inventory",
-          user: user?.email || "inventory@warehouseai.com",
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          type: "INBOUND_RECEIVED",
-          status: "Completed",
-          qty: Number(item.quantity),
-          timestamp: new Date().toISOString(),
-          reason: `Auto-created from verified OCR document ${docDetails.document_number}`
-        },
-        ...prev
-      ]);
-    });
-  };
-
-  const rejectOcrDocument = (docId, reason) => {
-    setOcrDocuments(prev => prev.map(d => d.id === docId ? { ...d, status: 'REJECTED', rejectReason: reason } : d));
-  };
 
   /**
    * Fetches ALL OCR documents from the real backend and populates ocrDocuments state.
@@ -587,20 +504,20 @@ export function WarehouseProvider({ children }) {
             sku: sku,
             name: name,
             category: category,
-            quantity: item.quantity || 0,
-            reserved: item.reservedQuantity || item.reserved || 0,
-            damaged: item.damagedQuantity || item.damaged || 0,
-            availableQuantity: item.availableQuantity || (item.quantity - (item.reservedQuantity || 0)) || 0,
-            reorderLevel: item.reorderLevel || (matchedProd ? matchedProd.reorderLevel : 10),
-            status: item.status || "In Stock",
-            warehouse: item.warehouse || "Central Fulfillment A",
-            zone: item.zone || "Zone A",
-            rack: item.rack || "RACK-001",
-            shelf: item.shelf || "S-01",
-            bin: binId || "BIN-001",
-            weight: item.weight || (matchedProd ? matchedProd.weight : "N/A"),
-            dimensions: item.dimensions || (matchedProd ? matchedProd.dimensions : "N/A"),
-            lastUpdated: item.lastUpdated || new Date().toLocaleDateString()
+            quantity: item.total_quantity ?? item.quantity ?? 0,
+            reserved: item.reserved_quantity ?? item.reservedQuantity ?? item.reserved ?? 0,
+            damaged: item.damaged_quantity ?? item.damagedQuantity ?? item.damaged ?? 0,
+            availableQuantity: item.availableQuantity ?? ((item.total_quantity ?? item.quantity ?? 0) - (item.reserved_quantity ?? item.reservedQuantity ?? item.reserved ?? 0)),
+            reorderLevel: item.reorderLevel ?? (matchedProd ? matchedProd.reorderLevel : 10),
+            status: item.status ?? "In Stock",
+            warehouse: item.warehouse ?? "Central Fulfillment A",
+            zone: item.zone ?? "Zone A",
+            rack: item.rack ?? "RACK-001",
+            shelf: item.shelf ?? "S-01",
+            bin: binId ?? "BIN-001",
+            weight: item.weight ?? (matchedProd ? matchedProd.weight : "N/A"),
+            dimensions: item.dimensions ?? (matchedProd ? matchedProd.dimensions : "N/A"),
+            lastUpdated: item.lastUpdated ?? new Date().toLocaleDateString()
           };
         });
         setInventory(mappedInventory);
@@ -614,7 +531,10 @@ export function WarehouseProvider({ children }) {
     }
   };
 
+  let _fetchingInbound = false;
   const fetchInboundData = async (isSilent = false) => {
+    if (_fetchingInbound) return;  // deduplicate concurrent calls
+    _fetchingInbound = true;
     if (!isSilent) setIsLoading(true);
     try {
       const [inboundRes, putawayRes] = await Promise.all([
@@ -650,7 +570,7 @@ export function WarehouseProvider({ children }) {
             mappedStatus = 'STORED';
           } else if (ship.status === 'IN_PROGRESS' || ship.status === 'IN_TRANSIT') {
             mappedStatus = 'BIN_SUGGESTED';
-          } else if (ship.status === 'PENDING' || ship.status === 'WAITING_FOR_BIN_ASSIGNMENT') {
+          } else if (ship.status === 'PENDING' || ship.status === 'WAITING_FOR_BIN_ASSIGNMENT' || ship.status === 'RECEIVED') {
             mappedStatus = 'WAITING_FOR_BIN_ASSIGNMENT';
           } else if (ship.status === 'BIN_SUGGESTED' || ship.status === 'BIN_ALLOCATED') {
             mappedStatus = 'BIN_ALLOCATED';
@@ -697,24 +617,57 @@ export function WarehouseProvider({ children }) {
           };
         });
         setInboundReceipts(prev => {
-          const merged = [...prev];
-          mappedReceipts.forEach(ship => {
-            const existingIdx = merged.findIndex(r => r.id === ship.id || r._rawBackendId === ship._rawBackendId || r.documentReference === ship.documentReference);
-            if (existingIdx > -1) {
-              const local = merged[existingIdx];
-              const keepLocalStatus = ['BIN_ALLOCATED', 'ASSIGNED_TO_STAFF', 'STORED'].includes(local.status) && ship.status === 'WAITING_FOR_BIN_ASSIGNMENT';
-              merged[existingIdx] = {
-                ...ship,
-                ...local,
-                bin: (ship.bin && ship.bin !== 'BIN-001') ? ship.bin : (local.bin || ship.bin),
-                status: keepLocalStatus ? local.status : ship.status,
-                binRecommendationStatus: keepLocalStatus ? local.binRecommendationStatus : ship.binRecommendationStatus
-              };
+          // Build a set of backend shipment IDs for fast lookup
+          const backendIds = new Set(
+            mappedReceipts.flatMap(r => [r.id, r._rawBackendId, r.documentReference].filter(Boolean))
+          );
+
+          // Build a set of known SKUs from the current products list
+          const knownSkus = new Set(products.map(p => p.sku).filter(Boolean));
+
+          // Start from the fresh backend list
+          const result = [...mappedReceipts];
+
+          // Walk over locally-held receipts and preserve only those that:
+          //  (a) have a locally-advanced status (client-side commitAllocation happened), AND
+          //  (b) their SKU exists in the current products catalogue
+          // Any receipt that doesn't match a backend shipment AND has no valid SKU is purged.
+          prev.forEach(local => {
+            const matchesBackend = backendIds.has(local.id) ||
+              backendIds.has(local._rawBackendId) ||
+              backendIds.has(local.documentReference);
+
+            if (matchesBackend) {
+              // Already in the result from backend — apply locally-advanced status if needed
+              const idx = result.findIndex(r =>
+                r.id === local.id ||
+                r._rawBackendId === local._rawBackendId ||
+                r.documentReference === local.documentReference
+              );
+              if (idx > -1) {
+                const backendEntry = result[idx];
+                const keepLocalStatus = ['BIN_ALLOCATED', 'ASSIGNED_TO_STAFF', 'STORED'].includes(local.status) &&
+                  backendEntry.status === 'WAITING_FOR_BIN_ASSIGNMENT';
+                result[idx] = {
+                  ...backendEntry,
+                  bin: (backendEntry.bin && backendEntry.bin !== 'BIN-001') ? backendEntry.bin : (local.bin || backendEntry.bin),
+                  status: keepLocalStatus ? local.status : backendEntry.status,
+                  binRecommendationStatus: keepLocalStatus ? local.binRecommendationStatus : backendEntry.binRecommendationStatus
+                };
+              }
             } else {
-              merged.push(ship);
+              // Not from backend — only keep if it's a client-side receipt (like OCR)
+              // with a SKU that exists in the products catalogue
+              const isValidClientStatus = ['WAITING_FOR_BIN_ASSIGNMENT', 'BIN_ALLOCATED', 'ASSIGNED_TO_STAFF', 'STORED'].includes(local.status);
+              const hasValidSku = local.sku && knownSkus.has(local.sku);
+              if (isValidClientStatus && hasValidSku) {
+                result.push(local);
+              }
+              // else: stale/orphaned entry — drop it
             }
           });
-          return merged;
+
+          return result;
         });
       } else {
         setInboundTasks([]);
@@ -722,11 +675,15 @@ export function WarehouseProvider({ children }) {
     } catch (err) {
       console.error("Error fetching inbound data", err);
     } finally {
+      _fetchingInbound = false;
       if (!isSilent) setIsLoading(false);
     }
   };
 
+  let _fetchingPutaway = false;
   const fetchPutawayTasks = async (isSilent = false) => {
+    if (_fetchingPutaway) return;  // deduplicate concurrent calls
+    _fetchingPutaway = true;
     if (!isSilent) setIsLoading(true);
     try {
       const putawayRes = await getAssignedPutawayTasks().catch(e => { console.warn("Failed fetching putaway tasks:", e); return []; });
@@ -748,11 +705,15 @@ export function WarehouseProvider({ children }) {
     } catch (err) {
       console.error("Error fetching putaway tasks", err);
     } finally {
+      _fetchingPutaway = false;
       if (!isSilent) setIsLoading(false);
     }
   };
 
+  let _fetchingUsers = false;
   const fetchUsers = async (isSilent = false) => {
+    if (_fetchingUsers) return;  // deduplicate concurrent calls
+    _fetchingUsers = true;
     if (!isSilent) setIsLoading(true);
     try {
       const usersRes = await getUsersApi().catch(e => { console.warn("Failed fetching users:", e); return { results: [] }; });
@@ -779,6 +740,7 @@ export function WarehouseProvider({ children }) {
     } catch (err) {
       console.error("Error fetching users", err);
     } finally {
+      _fetchingUsers = false;
       if (!isSilent) setIsLoading(false);
     }
   };
@@ -952,15 +914,7 @@ export function WarehouseProvider({ children }) {
     }
   };
 
-  useEffect(() => {
-    // Fetch critical layout and inventory data on mount, but do not block app load
-    fetchWarehouseStructure(true);
-    fetchInventoryData(true);
-    fetchInboundData(true);
-    fetchPutawayTasks(true);
-    fetchOcrDocuments(true); // Load real OCR documents from backend on startup
-    fetchAuditLogs(true);
-  }, []);
+  // Global startup useEffect removed. WMS APIs are now dynamically fetched on route change.
 
 
   const [aiRecommendations, setAiRecommendations] = useState(() => {
@@ -2046,8 +2000,6 @@ export function WarehouseProvider({ children }) {
         inboundReceipts,
         setInboundReceipts,
         addOcrDocument,
-        verifyOcrDocument,
-        rejectOcrDocument,
         setAiRecommendations,
         fetchData,
         fetchWarehouseStructure,
@@ -2058,6 +2010,9 @@ export function WarehouseProvider({ children }) {
         fetchRecommendations,
         fetchOcrDocuments,
         fetchAuditLogs,
+        fetchRoutes,
+        fetchMovements,
+        fetchOrders,
       }}
     >
       {children}
