@@ -11,12 +11,12 @@ import { getMovementsApi } from '../services/movementService';
 import { getUsersApi } from '../services/usersService';
 import { getAuditLogsApi } from '../services/auditLogService';
 import { getOcrDocuments } from '../services/ocrService';
-import { 
-  getAssignedPutawayTasks, 
-  startPutawayTask as startPutawayTaskApi, 
-  confirmPickedFromReceiving as confirmPickedFromReceivingApi, 
-  confirmReachedBin as confirmReachedBinApi, 
-  completePutawayTask as completePutawayTaskApi, 
+import {
+  getAssignedPutawayTasks,
+  startPutawayTask as startPutawayTaskApi,
+  confirmPickedFromReceiving as confirmPickedFromReceivingApi,
+  confirmReachedBin as confirmReachedBinApi,
+  completePutawayTask as completePutawayTaskApi,
   reportPutawayIssue as reportPutawayIssueApi,
   dispatchPutawayTaskApi
 } from '../services/staffService';
@@ -33,9 +33,9 @@ export const generateNextId = (prefix, existingIds) => {
         return match ? match[1].toUpperCase() : '';
       })
       .filter(Boolean);
-    
+
     if (letters.length === 0) return 'Zone A';
-    
+
     const letterToNumber = (str) => {
       let num = 0;
       for (let i = 0; i < str.length; i++) {
@@ -43,7 +43,7 @@ export const generateNextId = (prefix, existingIds) => {
       }
       return num;
     };
-    
+
     const numberToLetter = (num) => {
       let str = '';
       while (num > 0) {
@@ -53,12 +53,12 @@ export const generateNextId = (prefix, existingIds) => {
       }
       return str;
     };
-    
+
     const numbers = letters.map(letterToNumber);
     const maxNum = Math.max(...numbers, 0);
     return `Zone ${numberToLetter(maxNum + 1)}`;
   }
-  
+
   if (prefix === 'ZONE-') {
     const letters = existingIds
       .map(id => {
@@ -66,9 +66,9 @@ export const generateNextId = (prefix, existingIds) => {
         return match ? match[1].toUpperCase() : '';
       })
       .filter(Boolean);
-    
+
     if (letters.length === 0) return 'ZONE-A';
-    
+
     const letterToNumber = (str) => {
       let num = 0;
       for (let i = 0; i < str.length; i++) {
@@ -76,7 +76,7 @@ export const generateNextId = (prefix, existingIds) => {
       }
       return num;
     };
-    
+
     const numberToLetter = (num) => {
       let str = '';
       while (num > 0) {
@@ -86,7 +86,7 @@ export const generateNextId = (prefix, existingIds) => {
       }
       return str;
     };
-    
+
     const numbers = letters.map(letterToNumber);
     const maxNum = Math.max(...numbers, 0);
     return `ZONE-${numberToLetter(maxNum + 1)}`;
@@ -100,7 +100,7 @@ export const generateNextId = (prefix, existingIds) => {
       return match ? parseInt(match[1], 10) : 0;
     })
     .filter(n => n > 0);
-  
+
   const maxNum = nums.length > 0 ? Math.max(...nums) : 0;
   const nextNum = maxNum + 1;
   const padded = String(nextNum).padStart(3, '0');
@@ -210,24 +210,7 @@ export function WarehouseProvider({ children }) {
     localStorage.setItem('ocrDocuments', JSON.stringify(docsToSave));
   }, [ocrDocuments]);
 
-  const [inboundReceipts, setInboundReceipts] = useState(() => {
-    // Use versioned key — any data stored under old 'inboundReceipts' key is
-    // silently discarded, preventing stale/mock receipts from hydrating.
-    const localData = localStorage.getItem('inboundReceipts_v3');
-    if (localData) {
-      try {
-        const parsed = JSON.parse(localData);
-        if (Array.isArray(parsed)) return parsed;
-      } catch (e) {
-        console.error('Failed parsing inboundReceipts_v3 from localStorage', e);
-      }
-    }
-    return [];
-  });
-
-  useEffect(() => {
-    localStorage.setItem('inboundReceipts_v3', JSON.stringify(inboundReceipts));
-  }, [inboundReceipts]);
+  const [inboundReceipts, setInboundReceipts] = useState([]);
 
   const addOcrDocument = (doc) => {
     setOcrDocuments(prev => [doc, ...prev]);
@@ -273,10 +256,10 @@ export function WarehouseProvider({ children }) {
       // Normalize backend shape → frontend shape
       const normalized = allResults.map(doc => {
         const extractedJson = doc.extracted_json || {};
-        const partyInfo     = extractedJson.party_info     || {};
-        const docInfo       = extractedJson.document_info  || {};
+        const partyInfo = extractedJson.party_info || {};
+        const docInfo = extractedJson.document_info || {};
         const financialInfo = extractedJson.financial_info || {};
-        const products      = extractedJson.products       || [];
+        const products = extractedJson.products || [];
 
         // Map backend status → frontend status
         let feStatus = 'VERIFICATION_PENDING';
@@ -306,51 +289,51 @@ export function WarehouseProvider({ children }) {
         };
 
         const mappedItems = products.map((item, idx) => {
-          const dims   = parseBackendObj(item.dimensions)   || {};
-          const weight = parseBackendObj(item.weight)        || {};
+          const dims = parseBackendObj(item.dimensions) || {};
+          const weight = parseBackendObj(item.weight) || {};
           return {
-            id:              item.id || `EXT-${doc.document_id}-${idx}`,
-            sku:             item.sku || item.SKU || '',
-            productName:     item.product_name || item.name || item.productName || '',
-            category:        item.category || 'General',
-            quantity:        Number(item.quantity || item.qty || 0),
-            uom:             item.uom || item.unit || 'BOX',
-            length:          dims.length ?? item.length ?? '',
-            width:           dims.width  ?? item.width  ?? '',
-            height:          dims.height ?? item.height ?? '',
-            weight:          weight.value ?? (typeof item.weight === 'number' ? item.weight : '') ,
-            batchNumber:     item.batch_number || item.batchNumber || `BAT-${Math.floor(1000 + Math.random() * 9000)}`,
-            expiryDate:      item.expiry_date  || item.expiryDate  || '2028-12-31',
+            id: item.id || `EXT-${doc.document_id}-${idx}`,
+            sku: item.sku || item.SKU || '',
+            productName: item.product_name || item.name || item.productName || '',
+            category: item.category || 'General',
+            quantity: Number(item.quantity || item.qty || 0),
+            uom: item.uom || item.unit || 'BOX',
+            length: dims.length ?? item.length ?? '',
+            width: dims.width ?? item.width ?? '',
+            height: dims.height ?? item.height ?? '',
+            weight: weight.value ?? (typeof item.weight === 'number' ? item.weight : ''),
+            batchNumber: item.batch_number || item.batchNumber || `BAT-${Math.floor(1000 + Math.random() * 9000)}`,
+            expiryDate: item.expiry_date || item.expiryDate || '2028-12-31',
             confidenceScore: item.confidence_score != null ? Math.round(item.confidence_score * 100) : Math.round((doc.confidence_score || 0.95) * 100),
             validationStatus: (item.sku || item.SKU) ? 'Valid' : 'Warning',
-            storageType:     item.storage_type  || item.storageType  || 'GENERAL',
-            isFragile:       !!(item.is_fragile  || item.fragile     || item.isFragile),
-            isStackable:     !!(item.is_stackable|| item.stackable   || item.isStackable),
+            storageType: item.storage_type || item.storageType || 'GENERAL',
+            isFragile: !!(item.is_fragile || item.fragile || item.isFragile),
+            isStackable: !!(item.is_stackable || item.stackable || item.isStackable),
           };
         });
 
         return {
-          id:              docInfo.document_number || docInfo.invoice_number || doc.document_id,
-          _backendId:      doc.document_id,
-          status:          feStatus,
-          documentType:    doc.document_type || 'invoice',
-          supplierName:    partyInfo.supplier_name || partyInfo.name || 'Unknown Supplier',
-          documentNumber:  docInfo.document_number || docInfo.invoice_number || doc.document_id,
-          fileName:        doc.file_name || '',
-          totalAmount:     financialInfo.total_amount || '',
-          taxAmount:       financialInfo.tax          || '',
+          id: docInfo.document_number || docInfo.invoice_number || doc.document_id,
+          _backendId: doc.document_id,
+          status: feStatus,
+          documentType: doc.document_type || 'invoice',
+          supplierName: partyInfo.supplier_name || partyInfo.name || 'Unknown Supplier',
+          documentNumber: docInfo.document_number || docInfo.invoice_number || doc.document_id,
+          fileName: doc.file_name || '',
+          totalAmount: financialInfo.total_amount || '',
+          taxAmount: financialInfo.tax || '',
           confidenceScore: Math.round((doc.confidence_score || 0.95) * 100),
-          extractedItems:  mappedItems,
-          createdAt:       doc.created_at || new Date().toISOString(),
-          updatedAt:       doc.updated_at || new Date().toISOString(),
-          rejectReason:    doc.rejection_reason || '',
+          extractedItems: mappedItems,
+          createdAt: doc.created_at || new Date().toISOString(),
+          updatedAt: doc.updated_at || new Date().toISOString(),
+          rejectReason: doc.rejection_reason || '',
         };
       });
 
       // Merge: keep locally-created docs that don't exist in backend yet
       setOcrDocuments(prev => {
         const backendIds = new Set(normalized.map(d => d._backendId));
-        const localOnly  = prev.filter(d => !d._backendId || !backendIds.has(d._backendId));
+        const localOnly = prev.filter(d => !d._backendId || !backendIds.has(d._backendId));
         return [...normalized, ...localOnly];
       });
 
@@ -404,7 +387,7 @@ export function WarehouseProvider({ children }) {
           const curCap = Number(b.current_capacity ?? b.currentCapacity ?? 0);
           const isOccupied = b.is_occupied ?? false;
           const codeVal = b.bin_code ?? b.code ?? b.binCode ?? b.name;
-          
+
           let parsed = { zone: null, rack: null, shelf: null };
           if (codeVal && typeof codeVal === 'string') {
             const parts = codeVal.split('-');
@@ -435,19 +418,19 @@ export function WarehouseProvider({ children }) {
           }
 
           return {
-            id:              b.bin_id   ?? b.id   ?? b.binId,
-            code:            codeVal,
-            binCode:         codeVal,
-            shelfId:         b.shelf    ?? b.shelf_id  ?? b.shelfId,
-            rackId:          b.rack_id  ?? b.rackId,
-            zoneId:          b.zone_id  ?? b.zoneId,
-            zone:            b.zone     ?? parsed.zone,
-            rack:            b.rack     ?? b.rack_code ?? parsed.rack,
-            shelf:           b.shelf_level ?? parsed.shelf ?? null,
-            maxCapacity:     maxCap,
+            id: b.bin_id ?? b.id ?? b.binId,
+            code: codeVal,
+            binCode: codeVal,
+            shelfId: b.shelf ?? b.shelf_id ?? b.shelfId,
+            rackId: b.rack_id ?? b.rackId,
+            zoneId: b.zone_id ?? b.zoneId,
+            zone: b.zone ?? parsed.zone,
+            rack: b.rack ?? b.rack_code ?? parsed.rack,
+            shelf: b.shelf_level ?? parsed.shelf ?? null,
+            maxCapacity: maxCap,
             currentCapacity: curCap,
-            isOccupied:      isOccupied,
-            status:          status,
+            isOccupied: isOccupied,
+            status: status,
             ...b,
           };
         });
@@ -499,7 +482,7 @@ export function WarehouseProvider({ children }) {
           const name = item.productName || item.name || (matchedProd ? matchedProd.name : `Product ${sku}`);
           const category = item.category || (matchedProd ? matchedProd.category : "Electronics");
           const binId = item.binId || item.bin;
-          
+
           return {
             sku: sku,
             name: name,
@@ -565,25 +548,27 @@ export function WarehouseProvider({ children }) {
         const tasksList = Array.isArray(putawayRes) ? putawayRes : (putawayRes?.results || []);
 
         const mappedReceipts = inboundRes.results.map((ship, idx) => {
+          const apiStatus = ship.status || ship.recommendation_status || ship.binRecommendationStatus || 'PENDING';
+
           let mappedStatus = 'WAITING_FOR_BIN_ASSIGNMENT';
-          if (ship.status === 'COMPLETED' || ship.status === 'STORED') {
+          if (apiStatus === 'COMPLETED' || apiStatus === 'STORED') {
             mappedStatus = 'STORED';
-          } else if (ship.status === 'IN_PROGRESS' || ship.status === 'IN_TRANSIT') {
+          } else if (apiStatus === 'IN_PROGRESS' || apiStatus === 'IN_TRANSIT') {
             mappedStatus = 'BIN_SUGGESTED';
-          } else if (ship.status === 'PENDING' || ship.status === 'WAITING_FOR_BIN_ASSIGNMENT' || ship.status === 'RECEIVED') {
+          } else if (apiStatus === 'PENDING' || apiStatus === 'WAITING_FOR_BIN_ASSIGNMENT' || apiStatus === 'RECEIVED' || apiStatus === 'RECOMMENDED') {
             mappedStatus = 'WAITING_FOR_BIN_ASSIGNMENT';
-          } else if (ship.status === 'BIN_SUGGESTED' || ship.status === 'BIN_ALLOCATED') {
+          } else if (apiStatus === 'BIN_SUGGESTED' || apiStatus === 'BIN_ALLOCATED') {
             mappedStatus = 'BIN_ALLOCATED';
           } else {
-            mappedStatus = ship.status;
+            mappedStatus = apiStatus;
           }
 
-          const matchedTask = tasksList.find(t => 
-            t.inboundId === ship.id || 
+          const matchedTask = tasksList.find(t =>
+            t.inboundId === ship.id ||
             t.inboundId === ship._rawBackendId ||
             (t.sku === ship.sku && t.status !== 'COMPLETED')
           );
-          
+
           let allocatedBin = ship.bin || 'BIN-001';
           if (matchedTask) {
             allocatedBin = matchedTask.destinationBin || matchedTask.bin || allocatedBin;
@@ -935,7 +920,7 @@ export function WarehouseProvider({ children }) {
   }, [aiRecommendations]);
 
   useEffect(() => {
-    console.log('[FlowState] inboundReceipts', inboundReceipts.map(r => ({ id:r.id, sku:r.sku, status:r.status, bin:r.bin, binCode:r.binCode })));
+    console.log('[FlowState] inboundReceipts', inboundReceipts.map(r => ({ id: r.id, sku: r.sku, status: r.status, bin: r.bin, binCode: r.binCode })));
     console.log('[FlowState] aiRecommendations', aiRecommendations);
     console.log('[FlowState] putawayTasks', putawayTasks);
   }, [inboundReceipts, aiRecommendations, putawayTasks]);
@@ -1385,10 +1370,10 @@ export function WarehouseProvider({ children }) {
       prev.map((task) =>
         task.id === taskId
           ? {
-              ...task,
-              status: "In Progress",
-              assignedStaff: "Warehouse Operator",
-            }
+            ...task,
+            status: "In Progress",
+            assignedStaff: "Warehouse Operator",
+          }
           : task
       )
     );
@@ -1429,7 +1414,7 @@ export function WarehouseProvider({ children }) {
       if (task.inboundId) {
         setInboundReceipts(prev => prev.map(rec => rec.id === task.inboundId ? { ...rec, status: 'IN_PROGRESS' } : rec));
       }
-      
+
       const nextMovId = generateNextId('MOV-', movements.map(m => m.id));
       setMovements(prev => [
         {
@@ -1541,16 +1526,16 @@ export function WarehouseProvider({ children }) {
 
     setPutawayTasks((prev) =>
       prev.map((task) =>
-        task.id === taskId ? { 
-          ...task, 
-          status: "DELAYED", 
+        task.id === taskId ? {
+          ...task,
+          status: "DELAYED",
           issue: {
             issueType,
             description,
             reportedBy: user?.email || "staff@warehouseai.com",
             reportedAt: new Date().toISOString(),
             status: "Reported"
-          } 
+          }
         } : task
       )
     );
@@ -1596,10 +1581,10 @@ export function WarehouseProvider({ children }) {
     if (!task) return false;
 
     // 1. Mark task status as COMPLETED
-    setPutawayTasks((prev) => prev.map((t) => t.id === taskId ? { 
-      ...t, 
-      status: "COMPLETED", 
-      completedAt: new Date().toISOString() 
+    setPutawayTasks((prev) => prev.map((t) => t.id === taskId ? {
+      ...t,
+      status: "COMPLETED",
+      completedAt: new Date().toISOString()
     } : t));
 
     // 2. Add product to inventory and update location
@@ -1655,7 +1640,7 @@ export function WarehouseProvider({ children }) {
     }));
 
     logAudit(user?.email || "staff@warehouseai.com", "WAREHOUSE_OPERATOR", "COMPLETE_PUTAWAY", "Putaway", `Completed putaway task ${taskId}.`);
-    
+
     await fetchData(true);
     return true;
   };
@@ -1710,10 +1695,10 @@ export function WarehouseProvider({ children }) {
       prev.map((order) =>
         order.id === orderId
           ? {
-              ...order,
-              status: "Dispatched",
-              progress: 100,
-            }
+            ...order,
+            status: "Dispatched",
+            progress: 100,
+          }
           : order
       )
     );
@@ -1775,7 +1760,7 @@ export function WarehouseProvider({ children }) {
     const nextRecId = generateNextId('REC-', aiRecommendations.map(r => r.id));
     // Pick a mock shelf bin
     const targetBin = bins[Math.floor(Math.random() * bins.length)] || { code: "BIN-002", zone: "Zone B", shelf: "S-10" };
-    
+
     const newRec = {
       id: nextRecId,
       inboundId: inboundId,

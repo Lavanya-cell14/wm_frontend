@@ -47,7 +47,26 @@ export default function AiCopilot() {
         // Hits RAG FastAPI server on port 8002
         console.warn("[AiCopilot] Sending query to RAG Server API (/api/ai/analyze)");
         const response = await askRag(userMsg);
-        const botText = response.suggestion || response.response || "No suggestion received from RAG AI assistant.";
+        let botText = response.suggestion || response.response || "No suggestion received from RAG AI assistant.";
+        
+        // Try to parse the JSON string returned by RAG backend
+        try {
+          // Sometimes the RAG returns "INSUFFICIENT INFORMATION...", so this will throw and fall back to plain text
+          const parsed = JSON.parse(botText);
+          if (parsed.analysis_summary) {
+            botText = parsed.analysis_summary;
+            if (parsed.possible_issues && parsed.possible_issues.length > 0) {
+              botText += "\n\n**Possible Issues:**\n• " + parsed.possible_issues.join("\n• ");
+            }
+            if (parsed.recommended_actions && parsed.recommended_actions.length > 0) {
+              botText += "\n\n**Recommended Actions:**\n• " + parsed.recommended_actions.join("\n• ");
+            }
+          }
+        } catch (parseErr) {
+          // If it's not valid JSON (e.g. "INSUFFICIENT INFORMATION..."), just use the raw text
+          console.warn("[AiCopilot] RAG response is not JSON or parsing failed:", parseErr.message);
+        }
+
         setMessages(prev => [...prev, { sender: 'bot', text: botText }]);
       } else {
         // Hits WMS Django Backend server on port 8000
@@ -90,7 +109,6 @@ export default function AiCopilot() {
           </p>
         </div>
 
-        {/* Mode Selector */}
         <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-xl p-1 text-xs">
           <button
             onClick={() => setQueryMode('rag')}
@@ -100,17 +118,17 @@ export default function AiCopilot() {
                 : 'text-gray-500 hover:text-gray-800'
             }`}
           >
-            RAG Assistant (Port 8002)
+            Document AI (Manuals & OCR)
           </button>
           <button
             onClick={() => setQueryMode('wms')}
             className={`px-3 py-1.5 font-bold rounded-lg transition-all ${
               queryMode === 'wms'
-                ? 'bg-white text-blue-700 shadow-xs'
+                ? 'bg-white text-white-700 shadow-xs text-blue-700'
                 : 'text-gray-500 hover:text-gray-800'
             }`}
           >
-            WMS Query (Port 8000)
+            Live Database (Inventory & Ops)
           </button>
         </div>
       </div>

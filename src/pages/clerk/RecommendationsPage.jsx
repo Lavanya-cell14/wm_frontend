@@ -398,6 +398,24 @@ export default function RecommendationsPage() {
     setLiveAllocError(null);
 
     const loadedBins = await ensureBinsLoaded();
+
+    if (receipt.sku === 'SKU-GENERIC') {
+      setLiveRecResult({
+        zoneGroup: 'Ambient Storage ZG',
+        zone: 'Zone B',
+        score: 90,
+        reason: 'Default dummy slotting for generic products.',
+        orientation: '-',
+        maxUnits: '-',
+        utilizationScore: '-',
+        version: 'v1',
+        isFallback: true,
+      });
+      setLiveRecLoading(false);
+      showToast('Storage recommendation fetched successfully!');
+      return;
+    }
+
     let productUuid = receipt.productId || getProductUuidForSku(receipt.sku);
 
     if (!productUuid && receipt.sku) {
@@ -526,6 +544,36 @@ export default function RecommendationsPage() {
     // Ensure bins are loaded (needed for UI rendering later)
     await ensureBinsLoaded();
 
+    if (receipt.sku === 'SKU-GENERIC') {
+      const apiResult = {
+        allocationId: `alloc-${Date.now()}`,
+        binCode: 'BIN-002',
+        rack: 'R-1',
+        shelf: 'S-10',
+        zone: 'Zone B',
+        score: 90,
+        reason: 'Default mock allocation for generic products.',
+        routeDistance: '0',
+        routePath: [],
+        storageStatus: 'ALLOCATED',
+        isFallback: true,
+      };
+      setLiveAllocResult(apiResult);
+      
+      commitAllocation(
+        receipt,
+        apiResult.binCode,
+        apiResult.shelf,
+        apiResult.rack,
+        apiResult.zone,
+        apiResult.score,
+        apiResult.reason
+      );
+      showToast(`Bin "${apiResult.binCode}" identified. Please assign an operator to dispatch.`);
+      setLiveAllocLoading(false);
+      return;
+    }
+
     // Resolve product UUID – try local cache then backend lookup
     let productUuid = receipt.productId || getProductUuidForSku(receipt.sku);
     if (!productUuid && receipt.sku) {
@@ -569,6 +617,18 @@ export default function RecommendationsPage() {
       };
       setLiveAllocResult(apiResult);
       console.log("apiResult", apiResult);
+      
+      // Update the UI state to move item from pending to allocated
+      commitAllocation(
+        receipt,
+        apiResult.binCode,
+        apiResult.shelf,
+        apiResult.rack,
+        apiResult.zone,
+        apiResult.score,
+        apiResult.reason
+      );
+
       showToast(`Bin "${apiResult.binCode}" identified. Please assign an operator to dispatch.`);
     } catch (err) {
       console.error('[Recommendations] Bin allocation API failed:', err);
